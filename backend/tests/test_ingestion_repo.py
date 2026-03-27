@@ -295,43 +295,37 @@ class TestGetRecentIngestionLogs:
         mock_q.limit.assert_called_once_with(20)
 
 
-class TestBatchUpsertKeyNormalization:
-    """Verify that _batch_upsert normalizes dict keys so all dicts in a batch
-    have the same keys — required by SQLAlchemy insert().values(list_of_dicts)."""
+class TestBatchUpsertKeyGrouping:
+    """Records with different key signatures are grouped into separate sub-batches."""
 
-    def test_inconsistent_keys_are_normalized(self) -> None:
-        """Records with different nullable keys should be padded with None."""
+    def test_inconsistent_keys_processed_in_groups(self) -> None:
+        """Records with different keys should be grouped and each group upserted."""
         db = MagicMock()
         repo = IngestionRepository(db)
 
         from app.models.db.fund_master import FundMaster
 
-        # All records have required NOT NULL fields; they differ on nullable fields
         records = [
-            {"mstar_id": "F001", "legal_name": "Fund A",
-             "is_active": True, "is_eligible": True, "fund_name": "Fund A", "isin": "INE001A01036"},
-            {"mstar_id": "F002", "legal_name": "Fund B",
-             "is_active": True, "is_eligible": True, "fund_name": "Fund B"},  # no isin
-            {"mstar_id": "F003", "legal_name": "Fund C",
-             "is_active": True, "is_eligible": True},  # no fund_name, no isin
+            {"mstar_id": "F001", "legal_name": "Fund A", "fund_name": "Fund A", "isin": "INE001"},
+            {"mstar_id": "F002", "legal_name": "Fund B", "fund_name": "Fund B"},  # no isin
+            {"mstar_id": "F003", "legal_name": "Fund C"},  # no fund_name, no isin
         ]
 
         result = repo._batch_upsert(FundMaster, records, conflict_cols=["mstar_id"])
 
-        assert db.execute.called
+        # All 3 records should be inserted (in separate groups by key sig)
         assert result.inserted == 3
+        # Multiple execute calls (one per key signature group)
+        assert db.execute.call_count >= 2
 
-    def test_missing_keys_filled_with_none(self) -> None:
+    def test_normalize_batch_keys_helper(self) -> None:
         """Directly test the _normalize_batch_keys helper."""
-        db = MagicMock()
-        repo = IngestionRepository(db)
-
         batch = [
             {"a": 1, "b": 2},
             {"a": 3, "c": 4},
             {"b": 5},
         ]
-        normalized = repo._normalize_batch_keys(batch)
+        normalized = IngestionRepository._normalize_batch_keys(batch)
         all_keys = {"a", "b", "c"}
         for row in normalized:
             assert set(row.keys()) == all_keys
@@ -340,75 +334,17 @@ class TestBatchUpsertKeyNormalization:
         assert normalized[2] == {"a": None, "b": 5, "c": None}
 
 
-class TestGetRequiredColumns:
-    """Verify _get_required_columns returns NOT NULL columns (excluding auto-generated)."""
+class TestOnConflictUpdateOnlyProvidedKeys:
+    """ON CONFLICT UPDATE should only set columns the records actually provide."""
 
-    def test_fund_master_required_cols(self) -> None:
-        db = MagicMock()
-        repo = IngestionRepository(db)
-        from app.models.db.fund_master import FundMaster
-        required = repo._get_required_columns(FundMaster)
-        # mstar_id, legal_name are NOT NULL in the model
-        assert "mstar_id" in required
-        assert "legal_name" in required
-        # category_name is nullable (populated by separate API call)
-        assert "category_name" not in required
-        # Auto-generated columns should be excluded
-        assert "id" not in required
-        assert "created_at" not in required
-        assert "updated_at" not in required
-        # Nullable columns should not be included
-        assert "isin" not in required
-        assert "fund_name" not in required
-
-    def test_category_returns_required_cols(self) -> None:
-        db = MagicMock()
-        repo = IngestionRepository(db)
-        from app.models.db.category_returns import CategoryReturnsDaily
-        required = repo._get_required_columns(CategoryReturnsDaily)
-        assert "category_code" in required
-        assert "as_of_date" in required
-        assert "id" not in required
-
-
-class TestFilterNullRequiredFields:
-    """Records missing NOT NULL fields should be dropped, not crash the batch."""
-
-    def test_records_missing_required_field_are_skipped(self) -> None:
+    def test_update_cols_exclude_missing_keys(self) -> None:
+        """Records providing a subset of columns should not overwrite other columns."""
         db = MagicMock()
         repo = IngestionRepository(db)
 
         from app.models.db.fund_master import FundMaster
 
-        records = [
-            {"mstar_id": "F001", "legal_name": "Fund A",
-             "is_active": True, "is_eligible": True},
-            {"mstar_id": "F002", "is_active": True, "is_eligible": True},
-            # ^ missing legal_name (NOT NULL) — should be skipped
-        ]
-
-        result = repo._batch_upsert(FundMaster, records, conflict_cols=["mstar_id"])
-
-        # Only 1 record should have been inserted (the valid one)
-        # The record missing legal_name should be skipped
-        assert db.execute.called
-        assert result.inserted == 1
-        assert result.failed == 1
-
-
-class TestOnConflictUpdateOnlyRealKeys:
-    """ON CONFLICT UPDATE should only set columns the records actually provide,
-    not columns padded with None by normalization."""
-
-    def test_update_cols_exclude_padded_none_keys(self) -> None:
-        """When records only provide a subset of columns, ON CONFLICT UPDATE
-        should not overwrite other columns with NULL."""
-        db = MagicMock()
-        repo = IngestionRepository(db)
-
-        from app.models.db.fund_master import FundMaster
-
-        # Simulate Category Data API: provides required fields + category_name + broad_category
+        # Simulate Category Data API: provides category_name + broad_category
         # but NOT fund_name or isin (those come from a different API)
         records = [
             {"mstar_id": "F001", "legal_name": "Fund A", "category_name": "Large Cap", "broad_category": "Equity"},
@@ -417,12 +353,8 @@ class TestOnConflictUpdateOnlyRealKeys:
 
         repo._batch_upsert(FundMaster, records, conflict_cols=["mstar_id"])
 
-        # Inspect the SQL statement that was executed
         assert db.execute.called
         stmt = db.execute.call_args[0][0]
-
-        # The ON CONFLICT UPDATE should NOT include columns like fund_name,
-        # isin etc. that these records don't provide
         compiled = stmt.compile()
         sql_str = str(compiled)
         # category_name and broad_category should be in the SET clause
@@ -432,6 +364,28 @@ class TestOnConflictUpdateOnlyRealKeys:
         set_clause = sql_str.split("SET")[1] if "SET" in sql_str else ""
         assert "fund_name" not in set_clause
         assert "isin" not in set_clause
+
+    def test_update_only_records_can_upsert(self) -> None:
+        """Records with only conflict key + update fields should still work
+        (for updating existing rows via ON CONFLICT)."""
+        db = MagicMock()
+        repo = IngestionRepository(db)
+
+        from app.models.db.fund_master import FundMaster
+
+        # API #3 records: have mstar_id + category_name but NOT legal_name.
+        # These are meant to UPDATE existing rows, not insert new ones.
+        records = [
+            {"mstar_id": "F001", "category_name": "Large Cap"},
+            {"mstar_id": "F002", "category_name": "Mid Cap"},
+        ]
+
+        result = repo._batch_upsert(FundMaster, records, conflict_cols=["mstar_id"])
+
+        # Should attempt the upsert (will fail for truly new rows at DB level,
+        # but should work for ON CONFLICT UPDATE of existing rows)
+        assert db.execute.called
+        assert result.inserted == 2
 
 
 class TestBatchUpsertErrorHandling:
