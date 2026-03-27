@@ -1,0 +1,4 @@
+SecId,MonthEndDate,Rank1MthQuartile,Rank3MthQuartile,Rank6MthQuartile,Rank1YrQuartile,Rank2YrQuartile,Rank3YrQuartile,Rank4YrQuartile,Rank5YrQuartile,Rank7YrQuartile,Rank10YrQuartile,AbsRank1Mth,AbsRank3Mth,AbsRank6Mth,AbsRankYTD,AbsRank1Yr,AbsRank2Yr,AbsRank3Yr,AbsRank4Yr,AbsRank5Yr,AbsRank7Yr,AbsRank10Yr,RankYTD,RankYr1,RankYr2,RankYr3,RankYr4,RankYr5,RankYr6,RankYr7,RankYr8,RankYr9,RankYr10
+F0GBR06S2Q,2026-02-28,1,1,2,1,1,1,1,1,1,1,3,5,12,8,2,4,3,5,4,3,2,85,92,78,88,82,90,75,85,80,78,88
+F00000NWXZ,2026-02-28,2,2,2,2,1,2,2,1,2,1,15,18,14,12,10,8,12,10,6,8,5,65,72,68,75,70,78,62,72,68,65,75
+F00000PQRS,2026-02-28,1,2,1,1,1,1,1,1,1,1,5,10,8,6,4,3,5,4,3,4,3,78,85,72,82,76,85,70,80,75,72,82

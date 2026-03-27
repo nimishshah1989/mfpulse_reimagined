@@ -58,6 +58,25 @@ class FundMaster(Base, UUIDPrimaryKey, TimestampMixin):
 
     # Managers
     managers: Mapped[Optional[str]] = mapped_column(String(500))
+    manager_education: Mapped[Optional[str]] = mapped_column(String(500))
+    manager_birth_year: Mapped[Optional[int]] = mapped_column(Integer)
+    manager_certification: Mapped[Optional[str]] = mapped_column(String(200))
+
+    # Performance
+    performance_start_date: Mapped[Optional[date]] = mapped_column(Date)
+    previous_fund_name: Mapped[Optional[str]] = mapped_column(String(300))
+    previous_name_end_date: Mapped[Optional[date]] = mapped_column(Date)
+
+    # Fund structure
+    pricing_frequency: Mapped[Optional[str]] = mapped_column(String(20))
+    legal_structure: Mapped[Optional[str]] = mapped_column(String(100))
+    domicile_id: Mapped[Optional[str]] = mapped_column(String(10))
+    exchange_id: Mapped[Optional[str]] = mapped_column(String(10))
+
+    # Access restrictions
+    closed_to_investors: Mapped[Optional[date]] = mapped_column(Date)
+    lock_in_period: Mapped[None] = mapped_column(Numeric(8, 2), nullable=True)
+    distribution_status: Mapped[Optional[str]] = mapped_column(String(50))
 
     # Status flags
     performance_ready: Mapped[Optional[bool]] = mapped_column(Boolean)
