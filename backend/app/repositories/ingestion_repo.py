@@ -49,6 +49,20 @@ class IngestionRepository:
         """Remove keys not in the model's columns."""
         return {k: v for k, v in record.items() if k in valid_cols}
 
+    @staticmethod
+    def _normalize_batch_keys(batch: list[dict]) -> list[dict]:
+        """Ensure all dicts in a batch have identical keys.
+
+        SQLAlchemy's insert().values(list_of_dicts) requires every dict to
+        have the same keys.  Records from the Morningstar API have inconsistent
+        fields (e.g. some funds have ``isin``, others don't).  This pads
+        missing keys with ``None``.
+        """
+        if not batch:
+            return batch
+        all_keys = set().union(*(d.keys() for d in batch))
+        return [{k: d.get(k) for k in all_keys} for d in batch]
+
     def _batch_upsert(
         self,
         model_cls: type,
@@ -78,6 +92,10 @@ class IngestionRepository:
 
                 if not rows_to_insert:
                     continue
+
+                # Normalize keys so every dict has identical keys —
+                # required by SQLAlchemy insert().values(list_of_dicts).
+                rows_to_insert = self._normalize_batch_keys(rows_to_insert)
 
                 table = model_cls.__table__
                 stmt = pg_insert(table).values(rows_to_insert)
