@@ -323,19 +323,29 @@ class MorningstarFetcher:
                 self.ingestion_repo.upsert_nav_daily(coerced)
 
             elif target == "risk_stats_monthly":
-                # Risk API also contains master fields (Managers, InceptionDate, etc.)
-                # Split: master fields go to fund_master, risk fields go to risk_stats
+                # Risk API returns fields for 3 tables: fund_master, risk_stats, nav_daily.
+                # Split each record by destination table.
                 master_field_values = set(field_maps.MASTER_FIELD_MAP.values())
+                nav_field_values = set(field_maps.NAV_FIELD_MAP.values())
                 master_records = []
                 risk_records = []
+                nav_records = []
 
                 for record in records:
                     master_rec = {k: v for k, v in record.items()
                                   if k in master_field_values or k == "mstar_id"}
+                    nav_rec = {k: v for k, v in record.items()
+                               if k in nav_field_values or k == "mstar_id"}
                     risk_rec = {k: v for k, v in record.items()
-                                if k not in master_field_values or k == "mstar_id"}
+                                if k not in master_field_values
+                                and k not in nav_field_values
+                                or k == "mstar_id"}
                     if len(master_rec) > 1:
                         master_records.append(master_rec)
+                    if len(nav_rec) > 1:
+                        if "nav_date" not in nav_rec:
+                            nav_rec["nav_date"] = today
+                        nav_records.append(nav_rec)
                     if len(risk_rec) > 1:
                         if "as_of_date" not in risk_rec:
                             risk_rec["as_of_date"] = today
@@ -344,6 +354,9 @@ class MorningstarFetcher:
                 if master_records:
                     coerced_master = self._coerce_records(master_records, FundMaster)
                     self.ingestion_repo.upsert_fund_masters(coerced_master)
+                if nav_records:
+                    coerced_nav = self._coerce_records(nav_records, NavDaily)
+                    self.ingestion_repo.upsert_nav_daily(coerced_nav)
                 if risk_records:
                     coerced_risk = self._coerce_records(risk_records, RiskStatsMonthly)
                     self.ingestion_repo.upsert_risk_stats(coerced_risk)
