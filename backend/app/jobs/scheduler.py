@@ -22,6 +22,8 @@ VALID_JOBS = frozenset({
     "lens_recompute",
     "marketpulse_sync",
     "expire_overrides",
+    "fetch_nav",
+    "fetch_full",
 })
 
 # Job schedule descriptions
@@ -32,6 +34,8 @@ JOB_SCHEDULES = {
     "lens_recompute": "Monthly 7th BD 9:00 AM IST",
     "marketpulse_sync": "Daily 9:45 PM IST",
     "expire_overrides": "Daily midnight IST",
+    "fetch_nav": "Daily 9:30 PM IST (API)",
+    "fetch_full": "Weekly Sun 11:00 PM IST (API)",
 }
 
 
@@ -98,6 +102,22 @@ class JobScheduler:
             replace_existing=True,
         )
 
+        # Daily 9:30 PM IST — fetch NAV + Returns from Morningstar API
+        self._scheduler.add_job(
+            lambda: self._run_with_audit("fetch_nav", self.job_fetch_nav),
+            CronTrigger(hour=21, minute=30),
+            id="fetch_nav",
+            replace_existing=True,
+        )
+
+        # Weekly Sunday 11 PM IST — full Morningstar API refresh + lens recompute
+        self._scheduler.add_job(
+            lambda: self._run_with_audit("fetch_full", self.job_fetch_full),
+            CronTrigger(day_of_week="sun", hour=23, minute=0),
+            id="fetch_full",
+            replace_existing=True,
+        )
+
         self._scheduler.start()
         logger.info("Job scheduler started with %d jobs", len(VALID_JOBS))
 
@@ -119,6 +139,8 @@ class JobScheduler:
             "lens_recompute": self.job_recompute_lens_scores,
             "marketpulse_sync": self.job_sync_marketpulse,
             "expire_overrides": self.job_expire_overrides,
+            "fetch_nav": self.job_fetch_nav,
+            "fetch_full": self.job_fetch_full,
         }
 
         func = job_map[job_name]
@@ -272,5 +294,39 @@ class JobScheduler:
             svc = OverrideService(db)
             count = svc.expire_stale_overrides()
             logger.info("Expired %d stale overrides", count)
+        finally:
+            db.close()
+
+    def job_fetch_nav(self) -> None:
+        """Fetch latest NAV and returns from Morningstar API."""
+        from app.services.morningstar_fetcher import MorningstarFetcher
+
+        db = self._db_session_factory()
+        try:
+            fetcher = MorningstarFetcher(db)
+            results = fetcher.fetch_nav_only()
+            for r in results:
+                logger.info("Fetch %s: %s (%d funds)", r.api_name, r.status, r.fund_count)
+        finally:
+            db.close()
+
+    def job_fetch_full(self) -> None:
+        """Full Morningstar data refresh — master, risk, ranks, everything.
+
+        After full fetch, recompute lens scores.
+        """
+        from app.services.morningstar_fetcher import MorningstarFetcher
+        from app.services.lens_service import LensService
+
+        db = self._db_session_factory()
+        try:
+            fetcher = MorningstarFetcher(db)
+            results = fetcher.fetch_all()
+            for r in results:
+                logger.info("Fetch %s: %s (%d funds)", r.api_name, r.status, r.fund_count)
+            # After full fetch, recompute lens scores
+            lens_svc = LensService(db)
+            lens_result = lens_svc.compute_all_categories()
+            logger.info("Post-fetch lens recompute: %s", lens_result)
         finally:
             db.close()

@@ -14,10 +14,12 @@ from app.api.v1.strategies import router as strategies_router
 from app.api.v1.overrides import router as overrides_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.jobs import router as jobs_router
+from app.api.v1.fetch import router as fetch_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(system_router)
 api_v1_router.include_router(ingestion_router)
+api_v1_router.include_router(fetch_router)
 api_v1_router.include_router(marketpulse_router)
 api_v1_router.include_router(funds_router)
 api_v1_router.include_router(categories_router)
