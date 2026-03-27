@@ -14,15 +14,22 @@ Usage:
 import logging
 import time
 from datetime import date
+from decimal import Decimal, InvalidOperation
 from typing import Optional
 from xml.etree import ElementTree as ET
 
 import httpx
+from sqlalchemy import Boolean, Date, Integer, Numeric, inspect
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.morningstar_config import APIS, UNIVERSE_CODE, API_BASE, MorningstarAPI
 from app.ingestion import field_maps
+from app.models.db.category_returns import CategoryReturnsDaily
+from app.models.db.fund_master import FundMaster
+from app.models.db.nav_daily import NavDaily
+from app.models.db.rank_monthly import RankMonthly
+from app.models.db.risk_stats import RiskStatsMonthly
 from app.repositories.audit_repo import AuditRepository
 from app.repositories.ingestion_repo import IngestionRepository
 
@@ -58,6 +65,8 @@ class FetchResult:
 class MorningstarFetcher:
     """Fetches and ingests data from Morningstar bulk APIs."""
 
+    _TRUTHY = frozenset(("1", "true", "True", "Y", "yes", "Yes"))
+
     def __init__(self, db: Session):
         self.db = db
         self.settings = get_settings()
@@ -65,6 +74,62 @@ class MorningstarFetcher:
         self.audit_repo = AuditRepository(db)
         self._access_code = self.settings.morningstar_access_code
         self._timeout = 120  # seconds — bulk responses can be large (5-8MB)
+        self._col_type_cache: dict[type, dict[str, type]] = {}
+
+    def _get_column_types(self, model_cls: type) -> dict[str, type]:
+        """Build {col_name: sqlalchemy_type_class} map, cached per model."""
+        if model_cls not in self._col_type_cache:
+            mapper = inspect(model_cls)
+            col_types: dict[str, type] = {}
+            for attr in mapper.column_attrs:
+                col = attr.columns[0]
+                col_types[attr.key] = type(col.type)
+            self._col_type_cache[model_cls] = col_types
+        return self._col_type_cache[model_cls]
+
+    def _coerce_record(self, record: dict, model_cls: type) -> dict:
+        """Coerce string values from XML to types matching ORM columns.
+
+        - Numeric → Decimal
+        - Date → date.fromisoformat
+        - Integer → int
+        - Boolean → True/False
+        - String/Text → str (no-op)
+        - Unknown column → dropped
+        """
+        col_types = self._get_column_types(model_cls)
+        coerced: dict = {}
+
+        for key, value in record.items():
+            if key not in col_types:
+                continue
+
+            col_type = col_types[key]
+
+            # Already the right type (not a string) — pass through
+            if not isinstance(value, str):
+                coerced[key] = value
+                continue
+
+            try:
+                if issubclass(col_type, Numeric):
+                    coerced[key] = Decimal(value)
+                elif issubclass(col_type, Date):
+                    coerced[key] = date.fromisoformat(value)
+                elif issubclass(col_type, Integer):
+                    coerced[key] = int(value)
+                elif issubclass(col_type, Boolean):
+                    coerced[key] = value in self._TRUTHY
+                else:
+                    coerced[key] = value
+            except (InvalidOperation, ValueError, TypeError) as exc:
+                logger.warning(
+                    "Coercion failed for %s.%s = %r (%s): %s",
+                    model_cls.__tablename__, key, value, col_type.__name__, exc,
+                )
+                # Skip this field — don't crash the whole record
+
+        return coerced
 
     def fetch_all(self) -> list[FetchResult]:
         """Full refresh: fetch all 8 APIs in order. Master data first."""
@@ -221,6 +286,15 @@ class MorningstarFetcher:
         )
         return fund_records, result
 
+    def _coerce_records(self, records: list[dict], model_cls: type) -> list[dict]:
+        """Coerce all records for a given model, filtering out empty results."""
+        coerced = []
+        for rec in records:
+            c = self._coerce_record(rec, model_cls)
+            if len(c) > 1:  # more than just mstar_id / category_code
+                coerced.append(c)
+        return coerced
+
     def _write_to_db(self, api: MorningstarAPI, records: list[dict], result: FetchResult) -> None:
         """Route records to the appropriate repository batch upsert method."""
         target = api.db_target
@@ -228,13 +302,15 @@ class MorningstarFetcher:
 
         try:
             if target == "fund_master":
-                self.ingestion_repo.upsert_fund_masters(records)
+                coerced = self._coerce_records(records, FundMaster)
+                self.ingestion_repo.upsert_fund_masters(coerced)
 
             elif target == "nav_daily":
                 for record in records:
                     if "nav_date" not in record:
                         record["nav_date"] = today
-                self.ingestion_repo.upsert_nav_daily(records)
+                coerced = self._coerce_records(records, NavDaily)
+                self.ingestion_repo.upsert_nav_daily(coerced)
 
             elif target == "risk_stats_monthly":
                 # Risk API also contains master fields (Managers, InceptionDate, etc.)
@@ -256,21 +332,25 @@ class MorningstarFetcher:
                         risk_records.append(risk_rec)
 
                 if master_records:
-                    self.ingestion_repo.upsert_fund_masters(master_records)
+                    coerced_master = self._coerce_records(master_records, FundMaster)
+                    self.ingestion_repo.upsert_fund_masters(coerced_master)
                 if risk_records:
-                    self.ingestion_repo.upsert_risk_stats(risk_records)
+                    coerced_risk = self._coerce_records(risk_records, RiskStatsMonthly)
+                    self.ingestion_repo.upsert_risk_stats(coerced_risk)
 
             elif target == "rank_monthly":
                 for record in records:
                     if "as_of_date" not in record:
                         record["as_of_date"] = today
-                self.ingestion_repo.upsert_ranks(records)
+                coerced = self._coerce_records(records, RankMonthly)
+                self.ingestion_repo.upsert_ranks(coerced)
 
             elif target == "category_returns":
                 for record in records:
                     if "as_of_date" not in record:
                         record["as_of_date"] = today
-                self.ingestion_repo.upsert_category_returns(records)
+                coerced = self._coerce_records(records, CategoryReturnsDaily)
+                self.ingestion_repo.upsert_category_returns(coerced)
 
             self.db.commit()
 

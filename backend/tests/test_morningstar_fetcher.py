@@ -10,6 +10,9 @@ import pytest
 os.environ.setdefault("DATABASE_URL", "postgresql://fie:changeme@localhost:5432/mf_pulse")
 
 from app.core.morningstar_config import APIS, MorningstarAPI
+from app.models.db.fund_master import FundMaster
+from app.models.db.nav_daily import NavDaily
+from app.models.db.rank_monthly import RankMonthly
 from app.services.morningstar_fetcher import MorningstarFetcher, FetchResult
 
 
@@ -255,7 +258,7 @@ class TestWriteToDb:
         result = FetchResult(api.name)
         fetcher._write_to_db(api, records, result)
         call_args = fetcher.ingestion_repo.upsert_nav_daily.call_args[0][0]
-        assert call_args[0]["nav_date"] == "2026-03-25"
+        assert call_args[0]["nav_date"] == date(2026, 3, 25)
 
     def test_write_risk_stats_splits_master_fields(self, fetcher) -> None:
         """Risk API → splits master fields from risk fields correctly."""
@@ -296,6 +299,76 @@ class TestWriteToDb:
         fetcher._write_to_db(api, records, result)
         assert len(result.errors) == 1
         assert "DB down" in result.errors[0]
+
+
+class TestTypeCoercion:
+    """Type coercion converts XML string values to proper DB types."""
+
+    def test_numeric_column_coerced_to_decimal(self, fetcher) -> None:
+        """Numeric columns → Decimal values."""
+        from decimal import Decimal
+        record = {"mstar_id": "F001", "nav": "1002.45", "nav_date": "2026-03-26"}
+        coerced = fetcher._coerce_record(record, NavDaily)
+        assert isinstance(coerced["nav"], Decimal)
+        assert coerced["nav"] == Decimal("1002.45")
+
+    def test_date_column_coerced(self, fetcher) -> None:
+        """Date columns → date objects."""
+        record = {"mstar_id": "F001", "inception_date": "2020-01-15", "legal_name": "Test", "category_name": "Large Cap"}
+        coerced = fetcher._coerce_record(record, FundMaster)
+        assert isinstance(coerced["inception_date"], date)
+        assert coerced["inception_date"] == date(2020, 1, 15)
+
+    def test_integer_column_coerced(self, fetcher) -> None:
+        """Integer columns → int values."""
+        record = {"mstar_id": "F001", "quartile_1y": "2", "as_of_date": "2026-03-26"}
+        coerced = fetcher._coerce_record(record, RankMonthly)
+        assert isinstance(coerced["quartile_1y"], int)
+        assert coerced["quartile_1y"] == 2
+
+    def test_boolean_column_coerced_true_values(self, fetcher) -> None:
+        """Boolean columns — '1', 'true', 'True', 'Y' → True."""
+        for val in ("1", "true", "True", "Y"):
+            record = {"mstar_id": "F001", "is_index_fund": val, "legal_name": "Test", "category_name": "LC"}
+            coerced = fetcher._coerce_record(record, FundMaster)
+            assert coerced["is_index_fund"] is True, f"Expected True for '{val}'"
+
+    def test_boolean_column_coerced_false_values(self, fetcher) -> None:
+        """Boolean columns — '0', 'false', 'False', 'N' → False."""
+        for val in ("0", "false", "False", "N"):
+            record = {"mstar_id": "F001", "is_index_fund": val, "legal_name": "Test", "category_name": "LC"}
+            coerced = fetcher._coerce_record(record, FundMaster)
+            assert coerced["is_index_fund"] is False, f"Expected False for '{val}'"
+
+    def test_string_column_unchanged(self, fetcher) -> None:
+        """String columns stay as strings."""
+        record = {"mstar_id": "F001", "legal_name": "HDFC Equity Fund", "category_name": "Large Cap"}
+        coerced = fetcher._coerce_record(record, FundMaster)
+        assert coerced["legal_name"] == "HDFC Equity Fund"
+
+    def test_invalid_numeric_skipped(self, fetcher) -> None:
+        """Invalid numeric value → key dropped, not crash."""
+        record = {"mstar_id": "F001", "nav": "not_a_number", "nav_date": "2026-03-26"}
+        coerced = fetcher._coerce_record(record, NavDaily)
+        assert "nav" not in coerced
+
+    def test_invalid_date_skipped(self, fetcher) -> None:
+        """Invalid date value → key dropped, not crash."""
+        record = {"mstar_id": "F001", "inception_date": "bad-date", "legal_name": "Test", "category_name": "LC"}
+        coerced = fetcher._coerce_record(record, FundMaster)
+        assert "inception_date" not in coerced
+
+    def test_coercion_preserves_mstar_id(self, fetcher) -> None:
+        """mstar_id always preserved."""
+        record = {"mstar_id": "F001", "nav": "100.00", "nav_date": "2026-03-26"}
+        coerced = fetcher._coerce_record(record, NavDaily)
+        assert coerced["mstar_id"] == "F001"
+
+    def test_unknown_column_dropped(self, fetcher) -> None:
+        """Column not in model → dropped during coercion."""
+        record = {"mstar_id": "F001", "nonexistent_col": "val", "legal_name": "Test", "category_name": "LC"}
+        coerced = fetcher._coerce_record(record, FundMaster)
+        assert "nonexistent_col" not in coerced
 
 
 class TestFetchOrchestration:
