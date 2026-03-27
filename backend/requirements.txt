@@ -8,6 +8,7 @@ alembic==1.14.1
 pandas==2.2.3
 numpy==2.2.1
 httpx==0.28.1
+python-multipart==0.0.19
 requests==2.32.3
 apscheduler==3.10.4
 structlog==24.4.0
