@@ -61,17 +61,74 @@ MASTER_FIELD_MAP: dict[str, str] = {
 }
 
 MASTER_FIELDS_SKIPPED: list[dict[str, str]] = [
-    {"field": "ProviderCompanyPhone", "reason": "AMC contact info — not needed for fund analysis"},
-    {"field": "ProviderCompanyURL", "reason": "AMC website — not needed for fund analysis"},
-    {"field": "DistributorCompany", "reason": "Distributor info — administrative, not stored"},
-    {"field": "DistributorCompanyPhone", "reason": "Distributor contact — administrative"},
-    {"field": "DistributorCompanyURL", "reason": "Distributor website — administrative"},
-    {"field": "RegistrarCompany", "reason": "Registrar info — administrative"},
-    {"field": "AuditorCompany", "reason": "Auditor info — administrative"},
-    {"field": "CustodianCompany", "reason": "Custodian info — administrative"},
-    {"field": "ProviderCompanyFax", "reason": "AMC fax — obsolete contact method"},
-    {"field": "ProviderCompanyEmail", "reason": "AMC email — not needed for fund analysis"},
-    {"field": "ProviderCompanyAddress", "reason": "AMC address — administrative"},
+    # Administrative / company info — not needed for fund analysis or scoring
+    {"field": "ProviderCompanyPhoneNumber", "reason": "AMC contact number — administrative"},
+    {"field": "ProviderCompanyWebsite", "reason": "AMC website — administrative"},
+    {"field": "ProviderCompanyCountryHeadquarter", "reason": "AMC country HQ — administrative"},
+    {"field": "DistributorCompanies", "reason": "Distributor companies — administrative"},
+    {"field": "RegistrationCompanies", "reason": "Registration companies — administrative"},
+    {"field": "AuditorCompanies", "reason": "Auditor companies — administrative"},
+    {"field": "CustodianCompanies", "reason": "Custodian companies — administrative"},
+    {"field": "TransferAgentCompanies", "reason": "Transfer agent companies — administrative"},
+    {"field": "TrusteeCompanies", "reason": "Trustee companies — administrative"},
+    {"field": "AdministratorCompany", "reason": "Administrator company — administrative"},
+    {"field": "AdvisorListCountryHeadquarter", "reason": "Advisor country HQ — administrative"},
+    # Investment minimums / SIP / SWP / STP details — operational, not analytical
+    {"field": "MinimumInitial", "reason": "Min initial investment — operational detail"},
+    {"field": "MinimumSubsequent", "reason": "Min subsequent investment — operational detail"},
+    {"field": "MinimumRedemptionAmount", "reason": "Min redemption amount — operational detail"},
+    {"field": "AIP", "reason": "SIP frequency/tenure/amounts — operational detail"},
+    {"field": "systematic_withdrawal_plan_indicator", "reason": "SWP availability — operational detail"},
+    {"field": "systematic_withdrawal_amount", "reason": "SWP min amount — operational detail"},
+    # Fee / load details beyond what we map
+    {"field": "DeferLoads", "reason": "Exit load breakpoint details — complex nested structure"},
+    {"field": "deferred_load_additional_details", "reason": "Exit load text — unstructured text"},
+    {"field": "MaximumDeferLoad", "reason": "Max exit load — covered by load text"},
+    {"field": "MaximumManagementFee", "reason": "Max mgmt fee — prospectus cap, not actual"},
+    {"field": "ActualManagementFee", "reason": "Prospectus mgmt fee — we track net expense ratio instead"},
+    # Dates / identifiers we don't need
+    {"field": "ProspectusDate", "reason": "Prospectus date — not needed for scoring"},
+    {"field": "LatestProspectusDate", "reason": "Latest prospectus date — not needed for scoring"},
+    {"field": "AnnualReportDate", "reason": "Annual report date — not needed for scoring"},
+    {"field": "FiscalYearEndMonth", "reason": "Fiscal year end — not needed for scoring"},
+    {"field": "SubscriptionStartDate", "reason": "NFO subscription start — historical only"},
+    {"field": "ipoDate", "reason": "NFO subscription end — historical only"},
+    {"field": "OfferPrice", "reason": "NFO offer price — historical only"},
+    # Alternate names / IDs
+    {"field": "GlobalCategoryId", "reason": "Global category ID — we use FundLevelCategoryName instead"},
+    {"field": "SFIN", "reason": "SEBI Fund Identification Number — we use ISIN + AMFI code"},
+    {"field": "RTACode", "reason": "RTA code — operational detail"},
+    {"field": "channel_partner_code", "reason": "Channel partner code — distribution detail"},
+    {"field": "SalesArea", "reason": "Sales area country — always India for us"},
+    {"field": "SecurityType", "reason": "Security type — always MF for this feed"},
+    {"field": "OperationReady", "reason": "Morningstar internal readiness flag"},
+    {"field": "FundStandardName", "reason": "Standard name — we use FundName"},
+    {"field": "PurchaseCurrencyId", "reason": "Purchase currency — always INR for us"},
+    {"field": "PurchaseCurrencyName", "reason": "Purchase currency name — always INR"},
+    # Dividend details — separate tracking
+    {"field": "Dividendinvestmentplan", "reason": "Dividend payout/reinvest — covered by DistributionStatus"},
+    {"field": "DistributionFrequency", "reason": "Distribution frequency — covered by DistributionStatus"},
+    {"field": "DividendDistributionFrequencyDetails", "reason": "Dividend freq details — not needed for scoring"},
+    # Risk class (India-specific, beyond our 3 risk fields)
+    {"field": "potential_risk_class_matrix", "reason": "SEBI risk-o-meter matrix — we track india_fund_risk_level"},
+    # Calendar year returns — already in NAV feed as Return1Yr etc.
+    {"field": "Year1", "reason": "Calendar year return — we use ReturnXYr + rank percentiles"},
+    # Dividend data in Performance feed
+    {"field": "Dividend", "reason": "Fund dividend declared — not needed for NAV/return analysis"},
+    {"field": "DividendDate", "reason": "Dividend date — not needed for scoring"},
+    {"field": "DailyDividend", "reason": "Daily dividend — not needed for scoring"},
+    {"field": "DailyDividendDate", "reason": "Daily dividend date — not needed for scoring"},
+    {"field": "Dividendinvestment", "reason": "Dividend payout/reinvest in perf feed — not needed"},
+    # 52-week dates (we keep high/low values but not dates)
+    {"field": "NAV52wkHighDate", "reason": "52-week high date — we keep the NAV value only"},
+    {"field": "NAV52wkLowDate", "reason": "52-week low date — we keep the NAV value only"},
+    # ETF market price
+    {"field": "DayEndMarketPriceDate", "reason": "ETF market price/date — we focus on NAV not market price"},
+    # 15-year risk stats (too long a horizon for our scoring)
+    {"field": "CaptureRatioUpside15Yr", "reason": "15yr horizon — beyond our scoring timeframes"},
+    {"field": "InformationRatio15Yr", "reason": "15yr horizon — beyond our scoring timeframes"},
+    {"field": "TrackingError15Yr", "reason": "15yr horizon — beyond our scoring timeframes"},
+    {"field": "TreynorRatio15Yr", "reason": "15yr horizon — beyond our scoring timeframes"},
 ]
 
 NAV_FIELD_MAP: dict[str, str] = {
