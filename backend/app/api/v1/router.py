@@ -9,6 +9,7 @@ from app.api.v1.funds import router as funds_router
 from app.api.v1.categories import router as categories_router
 from app.api.v1.holdings import router as holdings_router
 from app.api.v1.lens import router as lens_router
+from app.api.v1.simulation import router as simulation_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(system_router)
@@ -18,3 +19,4 @@ api_v1_router.include_router(funds_router)
 api_v1_router.include_router(categories_router)
 api_v1_router.include_router(holdings_router)
 api_v1_router.include_router(lens_router)
+api_v1_router.include_router(simulation_router)
