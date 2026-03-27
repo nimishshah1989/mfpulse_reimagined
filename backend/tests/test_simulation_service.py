@@ -122,6 +122,123 @@ class TestRunSimulation:
         assert result.num_topups == 0  # No signals -> no topups
 
 
+class TestLoadNavSeries:
+    def test_returns_sorted_tuples(self, service: SimulationService) -> None:
+        rows = _mock_nav_rows(10)
+        mock_q = MagicMock()
+        service.db.query.return_value = mock_q
+        mock_q.filter.return_value = mock_q
+        mock_q.order_by.return_value = mock_q
+        mock_q.all.return_value = rows
+
+        result = service._load_nav_series("F001", date(2024, 1, 1), date(2024, 12, 31))
+        assert len(result) == 10
+        assert all(isinstance(d, date) and isinstance(n, Decimal) for d, n in result)
+        # Verify sorted
+        dates = [d for d, _ in result]
+        assert dates == sorted(dates)
+
+    def test_filters_none_navs(self, service: SimulationService) -> None:
+        rows = _mock_nav_rows(5)
+        # Make one NAV None
+        rows[2].nav = None
+        mock_q = MagicMock()
+        service.db.query.return_value = mock_q
+        mock_q.filter.return_value = mock_q
+        mock_q.order_by.return_value = mock_q
+        mock_q.all.return_value = rows
+
+        result = service._load_nav_series("F001", date(2024, 1, 1), date(2024, 12, 31))
+        assert len(result) == 4  # One filtered out
+
+    def test_empty_nav(self, service: SimulationService) -> None:
+        mock_q = MagicMock()
+        service.db.query.return_value = mock_q
+        mock_q.filter.return_value = mock_q
+        mock_q.order_by.return_value = mock_q
+        mock_q.all.return_value = []
+
+        result = service._load_nav_series("F001", date(2024, 1, 1), date(2024, 12, 31))
+        assert result == []
+
+
+class TestLoadSignalData:
+    def test_returns_empty_when_mp_unavailable(self, service: SimulationService) -> None:
+        service.mp_client = MagicMock()
+        service.mp_client.get_breadth_history.return_value = None
+
+        result = service._load_signal_data(date(2024, 1, 1), date(2024, 12, 31))
+        assert result == {}
+
+    def test_transforms_breadth_history(self, service: SimulationService) -> None:
+        service.mp_client = MagicMock()
+        service.mp_client.get_breadth_history.return_value = {
+            "history": [
+                {
+                    "date": "2024-06-15",
+                    "pct_above_21ema": 65,
+                    "pct_above_50ema": 55,
+                    "pct_above_200ema": 70,
+                    "sentiment_composite": 62,
+                    "nifty_above_200sma": 1,
+                },
+                {
+                    "date": "2024-06-16",
+                    "pct_above_21ema": 60,
+                },
+            ],
+        }
+        result = service._load_signal_data(date(2024, 1, 1), date(2024, 12, 31))
+        assert date(2024, 6, 15) in result
+        assert result[date(2024, 6, 15)]["breadth_pct_above_21ema"] == 65
+        assert result[date(2024, 6, 15)]["sentiment_composite"] == 62
+
+    def test_filters_out_of_range_dates(self, service: SimulationService) -> None:
+        service.mp_client = MagicMock()
+        service.mp_client.get_breadth_history.return_value = {
+            "history": [
+                {"date": "2023-01-01", "pct_above_21ema": 50},
+                {"date": "2024-06-15", "pct_above_21ema": 60},
+                {"date": "2025-12-31", "pct_above_21ema": 70},
+            ],
+        }
+        result = service._load_signal_data(date(2024, 1, 1), date(2024, 12, 31))
+        assert len(result) == 1
+        assert date(2024, 6, 15) in result
+
+    def test_handles_malformed_entries(self, service: SimulationService) -> None:
+        service.mp_client = MagicMock()
+        service.mp_client.get_breadth_history.return_value = {
+            "history": [
+                {"date": "not-a-date", "pct_above_21ema": 50},
+                {"pct_above_21ema": 60},  # Missing date
+                {"date": "2024-06-15", "pct_above_21ema": 65},
+            ],
+        }
+        result = service._load_signal_data(date(2024, 1, 1), date(2024, 12, 31))
+        assert len(result) == 1
+
+
+class TestGetFundName:
+    def test_returns_fund_name(self, service: SimulationService) -> None:
+        mock_q = MagicMock()
+        service.db.query.return_value = mock_q
+        mock_q.filter.return_value = mock_q
+        fund_row = MagicMock()
+        fund_row.fund_name = "HDFC Top 100 Fund"
+        mock_q.first.return_value = fund_row
+
+        assert service._get_fund_name("F001") == "HDFC Top 100 Fund"
+
+    def test_returns_mstar_id_when_not_found(self, service: SimulationService) -> None:
+        mock_q = MagicMock()
+        service.db.query.return_value = mock_q
+        mock_q.filter.return_value = mock_q
+        mock_q.first.return_value = None
+
+        assert service._get_fund_name("F001") == "F001"
+
+
 class TestCompareModes:
     def test_returns_all_four_modes(self, service: SimulationService) -> None:
         nav_rows = _mock_nav_rows()

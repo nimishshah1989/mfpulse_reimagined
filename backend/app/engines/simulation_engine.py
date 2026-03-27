@@ -451,7 +451,7 @@ class SimulationEngine:
             return None
 
         dates = [cf[0] for cf in cashflows]
-        amounts = [float(cf[1]) for cf in cashflows]
+        amounts = [float(cf[1]) for cf in cashflows]  # float required for Newton-Raphson — Decimal inputs validated upstream
         base_date = min(dates)
 
         # Check that dates span more than 0 days
@@ -489,7 +489,7 @@ class SimulationEngine:
                 rate = 10
 
         try:
-            result = Decimal(str(round(rate * 100, 2)))
+            result = Decimal(str(round(rate * 100, 6)))
             if result < Decimal("-99") or result > Decimal("1000"):
                 return None
             return result
@@ -503,10 +503,10 @@ class SimulationEngine:
         if initial <= Decimal("0") or years <= Decimal("0"):
             return None
         try:
-            ratio = float(final / initial)
-            exp = 1.0 / float(years)
+            ratio = float(final / initial)  # float required for math.pow — Decimal inputs validated upstream
+            exp = 1.0 / float(years)  # float required for math.pow — Decimal inputs validated upstream
             cagr = (ratio ** exp - 1) * 100
-            return Decimal(str(round(cagr, 2)))
+            return Decimal(str(round(cagr, 6)))
         except (OverflowError, ZeroDivisionError, ValueError):
             return None
 
@@ -551,8 +551,8 @@ class SimulationEngine:
         if len(monthly_returns) < 2:
             return None
 
-        rf_monthly = float(risk_free_annual) / 12
-        returns = [float(r) for r in monthly_returns]
+        rf_monthly = float(risk_free_annual) / 12  # float required for std/variance math — Decimal inputs validated upstream
+        returns = [float(r) for r in monthly_returns]  # float required for std/variance math — Decimal inputs validated upstream
         avg = sum(returns) / len(returns)
         variance = sum((r - avg) ** 2 for r in returns) / (len(returns) - 1)
         std = variance ** 0.5
@@ -562,7 +562,7 @@ class SimulationEngine:
             return Decimal("99.99") if avg > rf_monthly else Decimal("0")
 
         sharpe = (avg - rf_monthly) / std * (12 ** 0.5)
-        return Decimal(str(round(sharpe, 2)))
+        return Decimal(str(round(sharpe, 6)))
 
     def _compute_sortino(
         self,
@@ -573,8 +573,8 @@ class SimulationEngine:
         if len(monthly_returns) < 2:
             return None
 
-        rf_monthly = float(risk_free_annual) / 12
-        returns = [float(r) for r in monthly_returns]
+        rf_monthly = float(risk_free_annual) / 12  # float required for downside std math — Decimal inputs validated upstream
+        returns = [float(r) for r in monthly_returns]  # float required for downside std math — Decimal inputs validated upstream
         avg = sum(returns) / len(returns)
         downside = [min(r - rf_monthly, 0) ** 2 for r in returns]
         downside_var = sum(downside) / len(downside)
@@ -584,7 +584,7 @@ class SimulationEngine:
             return Decimal("99.99") if avg > rf_monthly else None
 
         sortino = (avg - rf_monthly) / downside_std * (12 ** 0.5)
-        return Decimal(str(round(sortino, 2)))
+        return Decimal(str(round(sortino, 6)))
 
     def _compute_rolling_xirr(
         self,

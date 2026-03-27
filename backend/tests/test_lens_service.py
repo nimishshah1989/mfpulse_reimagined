@@ -204,6 +204,175 @@ class TestAuditTrail:
         assert call_kwargs[1]["entity_type"] == "lens_scores"
 
 
+class TestComputeAllCategoriesErrorHandling:
+    def test_handles_category_error_gracefully(self) -> None:
+        db = MagicMock()
+        service = LensService(db)
+        db.query.return_value.filter.return_value.distinct.return_value.all.return_value = [
+            ("Large Cap",), ("Bad Category",),
+        ]
+        service.compute_single_category = MagicMock(side_effect=[
+            {"category": "Large Cap", "funds_scored": 10},
+            Exception("Data missing for Bad Category"),
+        ])
+        service.audit_repo.log = MagicMock()
+
+        result = service.compute_all_categories()
+        assert result["categories_processed"] == 2
+        assert result["funds_scored"] == 10
+        assert len(result["errors"]) == 1
+        assert "Bad Category" in result["errors"][0]
+
+    def test_empty_categories_list(self) -> None:
+        db = MagicMock()
+        service = LensService(db)
+        db.query.return_value.filter.return_value.distinct.return_value.all.return_value = []
+        service.audit_repo.log = MagicMock()
+
+        result = service.compute_all_categories()
+        assert result["categories_processed"] == 0
+        assert result["funds_scored"] == 0
+        assert result["errors"] == []
+
+
+class TestLoadCategoryData:
+    def test_empty_category_returns_empty_structure(self) -> None:
+        db = MagicMock()
+        service = LensService(db)
+        db.query.return_value.filter.return_value.all.return_value = []
+
+        result = service._load_category_data("Empty Category")
+        assert result["fund_ids"] == []
+        assert result["latest_returns"] == {}
+        assert result["risk_stats"] == {}
+        assert result["ranks"] == {}
+        assert result["fund_master"] == {}
+        assert result["calendar_year_returns"] == {}
+        assert result["category_avg_returns"] == {}
+
+    def test_loads_data_for_eligible_funds(self) -> None:
+        db = MagicMock()
+        service = LensService(db)
+
+        fund1 = _mock_fund("F001")
+        fund2 = _mock_fund("F002")
+
+        # First query: FundMaster eligible funds
+        fund_query = MagicMock()
+        fund_query.filter.return_value = fund_query
+        fund_query.all.return_value = [fund1, fund2]
+
+        # Subsequent queries for NAV, risk, ranks, category
+        nav_row = MagicMock()
+        nav_row.mstar_id = "F001"
+        nav_row.return_1y = Decimal("12")
+        nav_row.return_3y = Decimal("15")
+        nav_row.return_5y = Decimal("18")
+        for i in range(1, 11):
+            setattr(nav_row, f"calendar_year_return_{i}y", Decimal("10"))
+
+        nav_query = MagicMock()
+        nav_query.join.return_value = nav_query
+        nav_query.all.return_value = [nav_row]
+
+        risk_row = MagicMock()
+        risk_row.mstar_id = "F001"
+        risk_row.std_dev_3y = Decimal("10")
+        risk_row.max_drawdown_3y = Decimal("-15")
+        risk_row.beta_3y = Decimal("0.9")
+        risk_row.capture_down_3y = Decimal("85")
+        risk_row.capture_up_3y = Decimal("105")
+        risk_row.sortino_3y = Decimal("1.5")
+        risk_row.alpha_3y = Decimal("2")
+        risk_row.alpha_5y = Decimal("1.8")
+        risk_row.info_ratio_3y = Decimal("0.5")
+        risk_row.info_ratio_5y = Decimal("0.4")
+
+        risk_query = MagicMock()
+        risk_query.join.return_value = risk_query
+        risk_query.all.return_value = [risk_row]
+
+        rank_row = MagicMock()
+        rank_row.mstar_id = "F001"
+        rank_row.quartile_1y = 1
+        rank_row.quartile_3y = 1
+        rank_row.quartile_5y = 2
+        for i in range(1, 11):
+            setattr(rank_row, f"cal_year_pctile_{i}y", 20)
+
+        rank_query = MagicMock()
+        rank_query.join.return_value = rank_query
+        rank_query.all.return_value = [rank_row]
+
+        cat_row = MagicMock()
+        cat_row.cat_return_3y = Decimal("12")
+        cat_row.cat_return_5y = Decimal("14")
+        cat_query = MagicMock()
+        cat_query.filter.return_value = cat_query
+        cat_query.order_by.return_value = cat_query
+        cat_query.first.return_value = cat_row
+
+        # Chain the queries in order
+        sub_queries = []
+        for _ in range(3):
+            sq = MagicMock()
+            sq.filter.return_value = sq
+            sq.group_by.return_value = sq
+            sq.subquery.return_value = MagicMock()
+            sub_queries.append(sq)
+
+        # db.query called multiple times
+        call_count = [0]
+        query_returns = [fund_query, sub_queries[0], nav_query,
+                         sub_queries[1], risk_query, sub_queries[2], rank_query, cat_query]
+
+        def query_side_effect(*args, **kwargs):
+            idx = call_count[0]
+            call_count[0] += 1
+            if idx < len(query_returns):
+                return query_returns[idx]
+            return MagicMock()
+
+        db.query.side_effect = query_side_effect
+
+        result = service._load_category_data("Large Cap")
+        assert "F001" in result["fund_ids"]
+        assert "F002" in result["fund_ids"]
+
+
+class TestSaveResults:
+    def test_saves_scores_and_classifications(self) -> None:
+        db = MagicMock()
+        service = LensService(db)
+        service.lens_repo = MagicMock()
+
+        results = [_make_lens_result("F001"), _make_lens_result("F002")]
+        service._save_results(results, date(2026, 3, 1))
+
+        service.lens_repo.upsert_lens_scores.assert_called_once()
+        service.lens_repo.upsert_classifications.assert_called_once()
+
+        score_records = service.lens_repo.upsert_lens_scores.call_args[0][0]
+        assert len(score_records) == 2
+        assert score_records[0]["mstar_id"] == "F001"
+        assert score_records[0]["computed_date"] == date(2026, 3, 1)
+        assert score_records[0]["return_score"] == Decimal("75")
+
+        class_records = service.lens_repo.upsert_classifications.call_args[0][0]
+        assert len(class_records) == 2
+        assert class_records[0]["return_class"] == "LEADER"
+        assert class_records[0]["headline_tag"] is not None
+
+    def test_empty_results_calls_upsert_with_empty_lists(self) -> None:
+        db = MagicMock()
+        service = LensService(db)
+        service.lens_repo = MagicMock()
+
+        service._save_results([], date(2026, 3, 1))
+        service.lens_repo.upsert_lens_scores.assert_called_once_with([])
+        service.lens_repo.upsert_classifications.assert_called_once_with([])
+
+
 class TestSingleFundCategory:
     def test_single_fund_category_gets_score_50(self) -> None:
         """Category with only 1 fund → fund gets score 50 for all lenses."""
