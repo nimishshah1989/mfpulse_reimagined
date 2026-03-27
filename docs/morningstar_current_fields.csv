@@ -1,0 +1,72 @@
+#,API Name,API Hash,Morningstar XML Tag,Stripped Field Name,DB Table,DB Column,Status,Funds with Data
+1,Identifier Data,l308tct18q1h759g,SecId,SecId,fund_master,mstar_id,FETCHED,13365
+2,Identifier Data,l308tct18q1h759g,FundId,FundId,fund_master,fund_id,FETCHED,13365
+3,Identifier Data,l308tct18q1h759g,ProviderCompanyID,ProviderCompanyID,fund_master,amc_id,FETCHED,13365
+4,Identifier Data,l308tct18q1h759g,ProviderCompanyName,ProviderCompanyName,fund_master,amc_name,FETCHED,13365
+5,Identifier Data,l308tct18q1h759g,FSCBI-LegalName,LegalName,fund_master,legal_name,FETCHED,13365
+6,Identifier Data,l308tct18q1h759g,FundName,FundName,fund_master,fund_name,FETCHED,13365
+7,Identifier Data,l308tct18q1h759g,ISIN,ISIN,fund_master,isin,FETCHED,~13000
+8,Identifier Data,l308tct18q1h759g,AMFICode,AMFICode,fund_master,amfi_code,FETCHED,~11000
+9,Additional Data,lhqwwmpfryy07xct,PurchaseMode,PurchaseMode,fund_master,purchase_mode,FETCHED,13365
+10,Additional Data,lhqwwmpfryy07xct,InterimNetExpenseRatio,InterimNetExpenseRatio,fund_master,net_expense_ratio,FETCHED,~12000
+11,Additional Data,lhqwwmpfryy07xct,GrossExpenseRatio,GrossExpenseRatio,fund_master,gross_expense_ratio,FETCHED,~12000
+12,Additional Data,lhqwwmpfryy07xct,InterimTurnoverRatio,InterimTurnoverRatio,fund_master,turnover_ratio,FETCHED,~8000
+13,Additional Data,lhqwwmpfryy07xct,IndianRiskLevel,IndianRiskLevel,fund_master,indian_risk_level,FETCHED,~13000
+14,Additional Data,lhqwwmpfryy07xct,PrimaryProspectusBenchmarks,PrimaryProspectusBenchmarks,fund_master,primary_benchmark,FETCHED,~12000
+15,Additional Data,lhqwwmpfryy07xct,IndexFund,IndexFund,fund_master,is_index_fund,FETCHED,13365
+16,Additional Data,lhqwwmpfryy07xct,FundOfFunds,FundOfFunds,fund_master,is_fund_of_funds,FETCHED,13365
+17,Additional Data,lhqwwmpfryy07xct,ExchangeTradedShare,ExchangeTradedShare,fund_master,is_etf,FETCHED,13365
+18,Additional Data,lhqwwmpfryy07xct,SIPAvailability,SIPAvailability,fund_master,sip_available,FETCHED,~13000
+19,Category Data,ssjwhtlzv3e4vw1c,AT-FundLevelCategoryName,FundLevelCategoryName,fund_master,category_name,FETCHED,13365
+20,Category Data,ssjwhtlzv3e4vw1c,AT-BroadCategoryGroup,BroadCategoryGroup,fund_master,broad_category,FETCHED,13365
+21,Nav Data,n0fys3tcvprq4375,TS-DayEndNAV,DayEndNAV,nav_daily,nav,FETCHED,12942
+22,Nav Data,n0fys3tcvprq4375,TS-DayEndNAVDate,DayEndNAVDate,nav_daily,nav_date,FETCHED,12942
+23,Nav Data,n0fys3tcvprq4375,DP-NAVChange,NAVChange,nav_daily,nav_change,FETCHED,~12000
+24,Nav Data,n0fys3tcvprq4375,TS-NAV52wkHigh,NAV52wkHigh,nav_daily,nav_52wk_high,FETCHED,~12000
+25,Nav Data,n0fys3tcvprq4375,TS-NAV52wkLow,NAV52wkLow,nav_daily,nav_52wk_low,FETCHED,~12000
+26,Return Data,fhqbikngn12un6yk,DP-Return1Day,Return1Day,nav_daily,return_1d,FETCHED,12896
+27,Return Data,fhqbikngn12un6yk,DP-Return1Week,Return1Week,nav_daily,return_1w,FETCHED,12896
+28,Return Data,fhqbikngn12un6yk,DP-Return1Mth,Return1Mth,nav_daily,return_1m,FETCHED,12896
+29,Return Data,fhqbikngn12un6yk,DP-Return3Mth,Return3Mth,nav_daily,return_3m,FETCHED,12896
+30,Return Data,fhqbikngn12un6yk,DP-Return6Mth,Return6Mth,nav_daily,return_6m,FETCHED,~12500
+31,Return Data,fhqbikngn12un6yk,DP-Return1Yr,Return1Yr,nav_daily,return_1y,FETCHED,11696
+32,Return Data,fhqbikngn12un6yk,DP-Return2Yr,Return2Yr,nav_daily,return_2y,FETCHED,~10000
+33,Return Data,fhqbikngn12un6yk,DP-Return3Yr,Return3Yr,nav_daily,return_3y,FETCHED,~9500
+34,Return Data,fhqbikngn12un6yk,DP-Return5Yr,Return5Yr,nav_daily,return_5y,FETCHED,~7700
+35,Return Data,fhqbikngn12un6yk,DP-Return10Yr,Return10Yr,nav_daily,return_10y,FETCHED,~4000
+36,Return Data,fhqbikngn12un6yk,DP-ReturnSinceInception,ReturnSinceInception,nav_daily,return_since_inception,FETCHED,12896
+37,Risk Stats (routed to nav_daily),qmaym0ulfsyb83j7,TTR-Return4Yr,Return4Yr,nav_daily,return_4y,FETCHED,8518
+38,Risk Stats (routed to nav_daily),qmaym0ulfsyb83j7,TTR-Return7Yr,Return7Yr,nav_daily,return_7y,FETCHED,6650
+39,Risk Stats (routed to nav_daily),qmaym0ulfsyb83j7,TTR-ReturnYTD,ReturnYTD,nav_daily,return_ytd,FETCHED,12572
+40,Risk Stats (routed to nav_daily),qmaym0ulfsyb83j7,TTR-CumulativeReturn3Yr,CumulativeReturn3Yr,nav_daily,cumulative_return_3y,FETCHED,9445
+41,Risk Stats (routed to nav_daily),qmaym0ulfsyb83j7,TTR-CumulativeReturn5Yr,CumulativeReturn5Yr,nav_daily,cumulative_return_5y,FETCHED,7683
+42,Risk Stats (routed to nav_daily),qmaym0ulfsyb83j7,TTR-CumulativeReturn10Yr,CumulativeReturn10Yr,nav_daily,cumulative_return_10y,FETCHED,~4000
+43,Risk Stats,qmaym0ulfsyb83j7,RM-StdDev1Yr,StdDev1Yr,risk_stats_monthly,std_dev_1y,FETCHED,~12000
+44,Risk Stats,qmaym0ulfsyb83j7,RM-StdDev3Yr,StdDev3Yr,risk_stats_monthly,std_dev_3y,FETCHED,9430
+45,Risk Stats,qmaym0ulfsyb83j7,RM-StdDev5Yr,StdDev5Yr,risk_stats_monthly,std_dev_5y,FETCHED,~7700
+46,Risk Stats,qmaym0ulfsyb83j7,RM-SharpeRatio1Yr,SharpeRatio1Yr,risk_stats_monthly,sharpe_1y,FETCHED,~12000
+47,Risk Stats,qmaym0ulfsyb83j7,RM-SharpeRatio3Yr,SharpeRatio3Yr,risk_stats_monthly,sharpe_3y,FETCHED,9430
+48,Risk Stats,qmaym0ulfsyb83j7,RM-SharpeRatio5Yr,SharpeRatio5Yr,risk_stats_monthly,sharpe_5y,FETCHED,~7700
+49,Risk Stats,qmaym0ulfsyb83j7,RM-SortinoRatio1Yr,SortinoRatio1Yr,risk_stats_monthly,sortino_1y,FETCHED,~12000
+50,Risk Stats,qmaym0ulfsyb83j7,RM-SortinoRatio3Yr,SortinoRatio3Yr,risk_stats_monthly,sortino_3y,FETCHED,9428
+51,Risk Stats,qmaym0ulfsyb83j7,RM-SortinoRatio5Yr,SortinoRatio5Yr,risk_stats_monthly,sortino_5y,FETCHED,~7700
+52,Risk Stats,qmaym0ulfsyb83j7,RM-Mean1Yr,Mean1Yr,risk_stats_monthly,mean_1y,FETCHED,~12000
+53,Risk Stats,qmaym0ulfsyb83j7,RM-Mean3Yr,Mean3Yr,risk_stats_monthly,mean_3y,FETCHED,9430
+54,Risk Stats,qmaym0ulfsyb83j7,RM-Mean5Yr,Mean5Yr,risk_stats_monthly,mean_5y,FETCHED,~7700
+55,Risk Stats,qmaym0ulfsyb83j7,MPTPI-Alpha3Yr,Alpha3Yr,risk_stats_monthly,alpha_3y,FETCHED,6929
+56,Risk Stats,qmaym0ulfsyb83j7,MPTPI-Beta3Yr,Beta3Yr,risk_stats_monthly,beta_3y,FETCHED,6929
+57,Risk Stats,qmaym0ulfsyb83j7,RMC-Rsquared1Yr,Rsquared1Yr,risk_stats_monthly,r_squared_1y,FETCHED,~12000
+58,Risk Stats (routed to fund_master),qmaym0ulfsyb83j7,FM-Managers,Managers,fund_master,managers,FETCHED,~12000
+59,Risk Stats (routed to fund_master),qmaym0ulfsyb83j7,FSCBI-InceptionDate,InceptionDate,fund_master,inception_date,FETCHED,~13000
+60,Risk Stats (routed to fund_master),qmaym0ulfsyb83j7,IC-InvestmentStrategy,InvestmentStrategy,fund_master,investment_strategy,FETCHED,~13000
+61,Rank Data,c6ey0lob8683mm5d,TTRR-Rank1MthQuartile,Rank1MthQuartile,rank_monthly,quartile_1m,FETCHED,12801
+62,Rank Data,c6ey0lob8683mm5d,TTRR-Rank3MthQuartile,Rank3MthQuartile,rank_monthly,quartile_3m,FETCHED,12801
+63,Rank Data,c6ey0lob8683mm5d,TTRR-Rank1YrQuartile,Rank1YrQuartile,rank_monthly,quartile_1y,FETCHED,~11000
+64,Rank Data,c6ey0lob8683mm5d,TTRR-Rank3YrQuartile,Rank3YrQuartile,rank_monthly,quartile_3y,FETCHED,~9500
+65,Rank Data,c6ey0lob8683mm5d,TTRR-Rank5YrQuartile,Rank5YrQuartile,rank_monthly,quartile_5y,FETCHED,~7700
+66,Rank Data,c6ey0lob8683mm5d,All quartile + abs rank + calendar year percentile fields,Various,rank_monthly,Various,FETCHED,12801
+67,Category Return Data,msncecvsohvimjkx,DP-CategoryReturn1Yr,CategoryReturn1Yr,category_returns_daily,(not mapped - short period),NOT MAPPED,8643
+68,Category Return Data,msncecvsohvimjkx,DP-CategoryReturn3Yr,CategoryReturn3Yr,category_returns_daily,cat_return_3y,FETCHED,~50 categories
+69,Category Return Data,msncecvsohvimjkx,DP-CategoryReturn5Yr,CategoryReturn5Yr,category_returns_daily,cat_return_5y,FETCHED,~50 categories
+70,Category Return Data,msncecvsohvimjkx,DP-CategoryReturn10Yr,CategoryReturn10Yr,category_returns_daily,cat_return_10y,FETCHED,~50 categories
+71,Category Return Data,msncecvsohvimjkx,TTR-CategoryReturn2Yr,CategoryReturn2Yr,category_returns_daily,cat_return_2y,FETCHED,~50 categories

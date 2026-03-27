@@ -1,0 +1,121 @@
+#,API Target,Morningstar Field Name,DB Table,DB Column,Data Type,Lens / Feature Impact,Priority,Status,Notes
+1,Risk Stats API (qmaym0ulfsyb83j7),MaxDrawdown1Yr,risk_stats_monthly,max_drawdown_1y,Numeric(12.5),Risk + Resilience,CRITICAL,MISSING,Unlocks Resilience lens
+2,Risk Stats API (qmaym0ulfsyb83j7),MaxDrawdown3Yr,risk_stats_monthly,max_drawdown_3y,Numeric(12.5),Risk + Resilience,CRITICAL,MISSING,Primary Risk lens metric
+3,Risk Stats API (qmaym0ulfsyb83j7),MaxDrawdown5Yr,risk_stats_monthly,max_drawdown_5y,Numeric(12.5),Risk + Resilience,CRITICAL,MISSING,Long-horizon drawdown
+4,Risk Stats API (qmaym0ulfsyb83j7),CaptureRatioDownside1Yr,risk_stats_monthly,capture_down_1y,Numeric(12.5),Risk,CRITICAL,MISSING,Downside capture ratio
+5,Risk Stats API (qmaym0ulfsyb83j7),CaptureRatioDownside3Yr,risk_stats_monthly,capture_down_3y,Numeric(12.5),Risk + Resilience,CRITICAL,MISSING,Primary Resilience metric
+6,Risk Stats API (qmaym0ulfsyb83j7),CaptureRatioDownside5Yr,risk_stats_monthly,capture_down_5y,Numeric(12.5),Resilience,CRITICAL,MISSING,5Y downside capture
+7,Risk Stats API (qmaym0ulfsyb83j7),CaptureRatioUpside1Yr,risk_stats_monthly,capture_up_1y,Numeric(12.5),Resilience (Up/Down ratio),CRITICAL,MISSING,Needed for Up/Down ratio calc
+8,Risk Stats API (qmaym0ulfsyb83j7),CaptureRatioUpside3Yr,risk_stats_monthly,capture_up_3y,Numeric(12.5),Resilience (Up/Down ratio),CRITICAL,MISSING,Primary Up/Down ratio
+9,Risk Stats API (qmaym0ulfsyb83j7),CaptureRatioUpside5Yr,risk_stats_monthly,capture_up_5y,Numeric(12.5),Resilience,HIGH,MISSING,5Y upside capture
+10,Risk Stats API (qmaym0ulfsyb83j7),CaptureRatioUpside10Yr,risk_stats_monthly,capture_up_10y,Numeric(12.5),Analytics,MEDIUM,MISSING,10Y upside capture
+11,Risk Stats API (qmaym0ulfsyb83j7),Alpha5Yr,risk_stats_monthly,alpha_5y,Numeric(12.5),Alpha lens,HIGH,MISSING,Currently only Alpha3Yr available
+12,Risk Stats API (qmaym0ulfsyb83j7),Alpha10Yr,risk_stats_monthly,alpha_10y,Numeric(12.5),Alpha lens,HIGH,MISSING,Long-horizon alpha
+13,Risk Stats API (qmaym0ulfsyb83j7),InformationRatio1Yr,risk_stats_monthly,info_ratio_1y,Numeric(12.5),Alpha lens,HIGH,MISSING,Manager skill measure
+14,Risk Stats API (qmaym0ulfsyb83j7),InformationRatio3Yr,risk_stats_monthly,info_ratio_3y,Numeric(12.5),Alpha lens,HIGH,MISSING,Primary Alpha lens metric
+15,Risk Stats API (qmaym0ulfsyb83j7),InformationRatio5Yr,risk_stats_monthly,info_ratio_5y,Numeric(12.5),Alpha lens,HIGH,MISSING,5Y information ratio
+16,Risk Stats API (qmaym0ulfsyb83j7),InformationRatio10Yr,risk_stats_monthly,info_ratio_10y,Numeric(12.5),Analytics,MEDIUM,MISSING,10Y information ratio
+17,Risk Stats API (qmaym0ulfsyb83j7),Beta5Yr,risk_stats_monthly,beta_5y,Numeric(12.5),Risk lens,MEDIUM,MISSING,Currently only Beta3Yr available
+18,Risk Stats API (qmaym0ulfsyb83j7),Beta10Yr,risk_stats_monthly,beta_10y,Numeric(12.5),Analytics,MEDIUM,MISSING,10Y beta
+19,Risk Stats API (qmaym0ulfsyb83j7),TrackingError1Yr,risk_stats_monthly,tracking_error_1y,Numeric(12.5),Alpha context,MEDIUM,MISSING,Benchmark deviation measure
+20,Risk Stats API (qmaym0ulfsyb83j7),TrackingError3Yr,risk_stats_monthly,tracking_error_3y,Numeric(12.5),Alpha context,MEDIUM,MISSING,3Y tracking error
+21,Risk Stats API (qmaym0ulfsyb83j7),TrackingError5Yr,risk_stats_monthly,tracking_error_5y,Numeric(12.5),Analytics,MEDIUM,MISSING,5Y tracking error
+22,Risk Stats API (qmaym0ulfsyb83j7),TrackingError10Yr,risk_stats_monthly,tracking_error_10y,Numeric(12.5),Analytics,LOW,MISSING,10Y tracking error
+23,Risk Stats API (qmaym0ulfsyb83j7),TreynorRatio1Yr,risk_stats_monthly,treynor_1y,Numeric(12.5),Analytics,MEDIUM,MISSING,Risk-adjusted return per unit of systematic risk
+24,Risk Stats API (qmaym0ulfsyb83j7),TreynorRatio3Yr,risk_stats_monthly,treynor_3y,Numeric(12.5),Analytics,MEDIUM,MISSING,3Y Treynor
+25,Risk Stats API (qmaym0ulfsyb83j7),TreynorRatio5Yr,risk_stats_monthly,treynor_5y,Numeric(12.5),Analytics,MEDIUM,MISSING,5Y Treynor
+26,Risk Stats API (qmaym0ulfsyb83j7),TreynorRatio10Yr,risk_stats_monthly,treynor_10y,Numeric(12.5),Analytics,LOW,MISSING,10Y Treynor
+27,Risk Stats API (qmaym0ulfsyb83j7),Rsquared3Yr,risk_stats_monthly,r_squared_3y,Numeric(12.5),Analytics,MEDIUM,MISSING,Currently only Rsquared1Yr available
+28,Risk Stats API (qmaym0ulfsyb83j7),Rsquared5Yr,risk_stats_monthly,r_squared_5y,Numeric(12.5),Analytics,MEDIUM,MISSING,5Y R-squared
+29,Risk Stats API (qmaym0ulfsyb83j7),Correlation1Yr,risk_stats_monthly,correlation_1y,Numeric(12.5),Analytics,LOW,MISSING,Benchmark correlation
+30,Risk Stats API (qmaym0ulfsyb83j7),Correlation3Yr,risk_stats_monthly,correlation_3y,Numeric(12.5),Analytics,LOW,MISSING,3Y correlation
+31,Risk Stats API (qmaym0ulfsyb83j7),Correlation5Yr,risk_stats_monthly,correlation_5y,Numeric(12.5),Analytics,LOW,MISSING,5Y correlation
+32,Risk Stats API (qmaym0ulfsyb83j7),Kurtosis1Yr,risk_stats_monthly,kurtosis_1y,Numeric(12.5),Analytics,LOW,MISSING,Distribution tail risk
+33,Risk Stats API (qmaym0ulfsyb83j7),Kurtosis3Yr,risk_stats_monthly,kurtosis_3y,Numeric(12.5),Analytics,LOW,MISSING,3Y kurtosis
+34,Risk Stats API (qmaym0ulfsyb83j7),Kurtosis5Yr,risk_stats_monthly,kurtosis_5y,Numeric(12.5),Analytics,LOW,MISSING,5Y kurtosis
+35,Risk Stats API (qmaym0ulfsyb83j7),Skewness1Yr,risk_stats_monthly,skewness_1y,Numeric(12.5),Analytics,LOW,MISSING,Distribution asymmetry
+36,Risk Stats API (qmaym0ulfsyb83j7),Skewness3Yr,risk_stats_monthly,skewness_3y,Numeric(12.5),Analytics,LOW,MISSING,3Y skewness
+37,Risk Stats API (qmaym0ulfsyb83j7),Skewness5Yr,risk_stats_monthly,skewness_5y,Numeric(12.5),Analytics,LOW,MISSING,5Y skewness
+38,Return Data API (fhqbikngn12un6yk),Year1,nav_daily,calendar_year_return_1y,Numeric(12.5),Resilience (worst year) + Consistency,HIGH,MISSING,Last calendar year return
+39,Return Data API (fhqbikngn12un6yk),Year2,nav_daily,calendar_year_return_2y,Numeric(12.5),Resilience + Consistency,HIGH,MISSING,2 years ago CY return
+40,Return Data API (fhqbikngn12un6yk),Year3,nav_daily,calendar_year_return_3y,Numeric(12.5),Resilience + Consistency,HIGH,MISSING,3 years ago CY return
+41,Return Data API (fhqbikngn12un6yk),Year4,nav_daily,calendar_year_return_4y,Numeric(12.5),Resilience + Consistency,HIGH,MISSING,4 years ago CY return
+42,Return Data API (fhqbikngn12un6yk),Year5,nav_daily,calendar_year_return_5y,Numeric(12.5),Resilience + Consistency,HIGH,MISSING,5 years ago CY return
+43,Return Data API (fhqbikngn12un6yk),Year6,nav_daily,calendar_year_return_6y,Numeric(12.5),Analytics,MEDIUM,MISSING,6 years ago CY return
+44,Return Data API (fhqbikngn12un6yk),Year7,nav_daily,calendar_year_return_7y,Numeric(12.5),Analytics,MEDIUM,MISSING,7 years ago CY return
+45,Return Data API (fhqbikngn12un6yk),Year8,nav_daily,calendar_year_return_8y,Numeric(12.5),Analytics,MEDIUM,MISSING,8 years ago CY return
+46,Return Data API (fhqbikngn12un6yk),Year9,nav_daily,calendar_year_return_9y,Numeric(12.5),Analytics,MEDIUM,MISSING,9 years ago CY return
+47,Return Data API (fhqbikngn12un6yk),Year10,nav_daily,calendar_year_return_10y,Numeric(12.5),Analytics,MEDIUM,MISSING,10 years ago CY return
+48,Return Data API (fhqbikngn12un6yk),Return15Yr,nav_daily,return_15y,Numeric(12.5),Long-term analytics,LOW,MISSING,15Y annualised return
+49,Return Data API (fhqbikngn12un6yk),Return20Yr,nav_daily,return_20y,Numeric(12.5),Long-term analytics,LOW,MISSING,20Y annualised return
+50,NEW Holdings API,PortfolioDate,fund_holdings_snapshot,portfolio_date,Date,Holdings + Overlap analysis,CRITICAL,MISSING — NEW API NEEDED,Date of latest portfolio disclosure
+51,NEW Holdings API,NumberofHolding,fund_holdings_snapshot,num_holdings,Integer,Holdings display,CRITICAL,MISSING — NEW API NEEDED,Total number of holdings
+52,NEW Holdings API,NumberOfStockHoldings,fund_holdings_snapshot,num_equity,Integer,Holdings display,HIGH,MISSING — NEW API NEEDED,Equity holding count
+53,NEW Holdings API,NumberOfBondHoldings,fund_holdings_snapshot,num_bond,Integer,Holdings display,HIGH,MISSING — NEW API NEEDED,Bond holding count
+54,NEW Holdings API,EquityStyleBoxLongName,fund_holdings_snapshot,equity_style_box,String,Style analysis,HIGH,MISSING — NEW API NEEDED,"e.g. Large Growth, Mid Value"
+55,NEW Holdings API,FixedIncStyleBoxLongName,fund_holdings_snapshot,bond_style_box,String,Style analysis,MEDIUM,MISSING — NEW API NEEDED,"e.g. High Quality, Short Term"
+56,NEW Holdings API,AsOfOriginalReported,fund_holdings_snapshot,aum,Numeric(16.2),AUM display + fund size analysis,CRITICAL,MISSING — NEW API NEEDED,Assets under management
+57,NEW Holdings API,AverageMarketCapMilLong,fund_holdings_snapshot,avg_market_cap,Numeric(16.2),Market cap analysis,HIGH,MISSING — NEW API NEEDED,Weighted avg market cap
+58,NEW Holdings API,PERatioTTMLong,fund_holdings_snapshot,pe_ratio,Numeric(12.5),Valuation display,HIGH,MISSING — NEW API NEEDED,Portfolio P/E ratio
+59,NEW Holdings API,PBRatioTTMLong,fund_holdings_snapshot,pb_ratio,Numeric(12.5),Valuation display,HIGH,MISSING — NEW API NEEDED,Portfolio P/B ratio
+60,NEW Holdings API,PCRatioTTMLong,fund_holdings_snapshot,pc_ratio,Numeric(12.5),Valuation display,MEDIUM,MISSING — NEW API NEEDED,Portfolio P/Cash flow ratio
+61,NEW Holdings API,PSRatioTTMLong,fund_holdings_snapshot,ps_ratio,Numeric(12.5),Valuation display,MEDIUM,MISSING — NEW API NEEDED,Portfolio P/Sales ratio
+62,NEW Holdings API,ROETTMLong,fund_holdings_snapshot,roe_ttm,Numeric(12.5),Quality analysis,HIGH,MISSING — NEW API NEEDED,Portfolio ROE
+63,NEW Holdings API,ROATTMLong,fund_holdings_snapshot,roa_ttm,Numeric(12.5),Quality analysis,MEDIUM,MISSING — NEW API NEEDED,Portfolio ROA
+64,NEW Holdings API,NetMarginTrailingLong,fund_holdings_snapshot,net_margin_ttm,Numeric(12.5),Quality analysis,MEDIUM,MISSING — NEW API NEEDED,Portfolio net margin
+65,NEW Holdings API,YieldtoMaturityLong,fund_holdings_snapshot,ytm,Numeric(12.5),Debt fund analysis,MEDIUM,MISSING — NEW API NEEDED,Portfolio YTM
+66,NEW Holdings API,AverageEffMaturity,fund_holdings_snapshot,avg_eff_maturity,Numeric(12.5),Debt fund analysis,MEDIUM,MISSING — NEW API NEEDED,Avg effective maturity
+67,NEW Holdings API,ModifiedDurationLong,fund_holdings_snapshot,modified_duration,Numeric(12.5),Debt fund analysis,MEDIUM,MISSING — NEW API NEEDED,Interest rate sensitivity
+68,NEW Holdings API,AverageCreditQualityName,fund_holdings_snapshot,avg_credit_quality,String,Debt fund analysis,HIGH,MISSING — NEW API NEEDED,Avg credit quality label
+69,NEW Holdings API,ProspectiveDividendYield,fund_holdings_snapshot,prospective_div_yield,Numeric(12.5),Income analysis,MEDIUM,MISSING — NEW API NEEDED,Forward dividend yield
+70,NEW Holdings API,AnnualReportTurnoverRatio,fund_holdings_snapshot,turnover_ratio,Numeric(12.5),Efficiency lens,HIGH,MISSING — NEW API NEEDED,Portfolio turnover from annual report
+71,NEW Holdings API,EstFundLevelNetFlow,fund_holdings_snapshot,est_fund_net_flow,Numeric(16.2),Flow analysis,MEDIUM,MISSING — NEW API NEEDED,Estimated net flow
+72,NEW Holdings API,EquitySectorBasicMaterialsNet,fund_sector_exposure,sector_name=Basic Materials,Numeric(8.4),Sector exposure display,HIGH,MISSING — NEW API NEEDED,Basic Materials weight %
+73,NEW Holdings API,EquitySectorCommunicationServicesNet,fund_sector_exposure,sector_name=Communication Services,Numeric(8.4),Sector exposure display,HIGH,MISSING — NEW API NEEDED,Communication Services weight %
+74,NEW Holdings API,EquitySectorConsumerCyclicalNet,fund_sector_exposure,sector_name=Consumer Cyclical,Numeric(8.4),Sector exposure display,HIGH,MISSING — NEW API NEEDED,Consumer Cyclical weight %
+75,NEW Holdings API,EquitySectorConsumerDefensiveNet,fund_sector_exposure,sector_name=Consumer Defensive,Numeric(8.4),Sector exposure display,HIGH,MISSING — NEW API NEEDED,Consumer Defensive weight %
+76,NEW Holdings API,EquitySectorEnergyNet,fund_sector_exposure,sector_name=Energy,Numeric(8.4),Sector exposure display,HIGH,MISSING — NEW API NEEDED,Energy weight %
+77,NEW Holdings API,EquitySectorFinancialServicesNet,fund_sector_exposure,sector_name=Financial Services,Numeric(8.4),Sector exposure display,HIGH,MISSING — NEW API NEEDED,Financial Services weight %
+78,NEW Holdings API,EquitySectorHealthcareNet,fund_sector_exposure,sector_name=Healthcare,Numeric(8.4),Sector exposure display,HIGH,MISSING — NEW API NEEDED,Healthcare weight %
+79,NEW Holdings API,EquitySectorIndustrialsNet,fund_sector_exposure,sector_name=Industrials,Numeric(8.4),Sector exposure display,HIGH,MISSING — NEW API NEEDED,Industrials weight %
+80,NEW Holdings API,EquitySectorRealEstateNet,fund_sector_exposure,sector_name=Real Estate,Numeric(8.4),Sector exposure display,HIGH,MISSING — NEW API NEEDED,Real Estate weight %
+81,NEW Holdings API,EquitySectorTechnologyNet,fund_sector_exposure,sector_name=Technology,Numeric(8.4),Sector exposure display,HIGH,MISSING — NEW API NEEDED,Technology weight %
+82,NEW Holdings API,EquitySectorUtilitiesNet,fund_sector_exposure,sector_name=Utilities,Numeric(8.4),Sector exposure display,HIGH,MISSING — NEW API NEEDED,Utilities weight %
+83,NEW Holdings API,NetEquity / AssetAllocEquityNet,fund_asset_allocation,equity_net,Numeric(8.4),Asset allocation display,HIGH,MISSING — NEW API NEEDED,Net equity allocation %
+84,NEW Holdings API,NetBond / AssetAllocBondNet,fund_asset_allocation,bond_net,Numeric(8.4),Asset allocation display,HIGH,MISSING — NEW API NEEDED,Net bond allocation %
+85,NEW Holdings API,NetCash / AssetAllocCashNet,fund_asset_allocation,cash_net,Numeric(8.4),Asset allocation display,HIGH,MISSING — NEW API NEEDED,Net cash allocation %
+86,NEW Holdings API,NetOther / AssetAllocOtherNet,fund_asset_allocation,other_net,Numeric(8.4),Asset allocation display,HIGH,MISSING — NEW API NEEDED,Net other allocation %
+87,NEW Holdings API,IndiaLargeCapPercentage,fund_asset_allocation,india_large_cap_pct,Numeric(8.4),Market cap breakdown,HIGH,MISSING — NEW API NEEDED,Large cap % of equity
+88,NEW Holdings API,IndiaMidCapPercentage,fund_asset_allocation,india_mid_cap_pct,Numeric(8.4),Market cap breakdown,HIGH,MISSING — NEW API NEEDED,Mid cap % of equity
+89,NEW Holdings API,IndiaSmallCapPercentage,fund_asset_allocation,india_small_cap_pct,Numeric(8.4),Market cap breakdown,HIGH,MISSING — NEW API NEEDED,Small cap % of equity
+90,NEW Holdings API,BondCreditQualityAAA,fund_credit_quality,aaa_pct,Numeric(8.4),Credit quality breakdown,HIGH,MISSING — NEW API NEEDED,AAA rated bond %
+91,NEW Holdings API,BondCreditQualityAA,fund_credit_quality,aa_pct,Numeric(8.4),Credit quality breakdown,HIGH,MISSING — NEW API NEEDED,AA rated bond %
+92,NEW Holdings API,BondCreditQualityA,fund_credit_quality,a_pct,Numeric(8.4),Credit quality breakdown,HIGH,MISSING — NEW API NEEDED,A rated bond %
+93,NEW Holdings API,BondCreditQualityBBB,fund_credit_quality,bbb_pct,Numeric(8.4),Credit quality breakdown,HIGH,MISSING — NEW API NEEDED,BBB rated bond %
+94,NEW Holdings API,BondCreditQualityBB,fund_credit_quality,bb_pct,Numeric(8.4),Credit quality breakdown,HIGH,MISSING — NEW API NEEDED,BB rated bond %
+95,NEW Holdings API,BondCreditQualityB,fund_credit_quality,b_pct,Numeric(8.4),Credit quality breakdown,HIGH,MISSING — NEW API NEEDED,B rated bond %
+96,NEW Holdings API,BondCreditQualityBelowB,fund_credit_quality,below_b_pct,Numeric(8.4),Credit quality breakdown,HIGH,MISSING — NEW API NEEDED,Below B rated bond %
+97,NEW Holdings API,BondCreditQualityNotRated,fund_credit_quality,not_rated_pct,Numeric(8.4),Credit quality breakdown,HIGH,MISSING — NEW API NEEDED,Not rated bond %
+98,NEW Holdings API,HoldingDetail_Name,fund_holding_detail,holding_name,String(300),Individual holding display,HIGH,MISSING — NEW API NEEDED,Holding company/security name
+99,NEW Holdings API,HoldingDetail_ISIN,fund_holding_detail,isin,String(12),Individual holding display,HIGH,MISSING — NEW API NEEDED,Holding ISIN
+100,NEW Holdings API,HoldingDetail_HoldingType,fund_holding_detail,holding_type,String(20),Holding classification,HIGH,MISSING — NEW API NEEDED,"Equity, Bond, Cash, etc."
+101,NEW Holdings API,HoldingDetail_Weighting,fund_holding_detail,weighting_pct,Numeric(8.4),Individual holding display,HIGH,MISSING — NEW API NEEDED,Weight % in portfolio
+102,NEW Holdings API,HoldingDetail_NumberOfShare,fund_holding_detail,num_shares,Numeric(16.4),Holding detail,MEDIUM,MISSING — NEW API NEEDED,Number of shares held
+103,NEW Holdings API,HoldingDetail_MarketValue,fund_holding_detail,market_value,Numeric(16.2),Holding detail,HIGH,MISSING — NEW API NEEDED,Market value of holding
+104,NEW Holdings API,HoldingDetail_GlobalSector,fund_holding_detail,global_sector,String(100),Sector mapping,HIGH,MISSING — NEW API NEEDED,Morningstar global sector
+105,NEW Holdings API,HoldingDetail_Country,fund_holding_detail,country,String(50),Geographic exposure,MEDIUM,MISSING — NEW API NEEDED,Country of domicile
+106,NEW Holdings API,HoldingDetail_Currency,fund_holding_detail,currency,String(10),Currency exposure,LOW,MISSING — NEW API NEEDED,Currency of holding
+107,NEW Holdings API,HoldingDetail_Coupon,fund_holding_detail,coupon,Numeric(8.4),Bond holding detail,MEDIUM,MISSING — NEW API NEEDED,Coupon rate for bonds
+108,NEW Holdings API,HoldingDetail_MaturityDate,fund_holding_detail,maturity_date,Date,Bond holding detail,MEDIUM,MISSING — NEW API NEEDED,Bond maturity date
+109,NEW Holdings API,HoldingDetail_IndianCreditQualityClassification,fund_holding_detail,credit_quality,String(20),Bond credit rating,HIGH,MISSING — NEW API NEEDED,"Indian rating: AAA, AA+, etc."
+110,NEW Holdings API,HoldingDetail_ShareChange,fund_holding_detail,share_change,Numeric(16.4),Portfolio change tracking,MEDIUM,MISSING — NEW API NEEDED,Change in shares since last period
+111,Category Returns API (msncecvsohvimjkx),CategoryReturn4Yr,category_returns_daily,cat_return_4y,Numeric(12.5),Category benchmarking,HIGH,MISSING FROM API,In field map but API doesnt return it
+112,Category Returns API (msncecvsohvimjkx),CategoryReturn7Yr,category_returns_daily,cat_return_7y,Numeric(12.5),Category benchmarking,MEDIUM,MISSING FROM API,In field map but API doesnt return it
+113,Category Returns API (msncecvsohvimjkx),CategoryCumulativeReturn2Yr,category_returns_daily,cat_cumulative_2y,Numeric(12.5),Category benchmarking,HIGH,MISSING FROM API,In field map but API doesnt return it
+114,Category Returns API (msncecvsohvimjkx),CategoryCumulativeReturn3Yr,category_returns_daily,cat_cumulative_3y,Numeric(12.5),Category benchmarking,HIGH,MISSING FROM API,In field map but API doesnt return it
+115,Category Returns API (msncecvsohvimjkx),CategoryCumulativeReturn4Yr,category_returns_daily,cat_cumulative_4y,Numeric(12.5),Category benchmarking,MEDIUM,MISSING FROM API,In field map but API doesnt return it
+116,Category Returns API (msncecvsohvimjkx),CategoryCumulativeReturn5Yr,category_returns_daily,cat_cumulative_5y,Numeric(12.5),Category benchmarking,HIGH,MISSING FROM API,In field map but API doesnt return it
+117,Category Returns API (msncecvsohvimjkx),CategoryCumulativeReturn7Yr,category_returns_daily,cat_cumulative_7y,Numeric(12.5),Category benchmarking,MEDIUM,MISSING FROM API,In field map but API doesnt return it
+118,Category Returns API (msncecvsohvimjkx),CategoryCumulativeReturn10Yr,category_returns_daily,cat_cumulative_10y,Numeric(12.5),Category benchmarking,MEDIUM,MISSING FROM API,In field map but API doesnt return it
+119,Risk Stats API (qmaym0ulfsyb83j7),EndDate,risk_stats_monthly,as_of_date,Date,Risk stats date,HIGH,PRESENT BUT VERIFY,Currently defaults to today if missing — verify API returns it
+120,Return Data API (fhqbikngn12un6yk),ReturnYTD,nav_daily,return_ytd,Numeric(12.5),Display,LOW,ALREADY VIA RISK STATS,Also comes via Risk Stats API TTR-ReturnYTD
