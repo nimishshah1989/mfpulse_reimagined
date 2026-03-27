@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    container_name: mf-pulse
+    restart: always
+    ports:
+      - "8001:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./data_feeds:/app/data_feeds
+      - ./data_cache:/app/data_cache
+
+volumes:
+  mf_pulse_pgdata:
