@@ -71,10 +71,14 @@ def _fund_detail_dict(**overrides) -> dict:
 # --- Fund List ---
 
 class TestListFunds:
+    @patch("app.api.v1.funds.OverrideRepository")
+    @patch("app.api.v1.funds.LensRepository")
     @patch("app.api.v1.funds.FundService")
-    def test_get_funds_returns_paginated(self, MockService, client) -> None:
+    def test_get_funds_returns_paginated(self, MockService, MockLens, MockOverride, client) -> None:
         mock_svc = MockService.return_value
         mock_svc.list_funds.return_value = ([_fund_summary_dict()], 1)
+        MockLens.return_value.get_latest_scores.return_value = None
+        MockLens.return_value.get_latest_classification.return_value = None
 
         resp = client.get("/api/v1/funds")
 
@@ -84,8 +88,10 @@ class TestListFunds:
         assert body["meta"]["count"] == 1
         assert len(body["data"]) == 1
 
+    @patch("app.api.v1.funds.OverrideRepository")
+    @patch("app.api.v1.funds.LensRepository")
     @patch("app.api.v1.funds.FundService")
-    def test_get_funds_with_category_filter(self, MockService, client) -> None:
+    def test_get_funds_with_category_filter(self, MockService, MockLens, MockOverride, client) -> None:
         mock_svc = MockService.return_value
         mock_svc.list_funds.return_value = ([], 0)
 
@@ -95,10 +101,14 @@ class TestListFunds:
         body = resp.json()
         assert body["meta"]["count"] == 0
 
+    @patch("app.api.v1.funds.OverrideRepository")
+    @patch("app.api.v1.funds.LensRepository")
     @patch("app.api.v1.funds.FundService")
-    def test_get_funds_with_search(self, MockService, client) -> None:
+    def test_get_funds_with_search(self, MockService, MockLens, MockOverride, client) -> None:
         mock_svc = MockService.return_value
         mock_svc.list_funds.return_value = ([_fund_summary_dict()], 1)
+        MockLens.return_value.get_latest_scores.return_value = None
+        MockLens.return_value.get_latest_classification.return_value = None
 
         resp = client.get("/api/v1/funds?search=HDFC")
 
@@ -110,10 +120,15 @@ class TestListFunds:
 # --- Fund Detail ---
 
 class TestGetFundDetail:
+    @patch("app.api.v1.funds.OverrideRepository")
+    @patch("app.api.v1.funds.LensRepository")
     @patch("app.api.v1.funds.FundService")
-    def test_get_fund_detail(self, MockService, client) -> None:
+    def test_get_fund_detail(self, MockService, MockLens, MockOverride, client) -> None:
         mock_svc = MockService.return_value
         mock_svc.get_fund_detail.return_value = _fund_detail_dict()
+        MockLens.return_value.get_latest_scores.return_value = None
+        MockLens.return_value.get_latest_classification.return_value = None
+        MockOverride.return_value.get_overrides_for_fund.return_value = []
 
         resp = client.get("/api/v1/funds/F0GBR06S2Q")
 
@@ -122,8 +137,10 @@ class TestGetFundDetail:
         assert body["success"] is True
         assert body["data"]["fund"]["mstar_id"] == "F0GBR06S2Q"
 
+    @patch("app.api.v1.funds.OverrideRepository")
+    @patch("app.api.v1.funds.LensRepository")
     @patch("app.api.v1.funds.FundService")
-    def test_fund_not_found_returns_404(self, MockService, client) -> None:
+    def test_fund_not_found_returns_404(self, MockService, MockLens, MockOverride, client) -> None:
         mock_svc = MockService.return_value
         mock_svc.get_fund_detail.side_effect = NotFoundError(
             "Fund NONEXISTENT not found"

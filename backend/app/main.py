@@ -30,7 +30,28 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
             "database": "connected" if db_ok else "DISCONNECTED",
         },
     )
+
+    # Start scheduler if enabled
+    scheduler = None
+    if settings.scheduler_enabled:
+        try:
+            from app.core.database import SessionLocal
+            from app.jobs.scheduler import JobScheduler
+            from app.api.v1.jobs import set_scheduler
+
+            scheduler = JobScheduler(SessionLocal)
+            scheduler.start()
+            set_scheduler(scheduler)
+            logger.info("Job scheduler started")
+        except Exception as e:
+            logger.error("Failed to start scheduler: %s", e)
+
     yield
+
+    # Stop scheduler on shutdown
+    if scheduler:
+        scheduler.stop()
+        logger.info("Job scheduler stopped")
 
 
 app = FastAPI(
