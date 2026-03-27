@@ -108,6 +108,10 @@ class IngestionRepository:
                 if not rows_to_insert:
                     continue
 
+                # Track which columns records actually provide (before normalization
+                # pads missing keys with None). Only these should be in ON CONFLICT UPDATE.
+                real_keys = set().union(*(d.keys() for d in rows_to_insert))
+
                 # Normalize keys so every dict has identical keys —
                 # required by SQLAlchemy insert().values(list_of_dicts).
                 rows_to_insert = self._normalize_batch_keys(rows_to_insert)
@@ -127,15 +131,20 @@ class IngestionRepository:
                         valid_rows.append(row)
                 rows_to_insert = valid_rows
 
+                if not rows_to_insert:
+                    continue
+
                 table = model_cls.__table__
                 stmt = pg_insert(table).values(rows_to_insert)
 
-                # Build update dict for ON CONFLICT
+                # Build update dict for ON CONFLICT — only include columns
+                # that records actually provide (not None-padded by normalization).
                 update_cols = {
                     col.name: stmt.excluded[col.name]
                     for col in table.columns
                     if col.name not in exclude_set
                     and col.name not in conflict_cols
+                    and col.name in real_keys
                 }
 
                 if update_cols:

@@ -396,6 +396,44 @@ class TestFilterNullRequiredFields:
         assert result.failed == 1
 
 
+class TestOnConflictUpdateOnlyRealKeys:
+    """ON CONFLICT UPDATE should only set columns the records actually provide,
+    not columns padded with None by normalization."""
+
+    def test_update_cols_exclude_padded_none_keys(self) -> None:
+        """When records only provide a subset of columns, ON CONFLICT UPDATE
+        should not overwrite other columns with NULL."""
+        db = MagicMock()
+        repo = IngestionRepository(db)
+
+        from app.models.db.fund_master import FundMaster
+
+        # Simulate Category Data API: provides required fields + category_name + broad_category
+        # but NOT fund_name or isin (those come from a different API)
+        records = [
+            {"mstar_id": "F001", "legal_name": "Fund A", "category_name": "Large Cap", "broad_category": "Equity"},
+            {"mstar_id": "F002", "legal_name": "Fund B", "category_name": "Mid Cap", "broad_category": "Equity"},
+        ]
+
+        repo._batch_upsert(FundMaster, records, conflict_cols=["mstar_id"])
+
+        # Inspect the SQL statement that was executed
+        assert db.execute.called
+        stmt = db.execute.call_args[0][0]
+
+        # The ON CONFLICT UPDATE should NOT include columns like fund_name,
+        # isin etc. that these records don't provide
+        compiled = stmt.compile()
+        sql_str = str(compiled)
+        # category_name and broad_category should be in the SET clause
+        assert "category_name" in sql_str
+        assert "broad_category" in sql_str
+        # fund_name and isin are NOT in the records — must NOT be in SET
+        set_clause = sql_str.split("SET")[1] if "SET" in sql_str else ""
+        assert "fund_name" not in set_clause
+        assert "isin" not in set_clause
+
+
 class TestBatchUpsertErrorHandling:
     def test_batch_error_rolls_back(self) -> None:
         db = MagicMock()
