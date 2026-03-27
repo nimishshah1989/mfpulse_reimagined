@@ -39,6 +39,18 @@ class NavDaily(Base, UUIDPrimaryKey):
     cumulative_return_5y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
     cumulative_return_10y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
 
+    # Calendar year returns
+    calendar_year_return_1y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
+    calendar_year_return_2y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
+    calendar_year_return_3y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
+    calendar_year_return_4y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
+    calendar_year_return_5y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
+    calendar_year_return_6y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
+    calendar_year_return_7y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
+    calendar_year_return_8y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
+    calendar_year_return_9y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
+    calendar_year_return_10y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
+
     # 52-week range
     nav_52wk_high: Mapped[None] = mapped_column(Numeric(16, 4), nullable=True)
     nav_52wk_low: Mapped[None] = mapped_column(Numeric(16, 4), nullable=True)

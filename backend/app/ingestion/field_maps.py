@@ -58,6 +58,8 @@ MASTER_FIELD_MAP: dict[str, str] = {
     "ClosedToInvestors": "closed_to_investors",
     "InitialLockupPeriod": "lock_in_period",
     "DistributionStatus": "distribution_status",
+    # Termination
+    "TerminationDate": "termination_date",
 }
 
 MASTER_FIELDS_SKIPPED: list[dict[str, str]] = [
@@ -111,8 +113,6 @@ MASTER_FIELDS_SKIPPED: list[dict[str, str]] = [
     {"field": "DividendDistributionFrequencyDetails", "reason": "Dividend freq details — not needed for scoring"},
     # Risk class (India-specific, beyond our 3 risk fields)
     {"field": "potential_risk_class_matrix", "reason": "SEBI risk-o-meter matrix — we track india_fund_risk_level"},
-    # Calendar year returns — already in NAV feed as Return1Yr etc.
-    {"field": "Year1", "reason": "Calendar year return — we use ReturnXYr + rank percentiles"},
     # Dividend data in Performance feed
     {"field": "Dividend", "reason": "Fund dividend declared — not needed for NAV/return analysis"},
     {"field": "DividendDate", "reason": "Dividend date — not needed for scoring"},
@@ -155,6 +155,17 @@ NAV_FIELD_MAP: dict[str, str] = {
     "CumulativeReturn10Yr": "cumulative_return_10y",
     "NAV52wkHigh": "nav_52wk_high",
     "NAV52wkLow": "nav_52wk_low",
+    # Calendar year returns
+    "Year1": "calendar_year_return_1y",
+    "Year2": "calendar_year_return_2y",
+    "Year3": "calendar_year_return_3y",
+    "Year4": "calendar_year_return_4y",
+    "Year5": "calendar_year_return_5y",
+    "Year6": "calendar_year_return_6y",
+    "Year7": "calendar_year_return_7y",
+    "Year8": "calendar_year_return_8y",
+    "Year9": "calendar_year_return_9y",
+    "Year10": "calendar_year_return_10y",
 }
 
 RISK_STATS_FIELD_MAP: dict[str, str] = {

@@ -78,6 +78,9 @@ class FundMaster(Base, UUIDPrimaryKey, TimestampMixin):
     lock_in_period: Mapped[None] = mapped_column(Numeric(8, 2), nullable=True)
     distribution_status: Mapped[Optional[str]] = mapped_column(String(50))
 
+    # Termination
+    termination_date: Mapped[Optional[date]] = mapped_column(Date)
+
     # Status flags
     performance_ready: Mapped[Optional[bool]] = mapped_column(Boolean)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
