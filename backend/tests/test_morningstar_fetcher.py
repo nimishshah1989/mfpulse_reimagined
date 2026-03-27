@@ -282,13 +282,39 @@ class TestWriteToDb:
         fetcher._write_to_db(api, records, result)
         fetcher.ingestion_repo.upsert_ranks.assert_called_once()
 
-    def test_write_category_returns(self, fetcher) -> None:
-        """Write to category_returns → upsert_category_returns called."""
+    def test_write_category_returns_derives_category_code(self, fetcher) -> None:
+        """Write to category_returns → derives category_code from fund_master lookup."""
         api = APIS[7]  # Category Return Data
-        records = [{"category_code": "EAA", "cat_return_3y": "12.5"}]
+        records = [
+            {"mstar_id": "F001", "cat_return_3y": "12.5"},
+            {"mstar_id": "F002", "cat_return_3y": "10.0"},
+        ]
+        # Mock category lookup
+        fetcher._get_category_lookup = MagicMock(
+            return_value={"F001": "Large Cap", "F002": "Mid Cap"}
+        )
         result = FetchResult(api.name)
         fetcher._write_to_db(api, records, result)
         fetcher.ingestion_repo.upsert_category_returns.assert_called_once()
+        coerced = fetcher.ingestion_repo.upsert_category_returns.call_args[0][0]
+        codes = {r["category_code"] for r in coerced}
+        assert "Large Cap" in codes
+        assert "Mid Cap" in codes
+
+    def test_write_category_returns_deduplicates_by_category(self, fetcher) -> None:
+        """Multiple funds in same category → one category return record."""
+        api = APIS[7]
+        records = [
+            {"mstar_id": "F001", "cat_return_3y": "12.5"},
+            {"mstar_id": "F002", "cat_return_3y": "12.5"},  # same category
+        ]
+        fetcher._get_category_lookup = MagicMock(
+            return_value={"F001": "Large Cap", "F002": "Large Cap"}
+        )
+        result = FetchResult(api.name)
+        fetcher._write_to_db(api, records, result)
+        coerced = fetcher.ingestion_repo.upsert_category_returns.call_args[0][0]
+        assert len(coerced) == 1  # deduplicated
 
     def test_db_error_captured(self, fetcher) -> None:
         """DB write error → captured in result.errors, not raised."""

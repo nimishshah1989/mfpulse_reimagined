@@ -76,6 +76,16 @@ class MorningstarFetcher:
         self._timeout = 120  # seconds — bulk responses can be large (5-8MB)
         self._col_type_cache: dict[type, dict[str, type]] = {}
 
+    def _get_category_lookup(self) -> dict[str, str]:
+        """Build mstar_id → category_name lookup from fund_master."""
+        rows = self.db.execute(
+            FundMaster.__table__.select().with_only_columns(
+                FundMaster.__table__.c.mstar_id,
+                FundMaster.__table__.c.category_name,
+            ).where(FundMaster.__table__.c.category_name.isnot(None))
+        ).fetchall()
+        return {row.mstar_id: row.category_name for row in rows}
+
     def _get_column_types(self, model_cls: type) -> dict[str, type]:
         """Build {col_name: sqlalchemy_type_class} map, cached per model."""
         if model_cls not in self._col_type_cache:
@@ -346,11 +356,25 @@ class MorningstarFetcher:
                 self.ingestion_repo.upsert_ranks(coerced)
 
             elif target == "category_returns":
+                # API returns per-fund category returns keyed by mstar_id.
+                # Derive category_code from fund_master and deduplicate by category.
+                cat_lookup = self._get_category_lookup()
+                seen: dict[tuple[str, str], dict] = {}  # (category_code, date) → record
                 for record in records:
+                    mstar_id = record.get("mstar_id")
+                    cat_name = cat_lookup.get(mstar_id) if mstar_id else None
+                    if not cat_name:
+                        continue
+                    record["category_code"] = cat_name
                     if "as_of_date" not in record:
                         record["as_of_date"] = today
-                coerced = self._coerce_records(records, CategoryReturnsDaily)
-                self.ingestion_repo.upsert_category_returns(coerced)
+                    key = (cat_name, record["as_of_date"])
+                    if key not in seen:
+                        seen[key] = record
+                deduped = list(seen.values())
+                if deduped:
+                    coerced = self._coerce_records(deduped, CategoryReturnsDaily)
+                    self.ingestion_repo.upsert_category_returns(coerced)
 
             self.db.commit()
 

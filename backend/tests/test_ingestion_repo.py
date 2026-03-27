@@ -308,11 +308,11 @@ class TestBatchUpsertKeyNormalization:
 
         # All records have required NOT NULL fields; they differ on nullable fields
         records = [
-            {"mstar_id": "F001", "legal_name": "Fund A", "category_name": "Equity",
+            {"mstar_id": "F001", "legal_name": "Fund A",
              "is_active": True, "is_eligible": True, "fund_name": "Fund A", "isin": "INE001A01036"},
-            {"mstar_id": "F002", "legal_name": "Fund B", "category_name": "Debt",
+            {"mstar_id": "F002", "legal_name": "Fund B",
              "is_active": True, "is_eligible": True, "fund_name": "Fund B"},  # no isin
-            {"mstar_id": "F003", "legal_name": "Fund C", "category_name": "Hybrid",
+            {"mstar_id": "F003", "legal_name": "Fund C",
              "is_active": True, "is_eligible": True},  # no fund_name, no isin
         ]
 
@@ -348,10 +348,11 @@ class TestGetRequiredColumns:
         repo = IngestionRepository(db)
         from app.models.db.fund_master import FundMaster
         required = repo._get_required_columns(FundMaster)
-        # mstar_id, legal_name, category_name are NOT NULL in the model
+        # mstar_id, legal_name are NOT NULL in the model
         assert "mstar_id" in required
         assert "legal_name" in required
-        assert "category_name" in required
+        # category_name is nullable (populated by separate API call)
+        assert "category_name" not in required
         # Auto-generated columns should be excluded
         assert "id" not in required
         assert "created_at" not in required
@@ -380,16 +381,16 @@ class TestFilterNullRequiredFields:
         from app.models.db.fund_master import FundMaster
 
         records = [
-            {"mstar_id": "F001", "legal_name": "Fund A", "category_name": "Equity Large Cap",
+            {"mstar_id": "F001", "legal_name": "Fund A",
              "is_active": True, "is_eligible": True},
-            {"mstar_id": "F002", "legal_name": "Fund B", "is_active": True, "is_eligible": True},
-            # ^ missing category_name — should be skipped
+            {"mstar_id": "F002", "is_active": True, "is_eligible": True},
+            # ^ missing legal_name (NOT NULL) — should be skipped
         ]
 
         result = repo._batch_upsert(FundMaster, records, conflict_cols=["mstar_id"])
 
         # Only 1 record should have been inserted (the valid one)
-        # The record missing category_name should be skipped
+        # The record missing legal_name should be skipped
         assert db.execute.called
         assert result.inserted == 1
         assert result.failed == 1

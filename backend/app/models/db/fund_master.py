@@ -24,8 +24,8 @@ class FundMaster(Base, UUIDPrimaryKey, TimestampMixin):
     fund_name: Mapped[Optional[str]] = mapped_column(String(200))
     amc_name: Mapped[Optional[str]] = mapped_column(String(300))
 
-    # Classification
-    category_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    # Classification — nullable because category comes from a separate API call
+    category_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     broad_category: Mapped[Optional[str]] = mapped_column(String(200))
 
     # Dates
