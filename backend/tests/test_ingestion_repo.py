@@ -300,41 +300,25 @@ class TestBatchUpsertKeyNormalization:
     have the same keys — required by SQLAlchemy insert().values(list_of_dicts)."""
 
     def test_inconsistent_keys_are_normalized(self) -> None:
-        """Records with different keys should be padded with None for missing keys."""
+        """Records with different nullable keys should be padded with None."""
         db = MagicMock()
         repo = IngestionRepository(db)
 
         from app.models.db.fund_master import FundMaster
 
+        # All records have required NOT NULL fields; they differ on nullable fields
         records = [
-            {"mstar_id": "F001", "fund_name": "Fund A", "isin": "INE001A01036"},
-            {"mstar_id": "F002", "fund_name": "Fund B"},  # no isin
-            {"mstar_id": "F003", "legal_name": "Fund C Legal"},  # no fund_name, no isin
+            {"mstar_id": "F001", "legal_name": "Fund A", "category_name": "Equity",
+             "is_active": True, "is_eligible": True, "fund_name": "Fund A", "isin": "INE001A01036"},
+            {"mstar_id": "F002", "legal_name": "Fund B", "category_name": "Debt",
+             "is_active": True, "is_eligible": True, "fund_name": "Fund B"},  # no isin
+            {"mstar_id": "F003", "legal_name": "Fund C", "category_name": "Hybrid",
+             "is_active": True, "is_eligible": True},  # no fund_name, no isin
         ]
-
-        # Capture the values passed to pg_insert().values()
-        captured_values: list[list[dict]] = []
-        original_execute = db.execute
-
-        def capture_execute(stmt):
-            # The stmt has _values attribute with the normalized rows
-            if hasattr(stmt, 'compile'):
-                pass  # just let it through
-            return original_execute(stmt)
-
-        db.execute.side_effect = None  # reset any side effects
 
         result = repo._batch_upsert(FundMaster, records, conflict_cols=["mstar_id"])
 
-        # Should succeed (not raise) — the key normalization prevents the error
-        # Since execute is mocked, it won't actually fail, but we can check
-        # the values passed by inspecting the call
         assert db.execute.called
-        call_args = db.execute.call_args
-        stmt = call_args[0][0]
-
-        # Verify the statement compiled without error (would fail with inconsistent keys)
-        # The fact that we got here without exception means normalization worked
         assert result.inserted == 3
 
     def test_missing_keys_filled_with_none(self) -> None:
@@ -354,6 +338,61 @@ class TestBatchUpsertKeyNormalization:
         assert normalized[0] == {"a": 1, "b": 2, "c": None}
         assert normalized[1] == {"a": 3, "b": None, "c": 4}
         assert normalized[2] == {"a": None, "b": 5, "c": None}
+
+
+class TestGetRequiredColumns:
+    """Verify _get_required_columns returns NOT NULL columns (excluding auto-generated)."""
+
+    def test_fund_master_required_cols(self) -> None:
+        db = MagicMock()
+        repo = IngestionRepository(db)
+        from app.models.db.fund_master import FundMaster
+        required = repo._get_required_columns(FundMaster)
+        # mstar_id, legal_name, category_name are NOT NULL in the model
+        assert "mstar_id" in required
+        assert "legal_name" in required
+        assert "category_name" in required
+        # Auto-generated columns should be excluded
+        assert "id" not in required
+        assert "created_at" not in required
+        assert "updated_at" not in required
+        # Nullable columns should not be included
+        assert "isin" not in required
+        assert "fund_name" not in required
+
+    def test_category_returns_required_cols(self) -> None:
+        db = MagicMock()
+        repo = IngestionRepository(db)
+        from app.models.db.category_returns import CategoryReturnsDaily
+        required = repo._get_required_columns(CategoryReturnsDaily)
+        assert "category_code" in required
+        assert "as_of_date" in required
+        assert "id" not in required
+
+
+class TestFilterNullRequiredFields:
+    """Records missing NOT NULL fields should be dropped, not crash the batch."""
+
+    def test_records_missing_required_field_are_skipped(self) -> None:
+        db = MagicMock()
+        repo = IngestionRepository(db)
+
+        from app.models.db.fund_master import FundMaster
+
+        records = [
+            {"mstar_id": "F001", "legal_name": "Fund A", "category_name": "Equity Large Cap",
+             "is_active": True, "is_eligible": True},
+            {"mstar_id": "F002", "legal_name": "Fund B", "is_active": True, "is_eligible": True},
+            # ^ missing category_name — should be skipped
+        ]
+
+        result = repo._batch_upsert(FundMaster, records, conflict_cols=["mstar_id"])
+
+        # Only 1 record should have been inserted (the valid one)
+        # The record missing category_name should be skipped
+        assert db.execute.called
+        assert result.inserted == 1
+        assert result.failed == 1
 
 
 class TestBatchUpsertErrorHandling:

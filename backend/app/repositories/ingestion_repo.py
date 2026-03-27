@@ -50,6 +50,20 @@ class IngestionRepository:
         return {k: v for k, v in record.items() if k in valid_cols}
 
     @staticmethod
+    def _get_required_columns(model_cls: type) -> set[str]:
+        """Get NOT NULL column names excluding auto-generated ones (id, timestamps)."""
+        auto_cols = {"id", "created_at", "updated_at"}
+        table = model_cls.__table__
+        return {
+            col.name
+            for col in table.columns
+            if not col.nullable
+            and col.name not in auto_cols
+            and col.default is None
+            and col.server_default is None
+        }
+
+    @staticmethod
     def _normalize_batch_keys(batch: list[dict]) -> list[dict]:
         """Ensure all dicts in a batch have identical keys.
 
@@ -73,6 +87,7 @@ class IngestionRepository:
         """Generic batch upsert using PostgreSQL ON CONFLICT."""
         result = UpsertResult()
         valid_cols = self._get_column_names(model_cls)
+        required_cols = self._get_required_columns(model_cls)
 
         if exclude_from_update is None:
             exclude_from_update = []
@@ -96,6 +111,21 @@ class IngestionRepository:
                 # Normalize keys so every dict has identical keys —
                 # required by SQLAlchemy insert().values(list_of_dicts).
                 rows_to_insert = self._normalize_batch_keys(rows_to_insert)
+
+                # Drop records where NOT NULL columns got None from normalization
+                valid_rows = []
+                for row in rows_to_insert:
+                    missing = [c for c in required_cols if row.get(c) is None]
+                    if missing:
+                        result.failed += 1
+                        logger.debug(
+                            "Skipping record missing required fields %s: %s",
+                            missing,
+                            row.get(conflict_cols[0], "unknown"),
+                        )
+                    else:
+                        valid_rows.append(row)
+                rows_to_insert = valid_rows
 
                 table = model_cls.__table__
                 stmt = pg_insert(table).values(rows_to_insert)
