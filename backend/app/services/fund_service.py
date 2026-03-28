@@ -231,12 +231,16 @@ class FundService:
         all_scores = lens_repo.get_all_scores_batch(mstar_ids)
         all_classes = lens_repo.get_all_classifications_batch(mstar_ids)
 
+        # Batch fetch latest holdings snapshots (AUM, style box, avg_market_cap)
+        snapshot_map = self.holdings_repo.get_latest_snapshots_batch(mstar_ids)
+
         result = []
         for fund in funds:
             mid = fund.mstar_id
             nav = nav_map.get(mid, {})
             scores = all_scores.get(mid, {})
             cls = all_classes.get(mid, {})
+            snap = snapshot_map.get(mid, {})
             raw_mode = getattr(fund, "purchase_mode", None)
             fund_name = fund.fund_name or fund.legal_name or ""
             result.append({
@@ -252,6 +256,9 @@ class FundService:
                 "return_5y": nav.get("return_5y"),
                 "net_expense_ratio": getattr(fund, "net_expense_ratio", None),
                 "latest_nav": nav.get("nav"),
+                "aum": snap.get("aum"),
+                "equity_style_box": snap.get("equity_style_box"),
+                "avg_market_cap": snap.get("avg_market_cap"),
                 "return_score": scores.get("return_score"),
                 "risk_score": scores.get("risk_score"),
                 "consistency_score": scores.get("consistency_score"),

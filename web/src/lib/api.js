@@ -137,6 +137,14 @@ export const fetchOverrides = () =>
 export const deleteOverride = (id) =>
   apiFetch(`/api/v1/overrides/${id}`, { method: 'DELETE' });
 
+// Fund detail extensions
+export const fetchAssetAllocation = (mstarId) =>
+  apiFetch(`/api/v1/funds/${mstarId}/asset-allocation`);
+export const fetchNarrative = (mstarId) =>
+  apiFetch(`/api/v1/funds/${mstarId}/narrative`);
+export const fetchNiftyData = () =>
+  apiFetch('/api/v1/market/nifty');
+
 // Ingestion triggers
 export const fetchDataFreshness = () =>
   apiFetch('/api/v1/ingestion/data-freshness');

@@ -1,19 +1,22 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { scaleLinear } from 'd3-scale';
+import { scaleLinear, scaleSqrt } from 'd3-scale';
 import { quadtree } from 'd3-quadtree';
 import { zoom, zoomIdentity } from 'd3-zoom';
 import { select } from 'd3-selection';
 import { lensColor, LENS_LABELS } from '../../lib/lens';
 
+const AUM_CR_DIVISOR = 10000000;
+const MIN_RADIUS = 3;
+const MAX_RADIUS = 35;
+const MAX_AUM_DOMAIN = 50000; // Crores
+
 function getBubbleColor(lensScore) {
   return lensColor(Number(lensScore) || 0);
 }
 
-function getRadius(aum) {
-  const a = Number(aum) || 0;
-  if (a <= 0) return 3;
-  const logAum = Math.log10(a + 1);
-  return Math.max(3, Math.min(30, logAum * 5));
+function getRadius(aumRaw, aumScale) {
+  const aumCr = (Number(aumRaw) || 0) / AUM_CR_DIVISOR;
+  return aumCr > 0 ? aumScale(aumCr) : MIN_RADIUS;
 }
 
 function findClosestPoint(qt, mx, my, xScale, yScale, transformK) {
@@ -27,7 +30,7 @@ function findClosestPoint(qt, mx, my, xScale, yScale, transformK) {
         const dx = xScale(d.data.x) - mx;
         const dy = yScale(d.data.y) - my;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < d.data.r / transformK + 5 && dist < closestDist) {
+        if (dist < d.data.r / transformK + 6 && dist < closestDist) {
           closestDist = dist;
           closest = d.data;
         }
@@ -40,19 +43,29 @@ function findClosestPoint(qt, mx, my, xScale, yScale, transformK) {
   return closest;
 }
 
-const QUADRANT_LABELS = [
-  { text: 'Sweet Spot', x: 'right', y: 'top', color: '#059669' },
-  { text: 'High Risk / High Return', x: 'left', y: 'top', color: '#0369a1' },
-  { text: 'Low Return / Low Risk', x: 'right', y: 'bottom', color: '#0369a1' },
-  { text: 'Avoid Zone', x: 'left', y: 'bottom', color: '#dc2626' },
-];
-
+/**
+ * High-performance D3+Canvas scatter chart with zoom, quadrants, and AUM-proportional bubbles.
+ *
+ * Props:
+ *   data - fund array with lens scores, aum, return fields
+ *   xAxis - key for x dimension (score key or 'return_1y'/'return_3y'/'return_5y')
+ *   yAxis - key for y dimension (score key)
+ *   colorLens - key for bubble color
+ *   period - '1Y' | '3Y' | '5Y' determines x-axis return field
+ *   onFundClick(fund, x, y) - single click on bubble
+ *   onFundDoubleClick(fund) - double click → navigate
+ *   onHover(fund, x, y) - mouse hover
+ *   width, height - canvas dimensions
+ *   selectedTier - tier label to highlight
+ */
 export default function BubbleScatter({
   data,
   xAxis,
   yAxis,
   colorLens,
+  period,
   onFundClick,
+  onFundDoubleClick,
   onHover,
   width,
   height,
@@ -61,19 +74,38 @@ export default function BubbleScatter({
   const canvasRef = useRef(null);
   const overlayRef = useRef(null);
   const containerRef = useRef(null);
-  const [hoveredFund, setHoveredFund] = useState(null);
   const [transform, setTransform] = useState(zoomIdentity);
   const quadtreeRef = useRef(null);
   const animRef = useRef(null);
   const prevPositions = useRef(new Map());
+  const clickTimerRef = useRef(null);
 
-  const margin = { top: 40, right: 40, bottom: 55, left: 65 };
+  const margin = { top: 30, right: 30, bottom: 55, left: 65 };
   const innerW = width - margin.left - margin.right;
   const innerH = height - margin.top - margin.bottom;
 
+  // Determine if x-axis is a return field (percentage) or a score (0-100)
+  const isReturnAxis = ['return_1y', 'return_3y', 'return_5y'].includes(xAxis);
+
+  // Calculate dynamic domain for return axes
+  const xDomain = useMemo(() => {
+    if (!isReturnAxis) return [0, 100];
+    const vals = data.map((d) => Number(d[xAxis])).filter((v) => !isNaN(v));
+    if (vals.length === 0) return [-10, 50];
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const pad = (max - min) * 0.1 || 5;
+    return [Math.floor(min - pad), Math.ceil(max + pad)];
+  }, [data, xAxis, isReturnAxis]);
+
+  const aumScale = useMemo(
+    () => scaleSqrt().domain([0, MAX_AUM_DOMAIN]).range([MIN_RADIUS, MAX_RADIUS]).clamp(true),
+    []
+  );
+
   const xScale = useMemo(
-    () => scaleLinear().domain([0, 100]).range([0, innerW]),
-    [innerW]
+    () => scaleLinear().domain(xDomain).range([0, innerW]),
+    [xDomain, innerW]
   );
   const yScale = useMemo(
     () => scaleLinear().domain([0, 100]).range([innerH, 0]),
@@ -86,11 +118,11 @@ export default function BubbleScatter({
       id: d.mstar_id,
       x: Number(d[xAxis]) || 0,
       y: Number(d[yAxis]) || 0,
-      r: getRadius(d.aum),
+      r: getRadius(d.aum, aumScale),
       color: getBubbleColor(d[activeLens]),
       fund: d,
     }));
-  }, [data, xAxis, yAxis, colorLens]);
+  }, [data, xAxis, yAxis, colorLens, aumScale]);
 
   // Build quadtree for hit detection
   useEffect(() => {
@@ -100,7 +132,7 @@ export default function BubbleScatter({
       .addAll(positions);
   }, [positions, xScale, yScale]);
 
-  // Canvas draw
+  // Canvas draw function
   const draw = useCallback(
     (currentTransform, pts) => {
       const canvas = canvasRef.current;
@@ -110,144 +142,205 @@ export default function BubbleScatter({
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, height);
+
+      // Background fill
+      ctx.fillStyle = '#fafbfc';
+      ctx.fillRect(0, 0, width, height);
+
       ctx.save();
       ctx.translate(margin.left, margin.top);
+
+      // Clip region for chart area
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, innerW, innerH);
+      ctx.clip();
 
       // Zoom transform
       ctx.save();
       ctx.translate(currentTransform.x, currentTransform.y);
       ctx.scale(currentTransform.k, currentTransform.k);
 
+      // Calculate midpoints
+      const xMid = isReturnAxis ? xScale(0) : xScale(50);
+      const yMid = yScale(50);
+
       // Quadrant zone shading
-      const x50 = xScale(50);
-      const y50 = yScale(50);
+      ctx.fillStyle = 'rgba(5, 150, 105, 0.04)';
+      ctx.fillRect(xMid, 0, innerW - xMid, yMid);
 
-      // Top-right: sweet spot -- green tint
-      ctx.fillStyle = 'rgba(5, 150, 105, 0.06)';
-      ctx.fillRect(x50, 0, innerW - x50, y50);
+      ctx.fillStyle = 'rgba(220, 38, 38, 0.04)';
+      ctx.fillRect(0, yMid, xMid, innerH - yMid);
 
-      // Bottom-left: avoid zone -- red tint
-      ctx.fillStyle = 'rgba(220, 38, 38, 0.06)';
-      ctx.fillRect(0, y50, x50, innerH - y50);
+      ctx.fillStyle = 'rgba(217, 119, 6, 0.02)';
+      ctx.fillRect(0, 0, xMid, yMid);
 
-      // Top-left: high risk high return -- blue tint
-      ctx.fillStyle = 'rgba(3, 105, 161, 0.03)';
-      ctx.fillRect(0, 0, x50, y50);
+      ctx.fillStyle = 'rgba(37, 99, 235, 0.02)';
+      ctx.fillRect(xMid, yMid, innerW - xMid, innerH - yMid);
 
-      // Bottom-right: low return low risk -- blue tint
-      ctx.fillStyle = 'rgba(3, 105, 161, 0.03)';
-      ctx.fillRect(x50, y50, innerW - x50, innerH - y50);
-
-      // Grid at 25, 50, 75
+      // Grid lines
       ctx.strokeStyle = '#f1f5f9';
       ctx.lineWidth = 0.5 / currentTransform.k;
+
+      if (!isReturnAxis) {
+        for (const v of [25, 50, 75]) {
+          ctx.beginPath();
+          ctx.moveTo(xScale(v), 0);
+          ctx.lineTo(xScale(v), innerH);
+          ctx.stroke();
+        }
+      } else {
+        // Auto-generate grid lines for return axes
+        const [dMin, dMax] = xDomain;
+        const step = (dMax - dMin) > 40 ? 10 : 5;
+        for (let v = Math.ceil(dMin / step) * step; v <= dMax; v += step) {
+          ctx.beginPath();
+          ctx.moveTo(xScale(v), 0);
+          ctx.lineTo(xScale(v), innerH);
+          ctx.stroke();
+        }
+      }
       for (const v of [25, 50, 75]) {
-        ctx.beginPath();
-        ctx.moveTo(xScale(v), 0);
-        ctx.lineTo(xScale(v), innerH);
-        ctx.stroke();
         ctx.beginPath();
         ctx.moveTo(0, yScale(v));
         ctx.lineTo(innerW, yScale(v));
         ctx.stroke();
       }
 
-      // Quadrant lines at 50 (dashed, stronger)
+      // Midpoint lines (dashed, stronger)
       ctx.setLineDash([4 / currentTransform.k, 4 / currentTransform.k]);
       ctx.strokeStyle = '#94a3b8';
       ctx.lineWidth = 0.8 / currentTransform.k;
       ctx.beginPath();
-      ctx.moveTo(xScale(50), 0);
-      ctx.lineTo(xScale(50), innerH);
+      ctx.moveTo(xMid, 0);
+      ctx.lineTo(xMid, innerH);
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(0, yScale(50));
-      ctx.lineTo(innerW, yScale(50));
+      ctx.moveTo(0, yMid);
+      ctx.lineTo(innerW, yMid);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Bubbles
+      // Density-based opacity
+      const visibleCount = pts.length;
+      const baseOpacity = visibleCount > 2000 ? 0.5 : visibleCount > 1000 ? 0.65 : 0.8;
+
+      // Draw bubbles
       for (const pt of pts) {
         const r = pt.r / currentTransform.k;
         const dimmed = selectedTier && pt.fund._tierLabel !== selectedTier;
+        const cx = xScale(pt.x);
+        const cy = yScale(pt.y);
 
         ctx.beginPath();
-        ctx.arc(xScale(pt.x), yScale(pt.y), r, 0, 2 * Math.PI);
+        ctx.arc(cx, cy, r, 0, 2 * Math.PI);
 
         if (dimmed) {
-          ctx.fillStyle = 'rgba(148, 163, 184, 0.15)';
+          ctx.fillStyle = 'rgba(148, 163, 184, 0.12)';
           ctx.fill();
-          ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
-          ctx.lineWidth = 0.4 / currentTransform.k;
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+          ctx.lineWidth = 0.3 / currentTransform.k;
           ctx.stroke();
         } else {
-          ctx.fillStyle = pt.color;
+          // Parse color and apply opacity
+          const baseColor = pt.color;
+          ctx.globalAlpha = baseOpacity;
+          ctx.fillStyle = baseColor;
           ctx.fill();
-          ctx.strokeStyle = pt.color.replace(/[\d.]+\)$/, '1)');
-          ctx.lineWidth = 0.8 / currentTransform.k;
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = baseColor;
+          ctx.lineWidth = 0.6 / currentTransform.k;
           ctx.stroke();
         }
       }
-      ctx.restore();
 
-      // Quadrant labels OUTSIDE chart area (in margins)
+      ctx.restore(); // zoom transform
+      ctx.restore(); // clip
+
+      // Quadrant labels OUTSIDE the chart (in margins), not affected by zoom
       ctx.font = 'bold 13px Inter, sans-serif';
-      // Sweet Spot -- top right margin
+
+      // Sweet Spot -- top right
       ctx.fillStyle = '#059669';
       ctx.textAlign = 'right';
-      ctx.fillText('Sweet Spot', innerW, -12);
-      // High Risk / High Return -- top left margin
-      ctx.fillStyle = '#0369a1';
+      ctx.fillText('SWEET SPOT', innerW, -10);
+
+      // High Risk / High Return -- top left
+      ctx.fillStyle = '#d97706';
       ctx.textAlign = 'left';
-      ctx.fillText('High Risk / High Return', 0, -12);
-      // Low Return / Low Risk -- bottom right margin
-      ctx.fillStyle = '#0369a1';
+      ctx.font = '12px Inter, sans-serif';
+      ctx.fillText('HIGH RISK / HIGH RETURN', 0, -10);
+
+      // Steady / Low Return -- bottom right
+      ctx.font = '12px Inter, sans-serif';
+      ctx.fillStyle = '#2563eb';
       ctx.textAlign = 'right';
-      ctx.fillText('Low Return / Low Risk', innerW, innerH + 50);
-      // Avoid Zone -- bottom left margin
+      ctx.fillText('STEADY / LOW RETURN', innerW, innerH + 50);
+
+      // Avoid Zone -- bottom left
+      ctx.font = 'bold 13px Inter, sans-serif';
       ctx.fillStyle = '#dc2626';
       ctx.textAlign = 'left';
-      ctx.fillText('Avoid Zone', 0, innerH + 50);
+      ctx.fillText('AVOID ZONE', 0, innerH + 50);
 
-      // Axis labels
+      // X-axis label
       ctx.fillStyle = '#475569';
-      ctx.font = '12px Inter, sans-serif';
+      ctx.font = '11px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`${LENS_LABELS[xAxis]} Score`, innerW / 2, innerH + 38);
+      const xLabel = isReturnAxis
+        ? `${period || '1Y'} Return (%)`
+        : `${LENS_LABELS[xAxis] || xAxis} Score (0-100)`;
+      ctx.fillText(xLabel, innerW / 2, innerH + 38);
+
+      // Y-axis label
+      const yLabel =
+        yAxis === 'risk_score'
+          ? 'Risk Score (0=High Risk, 100=Low Risk)'
+          : `${LENS_LABELS[yAxis] || yAxis} Score (0-100)`;
       ctx.save();
       ctx.translate(-48, innerH / 2);
       ctx.rotate(-Math.PI / 2);
-      ctx.fillText(`${LENS_LABELS[yAxis]} Score`, 0, 0);
+      ctx.fillText(yLabel, 0, 0);
       ctx.restore();
 
-      // Tick labels: 0, 25, 50, 75, 100
+      // Tick labels
       ctx.fillStyle = '#94a3b8';
       ctx.font = '10px JetBrains Mono, monospace';
       ctx.textAlign = 'center';
-      for (const v of [0, 25, 50, 75, 100]) {
-        ctx.fillText(String(v), xScale(v), innerH + 18);
+
+      if (!isReturnAxis) {
+        for (const v of [0, 25, 50, 75, 100]) {
+          ctx.fillText(String(v), xScale(v), innerH + 18);
+        }
+      } else {
+        const [dMin, dMax] = xDomain;
+        const step = (dMax - dMin) > 40 ? 10 : 5;
+        for (let v = Math.ceil(dMin / step) * step; v <= dMax; v += step) {
+          ctx.fillText(`${v}%`, xScale(v), innerH + 18);
+        }
       }
+
       ctx.textAlign = 'right';
       for (const v of [0, 25, 50, 75, 100]) {
         ctx.fillText(String(v), -8, yScale(v) + 4);
       }
 
-      // "Low" / "High" labels at axis ends
+      // Low/High axis end labels
       ctx.font = '9px Inter, sans-serif';
       ctx.fillStyle = '#94a3b8';
-      // X axis
-      ctx.textAlign = 'left';
-      ctx.fillText('Low', xScale(0) - 2, innerH + 28);
-      ctx.textAlign = 'right';
-      ctx.fillText('High', xScale(100) + 2, innerH + 28);
-      // Y axis
+      if (!isReturnAxis) {
+        ctx.textAlign = 'left';
+        ctx.fillText('Low', xScale(xDomain[0]) - 2, innerH + 28);
+        ctx.textAlign = 'right';
+        ctx.fillText('High', xScale(xDomain[1]) + 2, innerH + 28);
+      }
       ctx.textAlign = 'right';
       ctx.fillText('Low', -14, yScale(0) - 4);
       ctx.fillText('High', -14, yScale(100) + 12);
 
       ctx.restore();
     },
-    [width, height, margin, innerW, innerH, xScale, yScale, xAxis, yAxis, selectedTier]
+    [width, height, margin, innerW, innerH, xScale, yScale, xAxis, yAxis, selectedTier, isReturnAxis, xDomain, period]
   );
 
   // Animation on data/axis change
@@ -285,7 +378,9 @@ export default function BubbleScatter({
     };
 
     animRef.current = requestAnimationFrame(animate);
-    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
+    return () => {
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+    };
   }, [positions, draw, transform]);
 
   // Canvas DPR setup
@@ -303,14 +398,18 @@ export default function BubbleScatter({
   useEffect(() => {
     const overlay = overlayRef.current;
     if (!overlay) return;
-    const zoomBehavior = zoom().scaleExtent([0.5, 10]).on('zoom', (event) => {
-      setTransform(event.transform);
-    });
+    const zoomBehavior = zoom()
+      .scaleExtent([0.5, 10])
+      .on('zoom', (event) => {
+        setTransform(event.transform);
+      });
     select(overlay).call(zoomBehavior);
-    return () => { select(overlay).on('.zoom', null); };
+    return () => {
+      select(overlay).on('.zoom', null);
+    };
   }, []);
 
-  // Redraw on zoom or selectedTier change
+  // Redraw on zoom/tier change
   useEffect(() => {
     draw(transform, positions);
   }, [transform, draw, positions, selectedTier]);
@@ -333,14 +432,17 @@ export default function BubbleScatter({
       const coords = getMouseCoords(e);
       if (!coords) return;
       const closest = findClosestPoint(
-        quadtreeRef.current, coords.mx, coords.my, xScale, yScale, transform.k
+        quadtreeRef.current,
+        coords.mx,
+        coords.my,
+        xScale,
+        yScale,
+        transform.k
       );
       if (closest) {
-        setHoveredFund(closest.fund);
         if (onHover) onHover(closest.fund, e.clientX, e.clientY);
         if (canvasRef.current) canvasRef.current.style.cursor = 'pointer';
       } else {
-        setHoveredFund(null);
         if (onHover) onHover(null, 0, 0);
         if (canvasRef.current) canvasRef.current.style.cursor = 'default';
       }
@@ -354,24 +456,54 @@ export default function BubbleScatter({
       const coords = getMouseCoords(e);
       if (!coords) return;
       const closest = findClosestPoint(
-        quadtreeRef.current, coords.mx, coords.my, xScale, yScale, transform.k
+        quadtreeRef.current,
+        coords.mx,
+        coords.my,
+        xScale,
+        yScale,
+        transform.k
       );
-      if (closest && onFundClick) onFundClick(closest.fund);
+
+      if (!closest) return;
+
+      // Single click with delay to distinguish from double-click
+      if (clickTimerRef.current) {
+        clearTimeout(clickTimerRef.current);
+        clickTimerRef.current = null;
+        // Double click
+        if (onFundDoubleClick) onFundDoubleClick(closest.fund);
+        return;
+      }
+
+      clickTimerRef.current = setTimeout(() => {
+        clickTimerRef.current = null;
+        if (onFundClick) onFundClick(closest.fund, e.clientX, e.clientY);
+      }, 250);
     },
-    [getMouseCoords, xScale, yScale, transform.k, onFundClick]
+    [getMouseCoords, xScale, yScale, transform.k, onFundClick, onFundDoubleClick]
   );
 
   return (
-    <div ref={containerRef} className="relative w-full" style={{ height }}>
-      <button
-        type="button"
-        onClick={() => setTransform(zoomIdentity)}
-        className="absolute top-2 right-2 z-10 px-2 py-1 text-xs bg-white border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50"
-      >
-        Reset Zoom
-      </button>
+    <div ref={containerRef} className="relative w-full h-full">
+      {/* Zoom controls */}
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setTransform(zoomIdentity)}
+          className="px-2.5 py-1 text-[10px] font-medium bg-white border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-sm"
+        >
+          Reset
+        </button>
+      </div>
 
-      <canvas ref={canvasRef} style={{ width, height }} className="bg-white rounded-lg" />
+      {/* Fund count badge */}
+      <div className="absolute top-2 left-2 z-10">
+        <span className="px-2 py-0.5 text-[10px] font-mono font-medium bg-white/90 border border-slate-200 rounded-md text-slate-500 shadow-sm tabular-nums">
+          {data.length.toLocaleString('en-IN')} funds
+        </span>
+      </div>
+
+      <canvas ref={canvasRef} style={{ width, height }} className="rounded-lg" />
 
       <svg
         ref={overlayRef}
@@ -380,7 +512,9 @@ export default function BubbleScatter({
         className="absolute top-0 left-0"
         style={{ cursor: 'grab' }}
         onMouseMove={handleMouseMove}
-        onMouseLeave={() => { setHoveredFund(null); if (onHover) onHover(null, 0, 0); }}
+        onMouseLeave={() => {
+          if (onHover) onHover(null, 0, 0);
+        }}
         onClick={handleClick}
       >
         <rect width={width} height={height} fill="transparent" />

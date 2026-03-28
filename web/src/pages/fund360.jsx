@@ -8,266 +8,49 @@ import {
   fetchSectorExposure,
   fetchPeers,
   fetchFundRisk,
-  fetchFunds,
-  fetchCategories,
-  fetchAMCs,
 } from '../lib/api';
-import { formatPct, formatAUM, formatINR } from '../lib/format';
-import { LENS_OPTIONS, LENS_CLASS_KEYS, lensColor, lensLabel } from '../lib/lens';
-import Pill from '../components/shared/Pill';
+import { LENS_OPTIONS, LENS_CLASS_KEYS } from '../lib/lens';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
 import EmptyState from '../components/shared/EmptyState';
-import Badge from '../components/shared/Badge';
-import LensCircle from '../components/shared/LensCircle';
-import TierBadge from '../components/shared/TierBadge';
+import FundSearch from '../components/fund360/FundSearch';
+import HeroSection from '../components/fund360/HeroSection';
+import NarrativeCard from '../components/fund360/NarrativeCard';
 import CompareMode from '../components/fund360/CompareMode';
 import PerformanceChart from '../components/fund360/PerformanceChart';
-import Verdict from '../components/fund360/Verdict';
-import LensCard from '../components/fund360/LensCard';
 import ReturnsBars from '../components/fund360/ReturnsBars';
-import SmartAlternatives from '../components/fund360/SmartAlternatives';
-import SectorAllocation from '../components/fund360/SectorAllocation';
+import LensCard from '../components/fund360/LensCard';
 import HoldingsTable from '../components/fund360/HoldingsTable';
+import SectorAllocation from '../components/fund360/SectorAllocation';
+import AssetAllocation from '../components/fund360/AssetAllocation';
 import RiskProfile from '../components/fund360/RiskProfile';
 import PeerPositioning from '../components/fund360/PeerPositioning';
 
-const BROAD_CATEGORIES = ['All', 'Equity', 'Fixed Income', 'Allocation', 'Alternative Strategies'];
+/* ===================================================================
+   SECTION WRAPPER
+   =================================================================== */
 
-function FundSearch({ onSelect }) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  const [categories, setCategories] = useState([]);
-  const [amcs, setAmcs] = useState([]);
-  const [selectedBroad, setSelectedBroad] = useState('All');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedAmc, setSelectedAmc] = useState('');
-
-  const [topFunds, setTopFunds] = useState([]);
-  const [topLoading, setTopLoading] = useState(true);
-
-  useEffect(() => {
-    Promise.allSettled([fetchCategories(), fetchAMCs()]).then(([catRes, amcRes]) => {
-      if (catRes.status === 'fulfilled') setCategories(catRes.value.data || []);
-      if (amcRes.status === 'fulfilled') setAmcs(amcRes.value.data || []);
-    });
-    fetchFunds({ limit: 20, sort: 'return_1y', order: 'desc' })
-      .then((res) => setTopFunds(res.data || []))
-      .catch(() => {})
-      .finally(() => setTopLoading(false));
-  }, []);
-
-  const filteredCategories =
-    selectedBroad === 'All'
-      ? categories
-      : categories.filter((c) => c.broad_category === selectedBroad);
-
-  useEffect(() => {
-    const params = { limit: 20 };
-    if (query.length >= 2) params.search = query;
-    if (selectedCategory) params.category = selectedCategory;
-    if (selectedAmc) params.amc = selectedAmc;
-    if (selectedBroad !== 'All') params.broad_category = selectedBroad;
-
-    const hasFilter =
-      query.length >= 2 || selectedCategory || selectedAmc || selectedBroad !== 'All';
-    if (!hasFilter) {
-      setResults([]);
-      return;
-    }
-
-    setLoading(true);
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetchFunds(params);
-        setResults(res.data || []);
-      } catch {
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [query, selectedCategory, selectedAmc, selectedBroad]);
-
-  const displayFunds =
-    results.length > 0
-      ? results
-      : !query && !selectedCategory && !selectedAmc && selectedBroad === 'All'
-      ? topFunds
-      : results;
-  const showingTop = displayFunds === topFunds && topFunds.length > 0;
-
+function Section({ title, icon, count, children }) {
   return (
-    <div className="space-y-6 -m-6">
-      <div className="bg-white border-b border-slate-200 px-6 py-5">
-        <h2 className="text-xl font-semibold text-slate-800">Fund 360\u00B0</h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Search, filter, and explore any mutual fund in depth
-        </p>
-      </div>
-
-      <div className="px-6 space-y-4">
-        <div className="relative">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by fund name, AMC, or ISIN..."
-            className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white shadow-sm"
-          />
-          {loading && (
-            <div className="absolute right-3 top-3.5 text-xs text-slate-400">Searching...</div>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <div className="flex gap-1.5">
-            {BROAD_CATEGORIES.map((bc) => (
-              <button
-                key={bc}
-                type="button"
-                onClick={() => {
-                  setSelectedBroad(bc);
-                  setSelectedCategory('');
-                }}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  selectedBroad === bc
-                    ? 'bg-teal-600 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {bc}
-              </button>
-            ))}
-          </div>
-
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-[180px]"
-          >
-            <option value="">All Categories ({filteredCategories.length})</option>
-            {filteredCategories.map((c) => (
-              <option key={c.category_name} value={c.category_name}>
-                {c.category_name} ({c.fund_count})
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={selectedAmc}
-            onChange={(e) => setSelectedAmc(e.target.value)}
-            className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-[180px]"
-          >
-            <option value="">All AMCs ({amcs.length})</option>
-            {amcs.map((a) => (
-              <option key={a.amc_name} value={a.amc_name}>
-                {a.amc_name} ({a.fund_count})
-              </option>
-            ))}
-          </select>
-
-          {(selectedCategory || selectedAmc || selectedBroad !== 'All' || query) && (
-            <button
-              type="button"
-              onClick={() => {
-                setQuery('');
-                setSelectedBroad('All');
-                setSelectedCategory('');
-                setSelectedAmc('');
-              }}
-              className="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg"
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-slate-500">
-            {showingTop ? 'Top performers by 1Y return' : `${displayFunds.length} funds found`}
-          </p>
-        </div>
-
-        {topLoading && displayFunds.length === 0 ? (
-          <div className="space-y-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <SkeletonLoader key={i} className="h-16 rounded-xl" />
-            ))}
-          </div>
-        ) : displayFunds.length === 0 ? (
-          <EmptyState message="No funds match your filters. Try adjusting your search criteria." />
-        ) : (
-          <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
-            {displayFunds.map((f) => (
-              <button
-                key={f.mstar_id}
-                type="button"
-                onClick={() => onSelect(f.mstar_id)}
-                className="w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors flex items-center justify-between gap-4"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium text-slate-800 truncate">
-                    {f.fund_name || f.legal_name}
-                  </div>
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    {f.amc_name} \u00B7 {f.category_name}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  {f.return_1y != null && (
-                    <div className="text-right">
-                      <div
-                        className={`text-sm font-mono tabular-nums font-medium ${
-                          Number(f.return_1y) >= 0 ? 'text-emerald-600' : 'text-red-600'
-                        }`}
-                      >
-                        {formatPct(f.return_1y)}
-                      </div>
-                      <div className="text-[10px] text-slate-400">1Y</div>
-                    </div>
-                  )}
-                  {f.return_class && (
-                    <Badge variant="tier">{f.return_class}</Badge>
-                  )}
-                  <span className="text-slate-400 text-sm">&#8250;</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function inceptionAge(inceptionDate) {
-  if (!inceptionDate) return null;
-  const start = new Date(inceptionDate);
-  const now = new Date();
-  const years = Math.floor((now - start) / (1000 * 60 * 60 * 24 * 365));
-  if (years < 1) return '< 1 yr';
-  return `${years} yr${years !== 1 ? 's' : ''} old`;
-}
-
-/**
- * Section wrapper — always expanded, with title and optional icon.
- */
-function Section({ title, icon, children }) {
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100">
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-          {icon && <span className="text-base">{icon}</span>}
+          {icon}
           {title}
         </h3>
+        {count != null && (
+          <span className="text-[10px] font-mono tabular-nums bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
+            {count}
+          </span>
+        )}
       </div>
       <div className="px-5 py-5">{children}</div>
     </div>
   );
 }
+
+/* ===================================================================
+   FUND DETAIL PAGE
+   =================================================================== */
 
 export default function Fund360Page() {
   const router = useRouter();
@@ -278,10 +61,8 @@ export default function Fund360Page() {
   const [navData, setNavData] = useState([]);
   const [holdings, setHoldings] = useState([]);
   const [sectors, setSectors] = useState([]);
-
   const [peers, setPeers] = useState(null);
   const [riskStats, setRiskStats] = useState(null);
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [compareOpen, setCompareOpen] = useState(false);
@@ -292,6 +73,7 @@ export default function Fund360Page() {
     }
   }, [router.isReady, router.query.fund]);
 
+  // Primary data load
   useEffect(() => {
     if (!mstarId) return;
     let cancelled = false;
@@ -330,11 +112,10 @@ export default function Fund360Page() {
       }
     }
     loadPrimary();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [mstarId]);
 
+  // Secondary data load (peers + risk)
   useEffect(() => {
     if (!mstarId) return;
     let cancelled = false;
@@ -354,9 +135,7 @@ export default function Fund360Page() {
       }
     }
     loadSecondary();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [mstarId]);
 
   const handleFundSearch = useCallback(
@@ -366,176 +145,119 @@ export default function Fund360Page() {
     [router]
   );
 
-  const sectorQuadrants = sectors.reduce((acc, s) => {
-    if (s.sector_name && s.quadrant) {
-      acc[s.sector_name] = s.quadrant;
-    }
-    return acc;
-  }, {});
-
+  // No fund selected -- show search/explorer page
   if (!mstarId) {
     return <FundSearch onSelect={handleFundSearch} />;
   }
 
+  // Loading state with detailed skeleton
   if (loading) {
     return (
-      <div className="space-y-4">
-        <SkeletonLoader variant="row" className="w-96 h-8" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <SkeletonLoader variant="chart" className="h-80" />
-          <SkeletonLoader variant="chart" className="h-80" />
+      <div className="space-y-6 -m-6">
+        <div className="bg-white border-b border-slate-200 px-6 py-6">
+          <SkeletonLoader variant="row" className="w-96 h-8 mb-3" />
+          <SkeletonLoader variant="row" className="w-60 h-4 mb-4" />
+          <div className="flex gap-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <SkeletonLoader key={i} variant="row" className="w-20 h-6 rounded-full" />
+            ))}
+          </div>
         </div>
-        <SkeletonLoader variant="card" className="h-40" />
+        <div className="px-6 space-y-6">
+          <SkeletonLoader className="h-24 rounded-xl" />
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <div className="lg:col-span-3 space-y-6">
+              <SkeletonLoader variant="chart" className="h-96 rounded-xl" />
+              <SkeletonLoader className="h-48 rounded-xl" />
+            </div>
+            <div className="lg:col-span-2">
+              <SkeletonLoader className="h-96 rounded-xl" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // Error state
   if (error) {
     return (
       <EmptyState
-        icon={'\u26A0\uFE0F'}
         message={`Failed to load fund: ${error}`}
-        action="Back to Universe"
-        onAction={() => router.push('/')}
+        action="Back to Explorer"
+        onAction={() => router.push('/fund360')}
       />
     );
   }
 
   if (!fundDetail) return null;
 
-  const fundName = fundDetail.fund_name || fundDetail.legal_name;
-  const age = inceptionAge(fundDetail.inception_date);
-  const fundWithScores = lensScores ? { ...fundDetail, ...lensScores } : fundDetail;
+  const fundReturns = fundDetail.returns || fundDetail;
 
   return (
-    <div className="space-y-6 -m-6">
-      {/* ===== HERO HEADER ===== */}
-      <div className="bg-white border-b border-slate-200 px-6 py-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            {/* Breadcrumb */}
-            <button
-              type="button"
-              onClick={() => router.push('/')}
-              className="text-xs text-teal-600 hover:underline mb-2 inline-flex items-center gap-1"
+    <div className="space-y-0 -m-6">
+      {/* ===== HERO SECTION ===== */}
+      <HeroSection
+        fundDetail={fundDetail}
+        lensScores={lensScores}
+        mstarId={mstarId}
+        onCompare={() => setCompareOpen(true)}
+      />
+
+      <div className="px-6 py-6 space-y-6">
+        {/* ===== AI INTELLIGENCE BRIEF ===== */}
+        <NarrativeCard
+          mstarId={mstarId}
+          headlineTag={lensScores?.headline_tag}
+        />
+
+        {/* ===== TWO-COLUMN: Chart + Lens Profile ===== */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Left column (60%) */}
+          <div className="lg:col-span-3 space-y-6">
+            <Section
+              title="NAV Performance"
+              icon={
+                <svg className="w-4 h-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                </svg>
+              }
             >
-              <span>\u2190</span> Back to Universe
-            </button>
-
-            {/* Fund name */}
-            <h1 className="text-xl font-bold text-slate-900 leading-tight">{fundName}</h1>
-            <p className="text-sm text-slate-500 mt-0.5">{fundDetail.amc_name}</p>
-
-            {/* Headline tag */}
-            {lensScores?.headline_tag && (
-              <p className="text-sm italic text-slate-600 mt-2 leading-relaxed">
-                {'\u201C'}{lensScores.headline_tag}{'\u201D'}
-              </p>
-            )}
-
-            {/* Stat row: AUM, TER, Age, Benchmark */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3">
-              <Badge variant="category">{fundDetail.category_name}</Badge>
-              {fundDetail.aum != null && (
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-slate-400 uppercase">AUM</span>
-                  <span className="text-xs font-mono tabular-nums font-semibold text-slate-700">
-                    {formatAUM(fundDetail.aum)}
-                  </span>
-                </div>
-              )}
-              {fundDetail.expense_ratio != null && (
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-slate-400 uppercase">TER</span>
-                  <span className="text-xs font-mono tabular-nums font-semibold text-slate-700">
-                    {Number(fundDetail.expense_ratio).toFixed(2)}%
-                  </span>
-                </div>
-              )}
-              {age && (
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-slate-400 uppercase">Age</span>
-                  <span className="text-xs font-medium text-slate-600">{age}</span>
-                </div>
-              )}
-              {fundDetail.primary_benchmark && (
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-slate-400 uppercase">BM</span>
-                  <span className="text-xs text-slate-500 truncate max-w-[200px]">
-                    {fundDetail.primary_benchmark}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Color-coded tier tags */}
-            {lensScores && (
-              <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                {LENS_OPTIONS.map((lens) => {
-                  const classKey = LENS_CLASS_KEYS[lens.key];
-                  const tier = lensScores[classKey];
-                  const score = lensScores[lens.key];
-                  return tier ? (
-                    <Badge key={lens.key} variant="tier">
-                      {tier}
-                    </Badge>
-                  ) : null;
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex flex-col gap-2 flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => router.push(`/strategies?fund=${mstarId}`)}
-              className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors whitespace-nowrap shadow-sm"
-            >
-              Simulate \u2192
-            </button>
-            <button
-              type="button"
-              onClick={() => setCompareOpen(true)}
-              className="px-4 py-2 text-xs font-semibold text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-50 transition-colors whitespace-nowrap"
-            >
-              Compare
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push('/')}
-              className="px-4 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap"
-            >
-              Back to Universe
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-6 space-y-6">
-        {/* ===== VERDICT ===== */}
-        <Verdict fund={fundWithScores} />
-
-        {/* ===== TWO-COLUMN: NAV Chart + Returns || Six-Lens Profile ===== */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left column: NAV Chart + Returns */}
-          <div className="space-y-6">
-            <Section title="NAV Performance" icon={'\uD83D\uDCC8'}>
-              <PerformanceChart mstarId={mstarId} initialData={navData} />
+              <PerformanceChart
+                mstarId={mstarId}
+                initialData={navData}
+                fundReturns={fundReturns}
+              />
             </Section>
-            <Section title="Returns vs Peers" icon={'\uD83D\uDCCA'}>
+
+            <Section
+              title="Returns vs Category"
+              icon={
+                <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              }
+            >
               <ReturnsBars
-                fundReturns={fundDetail.returns || fundDetail}
+                fundReturns={fundReturns}
                 categoryReturns={fundDetail.category_returns || null}
               />
             </Section>
           </div>
 
-          {/* Right column: Six-Lens Profile */}
+          {/* Right column (40%) -- Six-Lens Profile */}
           {lensScores && (
-            <div>
-              <Section title="Six-Lens Profile" icon={'\uD83D\uDD2C'}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="lg:col-span-2">
+              <Section
+                title="Six-Lens Profile"
+                icon={
+                  <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                }
+              >
+                <div className="grid grid-cols-1 gap-3">
                   {LENS_OPTIONS.map((lens) => {
                     const classKey = LENS_CLASS_KEYS[lens.key];
                     return (
@@ -546,6 +268,8 @@ export default function Fund360Page() {
                         score={lensScores[lens.key]}
                         tier={lensScores[classKey]}
                         categoryName={fundDetail.category_name}
+                        riskStats={riskStats || fundDetail.risk_stats}
+                        fundDetail={fundReturns}
                       />
                     );
                   })}
@@ -555,35 +279,72 @@ export default function Fund360Page() {
           )}
         </div>
 
-        {/* ===== SMART ALTERNATIVES ===== */}
-        {peers && peers.length > 0 && (
-          <SmartAlternatives
-            peers={peers}
-            currentMstarId={mstarId}
-            onCompare={() => setCompareOpen(true)}
-          />
-        )}
+        {/* ===== FULL-WIDTH SECTIONS ===== */}
 
-        {/* ===== FULL-WIDTH SECTIONS (always expanded) ===== */}
+        {/* Holdings */}
+        <Section
+          title="Top Holdings"
+          count={holdings.length > 0 ? holdings.length : undefined}
+          icon={
+            <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+          }
+        >
+          <HoldingsTable holdings={holdings} />
+        </Section>
+
+        {/* Sector + Asset Allocation side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Section title="Sector Allocation" icon={'\uD83C\uDFE2'}>
+          <Section
+            title="Sector Allocation"
+            icon={
+              <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+              </svg>
+            }
+          >
             <SectorAllocation sectors={sectors} />
           </Section>
 
-          <Section title="Top 10 Holdings" icon={'\uD83D\uDCBC'}>
-            <HoldingsTable holdings={holdings} sectorQuadrants={sectorQuadrants} />
+          <Section
+            title="Asset Allocation"
+            icon={
+              <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+              </svg>
+            }
+          >
+            <AssetAllocation mstarId={mstarId} />
           </Section>
         </div>
 
-        <Section title="Risk Profile" icon={'\u26A1'}>
-          <RiskProfile
-            riskStats={riskStats || fundDetail.risk_stats || null}
-            peerAvg={null}
-          />
+        {/* Risk Profile */}
+        <Section
+          title="Risk Profile"
+          icon={
+            <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          }
+        >
+          <RiskProfile riskStats={riskStats || fundDetail.risk_stats || null} />
         </Section>
 
-        <Section title="Peer Positioning" icon={'\uD83C\uDFC6'}>
-          <PeerPositioning scores={lensScores} />
+        {/* Peer Positioning */}
+        <Section
+          title="Peer Positioning"
+          icon={
+            <svg className="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          }
+        >
+          <PeerPositioning
+            scores={lensScores}
+            peers={peers}
+          />
         </Section>
       </div>
 

@@ -282,7 +282,9 @@ class FundRepository:
         exclude_mstar_id: Optional[str] = None,
         limit: int = 50,
     ) -> list[dict]:
-        """All funds in the same SEBI category with their latest NAV + returns."""
+        """All funds in the same SEBI category with latest NAV returns + lens scores."""
+        from app.models.db.lens_scores import FundLensScores
+
         query = (
             self.db.query(FundMaster)
             .filter(FundMaster.category_name == category_name)
@@ -291,8 +293,40 @@ class FundRepository:
         if exclude_mstar_id:
             query = query.filter(FundMaster.mstar_id != exclude_mstar_id)
         funds = query.order_by(FundMaster.fund_name).limit(limit).all()
-        return [
-            {
+
+        if not funds:
+            return []
+
+        # Batch fetch latest NAVs
+        mstar_ids = [f.mstar_id for f in funds]
+        nav_map = self.get_latest_navs_batch(mstar_ids)
+
+        # Batch fetch latest lens scores
+        latest_lens_sub = (
+            self.db.query(
+                FundLensScores.mstar_id,
+                func.max(FundLensScores.computed_date).label("max_date"),
+            )
+            .filter(FundLensScores.mstar_id.in_(mstar_ids))
+            .group_by(FundLensScores.mstar_id)
+            .subquery()
+        )
+        lens_rows = (
+            self.db.query(FundLensScores)
+            .join(
+                latest_lens_sub,
+                (FundLensScores.mstar_id == latest_lens_sub.c.mstar_id)
+                & (FundLensScores.computed_date == latest_lens_sub.c.max_date),
+            )
+            .all()
+        )
+        lens_map: dict[str, FundLensScores] = {r.mstar_id: r for r in lens_rows}
+
+        result = []
+        for f in funds:
+            nav = nav_map.get(f.mstar_id, {})
+            lens = lens_map.get(f.mstar_id)
+            result.append({
                 "mstar_id": f.mstar_id,
                 "fund_name": f.fund_name,
                 "legal_name": f.legal_name,
@@ -301,9 +335,12 @@ class FundRepository:
                 "net_expense_ratio": f.net_expense_ratio,
                 "purchase_mode": _PURCHASE_MODE_MAP.get(f.purchase_mode, "Unknown"),
                 "dividend_type": "IDCW" if _IDCW_PATTERN.search(f.fund_name or "") else "Growth",
-            }
-            for f in funds
-        ]
+                "return_1y": nav.get("return_1y"),
+                "return_score": lens.return_score if lens else None,
+                "risk_score": lens.risk_score if lens else None,
+                "alpha_score": lens.alpha_score if lens else None,
+            })
+        return result
 
     # --- Private helpers ---
 

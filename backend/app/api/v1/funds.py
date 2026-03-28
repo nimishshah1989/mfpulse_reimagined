@@ -152,6 +152,49 @@ def list_amcs(db: Session = Depends(get_db)) -> dict:
     }
 
 
+@router.get("/{mstar_id}/asset-allocation")
+def get_asset_allocation(
+    mstar_id: str,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Latest asset allocation (equity/bond/cash/other + market cap split)."""
+    from app.repositories.holdings_repo import HoldingsRepository
+
+    holdings_repo = HoldingsRepository(db)
+    data = holdings_repo.get_asset_allocation(mstar_id)
+    if data is None:
+        return {
+            "success": True,
+            "data": None,
+            "meta": {"timestamp": Meta().timestamp},
+            "error": None,
+        }
+    return {
+        "success": True,
+        "data": data,
+        "meta": {"timestamp": Meta().timestamp},
+        "error": None,
+    }
+
+
+@router.get("/{mstar_id}/narrative")
+def get_fund_narrative(
+    mstar_id: str,
+    db: Session = Depends(get_db),
+) -> dict:
+    """AI-generated intelligence brief for a fund."""
+    from app.services.narrative_service import NarrativeService
+
+    narrative_svc = NarrativeService(db)
+    narrative = narrative_svc.get_narrative(mstar_id)
+    return {
+        "success": True,
+        "data": {"narrative": narrative},
+        "meta": {"timestamp": Meta().timestamp},
+        "error": None,
+    }
+
+
 @router.get("/{mstar_id}")
 def get_fund_detail(mstar_id: str, db: Session = Depends(get_db)) -> dict:
     """Full deep-dive for one fund — includes lens scores and active FM overrides."""

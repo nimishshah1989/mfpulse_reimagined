@@ -81,6 +81,14 @@ class MarketPulseClient:
     def get_market_picks(self) -> Optional[dict]:
         return self._get("/api/compass/picks", ttl=DEFAULT_PICKS_TTL)
 
+    def get_indices(self) -> Optional[dict]:
+        """Get market indices data (NIFTY, etc.)."""
+        return self._get("/api/market/indices", ttl=DEFAULT_BREADTH_TTL)
+
+    def get_indices_latest(self) -> Optional[dict]:
+        """Get latest period returns for indices."""
+        return self._get("/api/indices/latest", ttl=DEFAULT_BREADTH_TTL)
+
     def health_check(self) -> bool:
         """Returns True if MarketPulse is reachable."""
         try:

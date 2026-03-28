@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     # Data feeds
     feed_csv_dir: str = "/app/data_feeds"
 
+    # Anthropic (Claude API for narrative generation)
+    anthropic_api_key: str = ""
+
     # Admin
     admin_api_key: str = ""
 

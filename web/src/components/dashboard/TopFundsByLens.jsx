@@ -1,16 +1,15 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Card from '../shared/Card';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import { formatScore } from '../../lib/format';
 import { lensColor, lensLabel, lensBgColor } from '../../lib/lens';
 
 const LENS_TABS = [
-  { key: 'return_score', label: 'Return', shortLabel: 'Ret' },
-  { key: 'risk_score', label: 'Risk', shortLabel: 'Rsk' },
-  { key: 'consistency_score', label: 'Consistency', shortLabel: 'Con' },
-  { key: 'alpha_score', label: 'Alpha', shortLabel: 'Alp' },
-  { key: 'efficiency_score', label: 'Efficiency', shortLabel: 'Eff' },
-  { key: 'resilience_score', label: 'Resilience', shortLabel: 'Res' },
+  { key: 'return_score', label: 'Return' },
+  { key: 'risk_score', label: 'Risk' },
+  { key: 'alpha_score', label: 'Alpha' },
+  { key: 'consistency_score', label: 'Consistency' },
+  { key: 'efficiency_score', label: 'Efficiency' },
 ];
 
 function TierBadge({ score }) {
@@ -28,8 +27,8 @@ function TierBadge({ score }) {
   );
 }
 
-function FundCard({ fund, rank, scoreKey, onFundClick }) {
-  const score = fund.score || fund[scoreKey] || 0;
+function FundRow({ fund, rank, scoreKey, onFundClick }) {
+  const score = fund[scoreKey] || 0;
   const color = lensColor(score);
 
   return (
@@ -37,15 +36,12 @@ function FundCard({ fund, rank, scoreKey, onFundClick }) {
       className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors group"
       onClick={() => onFundClick(fund.mstar_id)}
     >
-      {/* Rank */}
       <div
         className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
         style={{ backgroundColor: color }}
       >
         {rank}
       </div>
-
-      {/* Fund info */}
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium text-slate-800 truncate group-hover:text-teal-600 transition-colors">
           {fund.fund_name}
@@ -54,8 +50,6 @@ function FundCard({ fund, rank, scoreKey, onFundClick }) {
           {fund.amc_name || fund.category_name || ''}
         </p>
       </div>
-
-      {/* Score + tier */}
       <div className="flex items-center gap-2 flex-shrink-0">
         <TierBadge score={score} />
         <span
@@ -69,20 +63,26 @@ function FundCard({ fund, rank, scoreKey, onFundClick }) {
   );
 }
 
-export default function TopFundsByLens({ fundsByLens, onFundClick, loading }) {
+export default function TopFundsByLens({ universe, onFundClick, loading }) {
   const [activeTab, setActiveTab] = useState('return_score');
 
-  if (loading || !fundsByLens) {
+  const topFunds = useMemo(() => {
+    if (!universe || universe.length === 0) return [];
+    return [...universe]
+      .filter((f) => f[activeTab] != null)
+      .sort((a, b) => (b[activeTab] || 0) - (a[activeTab] || 0))
+      .slice(0, 5);
+  }, [universe, activeTab]);
+
+  if (loading) {
     return <SkeletonLoader className="h-64 rounded-xl" />;
   }
-
-  const activeFunds = fundsByLens[activeTab] || [];
 
   return (
     <Card>
       {/* Tab selector */}
       <div className="flex gap-1 mb-4 overflow-x-auto pb-1 -mx-1 px-1">
-        {LENS_TABS.map(({ key, label, shortLabel }) => {
+        {LENS_TABS.map(({ key, label }) => {
           const isActive = activeTab === key;
           return (
             <button
@@ -95,18 +95,17 @@ export default function TopFundsByLens({ fundsByLens, onFundClick, loading }) {
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              <span className="hidden sm:inline">{label}</span>
-              <span className="sm:hidden">{shortLabel}</span>
+              {label}
             </button>
           );
         })}
       </div>
 
       {/* Fund list */}
-      {activeFunds.length > 0 ? (
+      {topFunds.length > 0 ? (
         <div className="space-y-0.5">
-          {activeFunds.slice(0, 5).map((fund, idx) => (
-            <FundCard
+          {topFunds.map((fund, idx) => (
+            <FundRow
               key={fund.mstar_id}
               fund={fund}
               rank={idx + 1}

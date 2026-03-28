@@ -1,16 +1,3 @@
-import { QUADRANT_COLORS } from '../../lib/sectors';
-
-function QuadrantBadge({ quadrant }) {
-  if (!quadrant) return null;
-  const colors = QUADRANT_COLORS[quadrant];
-  if (!colors) return null;
-  return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded-full ${colors.badge}`}>
-      {quadrant}
-    </span>
-  );
-}
-
 const PALETTE = [
   '#0d9488', '#059669', '#0284c7', '#7c3aed', '#db2777',
   '#ea580c', '#ca8a04', '#4f46e5', '#dc2626', '#64748b',
@@ -18,81 +5,88 @@ const PALETTE = [
 ];
 
 /**
- * SectorAllocation — stacked bar + detailed sector table with allocation bars.
+ * SectorAllocation -- stacked horizontal bar + detail table.
  *
  * Props:
- *   sectors array — { sector_name, allocation_pct, quadrant? }
+ *   sectors array -- { sector_name, net_pct|allocation_pct }
  */
 export default function SectorAllocation({ sectors }) {
   if (!sectors || sectors.length === 0) {
     return (
-      <div className="py-12 text-center text-sm text-slate-400">
-        No sector data available
+      <div className="py-16 text-center">
+        <svg className="w-10 h-10 mx-auto text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+        </svg>
+        <p className="text-sm text-slate-400">No sector data available</p>
       </div>
     );
   }
 
   const sorted = [...sectors].sort(
-    (a, b) => (Number(b.allocation_pct) || 0) - (Number(a.allocation_pct) || 0)
+    (a, b) => (Number(b.net_pct || b.allocation_pct) || 0) - (Number(a.net_pct || a.allocation_pct) || 0)
   );
 
-  const total = sorted.reduce((sum, s) => sum + (Number(s.allocation_pct) || 0), 0);
-  const maxAlloc = sorted.length > 0 ? Number(sorted[0].allocation_pct) || 0 : 0;
+  const total = sorted.reduce((sum, s) => sum + (Number(s.net_pct || s.allocation_pct) || 0), 0);
+  const maxAlloc = sorted.length > 0 ? Number(sorted[0].net_pct || sorted[0].allocation_pct) || 0 : 0;
 
   return (
     <div className="space-y-5">
       {/* Stacked horizontal bar */}
-      <div className="w-full h-8 rounded-lg overflow-hidden flex shadow-inner bg-slate-100">
+      <div className="w-full h-10 rounded-xl overflow-hidden flex bg-slate-100 shadow-inner">
         {sorted.map((s, i) => {
-          const width = total > 0 ? (Number(s.allocation_pct) / total) * 100 : 0;
-          if (width < 0.5) return null;
+          const alloc = Number(s.net_pct || s.allocation_pct) || 0;
+          const width = total > 0 ? (alloc / total) * 100 : 0;
+          if (width < 0.3) return null;
           return (
             <div
               key={s.sector_name}
-              className="h-full relative group transition-opacity hover:opacity-80"
+              className="h-full relative group transition-all duration-200 hover:brightness-110 cursor-default"
               style={{
                 width: `${width}%`,
                 backgroundColor: PALETTE[i % PALETTE.length],
               }}
-              title={`${s.sector_name}: ${Number(s.allocation_pct).toFixed(1)}%`}
+              title={`${s.sector_name}: ${alloc.toFixed(1)}%`}
             >
-              {/* Show label if segment is wide enough */}
-              {width > 8 && (
-                <span className="absolute inset-0 flex items-center justify-center text-[9px] font-semibold text-white truncate px-1">
-                  {width > 15 ? s.sector_name : `${Number(s.allocation_pct).toFixed(0)}%`}
+              {width > 10 && (
+                <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-white truncate px-1 drop-shadow-sm">
+                  {width > 18 ? s.sector_name : `${alloc.toFixed(0)}%`}
                 </span>
               )}
+              {/* Hover tooltip */}
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-slate-900 text-white text-[10px] rounded-lg shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                {s.sector_name}: {alloc.toFixed(1)}%
+              </div>
             </div>
           );
         })}
       </div>
 
       {/* Sector detail rows */}
-      <div className="space-y-1.5">
+      <div className="space-y-0.5">
         {sorted.map((s, i) => {
-          const alloc = Number(s.allocation_pct) || 0;
+          const alloc = Number(s.net_pct || s.allocation_pct) || 0;
           const barPct = maxAlloc > 0 ? (alloc / maxAlloc) * 100 : 0;
           return (
-            <div key={s.sector_name} className="flex items-center gap-3 py-1.5 group hover:bg-slate-50 rounded-lg px-2 -mx-2 transition-colors">
+            <div key={s.sector_name} className="flex items-center gap-3 py-2 group hover:bg-slate-50 rounded-lg px-2 -mx-2 transition-colors">
               <div
-                className="w-3 h-3 rounded flex-shrink-0"
+                className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
                 style={{ backgroundColor: PALETTE[i % PALETTE.length] }}
               />
-              <div className="flex-1 min-w-0 flex items-center gap-2">
-                <span className="text-xs font-medium text-slate-700 truncate">{s.sector_name}</span>
-                {s.quadrant && <QuadrantBadge quadrant={s.quadrant} />}
-              </div>
-              <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden flex-shrink-0 hidden sm:block">
+              <span className="text-xs font-medium text-slate-700 w-40 truncate flex-shrink-0">
+                {s.sector_name}
+              </span>
+              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
                 <div
-                  className="h-full rounded-full transition-all duration-300"
+                  className="h-full rounded-full transition-all duration-500 ease-out"
                   style={{
                     width: `${barPct}%`,
                     backgroundColor: PALETTE[i % PALETTE.length],
-                    opacity: 0.7,
+                    opacity: 0.65,
                   }}
                 />
               </div>
-              <span className="text-xs font-mono tabular-nums font-semibold text-slate-700 flex-shrink-0 w-12 text-right">
+              <span className="text-xs font-mono tabular-nums font-bold text-slate-700 w-14 text-right flex-shrink-0">
                 {alloc.toFixed(1)}%
               </span>
             </div>
@@ -101,9 +95,9 @@ export default function SectorAllocation({ sectors }) {
       </div>
 
       {/* Total */}
-      <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+      <div className="flex items-center justify-between pt-3 border-t border-slate-200">
         <span className="text-xs font-medium text-slate-500">Total allocated</span>
-        <span className="text-xs font-mono tabular-nums font-semibold text-slate-700">
+        <span className="text-sm font-mono tabular-nums font-bold text-slate-700">
           {total.toFixed(1)}%
         </span>
       </div>

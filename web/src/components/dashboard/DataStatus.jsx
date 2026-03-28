@@ -1,6 +1,5 @@
 import Card from '../shared/Card';
 import SkeletonLoader from '../shared/SkeletonLoader';
-import { formatCount } from '../../lib/format';
 
 function getStatusConfig(dateStr) {
   if (!dateStr) return { dot: 'bg-red-500', label: 'No data', ring: 'ring-red-200' };
@@ -24,21 +23,7 @@ function formatTimestamp(dateStr) {
   return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
-function StatusRow({ label, dateStr, isCount, countValue }) {
-  if (isCount) {
-    return (
-      <div className="flex items-center justify-between py-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-teal-500 ring-2 ring-teal-200" />
-          <span className="text-xs font-medium text-slate-600">{label}</span>
-        </div>
-        <span className="text-xs font-bold font-mono tabular-nums text-slate-800">
-          {countValue}
-        </span>
-      </div>
-    );
-  }
-
+function StatusRow({ label, dateStr }) {
   const config = getStatusConfig(dateStr);
   return (
     <div className="flex items-center justify-between py-2.5">
@@ -99,13 +84,8 @@ export default function DataStatus({
     <Card>
       <div className="divide-y divide-slate-100">
         <StatusRow label="NAV Data" dateStr={freshness.nav_last_date} />
-        <StatusRow label="Risk Stats" dateStr={freshness.risk_stats_last_date} />
         <StatusRow label="Lens Scores" dateStr={freshness.lens_computed_at} />
-        <StatusRow
-          label="Total Funds"
-          isCount
-          countValue={formatCount(freshness.fund_count)}
-        />
+        <StatusRow label="Holdings" dateStr={freshness.holdings_last_date || freshness.risk_stats_last_date} />
       </div>
 
       <div className="flex gap-2 mt-4">

@@ -67,6 +67,41 @@ def get_sectors(period: str = Query(default="3M")) -> APIResponse:
     return APIResponse(data=data)
 
 
+@router.get("/nifty")
+def get_nifty() -> APIResponse:
+    """Get NIFTY index data with period returns from MarketPulse."""
+    client = _get_client()
+    indices_data = client.get_indices()
+    returns_data = client.get_indices_latest()
+
+    if indices_data is None and returns_data is None:
+        return APIResponse(
+            success=False,
+            error=ErrorDetail(
+                code="MARKETPULSE_UNAVAILABLE",
+                message="MarketPulse index data unavailable",
+            ),
+        )
+
+    # Extract NIFTY object from indices response
+    nifty = None
+    if indices_data:
+        # Handle both list and dict responses
+        if isinstance(indices_data, list):
+            for idx in indices_data:
+                if isinstance(idx, dict) and "NIFTY" in (idx.get("name", "") or "").upper():
+                    nifty = idx
+                    break
+        elif isinstance(indices_data, dict):
+            nifty = indices_data.get("NIFTY") or indices_data.get("nifty") or indices_data
+
+    combined = {
+        "index": nifty,
+        "returns": returns_data,
+    }
+    return APIResponse(data=combined)
+
+
 @router.get("/regime")
 def get_market_regime() -> APIResponse:
     """Get current market regime + leading sectors from MarketPulse."""

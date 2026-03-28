@@ -4,6 +4,7 @@ from collections import defaultdict
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ValidationError
@@ -31,6 +32,30 @@ class HoldingsRepository:
             return None
         return self._snapshot_to_dict(snap)
 
+    def get_latest_snapshots_batch(self, mstar_ids: list[str]) -> dict[str, dict]:
+        """Latest holdings snapshot for multiple funds in a single query (avoids N+1)."""
+        if not mstar_ids:
+            return {}
+        latest_sub = (
+            self.db.query(
+                FundHoldingsSnapshot.mstar_id,
+                func.max(FundHoldingsSnapshot.portfolio_date).label("max_date"),
+            )
+            .filter(FundHoldingsSnapshot.mstar_id.in_(mstar_ids))
+            .group_by(FundHoldingsSnapshot.mstar_id)
+            .subquery()
+        )
+        rows = (
+            self.db.query(FundHoldingsSnapshot)
+            .join(
+                latest_sub,
+                (FundHoldingsSnapshot.mstar_id == latest_sub.c.mstar_id)
+                & (FundHoldingsSnapshot.portfolio_date == latest_sub.c.max_date),
+            )
+            .all()
+        )
+        return {r.mstar_id: self._snapshot_to_dict(r) for r in rows}
+
     def get_top_holdings(self, mstar_id: str, limit: int = 10) -> list[dict]:
         """Top N holdings by weight for latest portfolio date."""
         snap = (
@@ -44,7 +69,7 @@ class HoldingsRepository:
         holdings = (
             self.db.query(FundHoldingDetail)
             .filter(FundHoldingDetail.snapshot_id == snap.id)
-            .order_by(FundHoldingDetail.weighting_pct.desc())
+            .order_by(FundHoldingDetail.weighting_pct.desc().nulls_last())
             .limit(limit)
             .all()
         )
@@ -63,7 +88,7 @@ class HoldingsRepository:
         holdings = (
             self.db.query(FundHoldingDetail)
             .filter(FundHoldingDetail.snapshot_id == snap.id)
-            .order_by(FundHoldingDetail.weighting_pct.desc())
+            .order_by(FundHoldingDetail.weighting_pct.desc().nulls_last())
             .all()
         )
         return [self._holding_to_dict(h) for h in holdings]
