@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Card from '../shared/Card';
 import EmptyState from '../shared/EmptyState';
-import { MORNINGSTAR_SECTORS } from '../../lib/sectors';
 
 /** Diverging green-white-red color scale based on quadrant */
 function quadrantBgColor(quadrant) {
@@ -52,6 +51,12 @@ function getMonthLabel(monthsAgo, currentMonth) {
  */
 export default function RotationHeatmap({ sectorData, currentMonth, online, onSectorClick }) {
   const [hoveredCell, setHoveredCell] = useState(null);
+
+  // Use actual sector names from API data (not hardcoded Morningstar names)
+  const sectorNames = useMemo(() => {
+    if (!sectorData?.length) return [];
+    return sectorData.map((s) => s.sector_name || s.display_name || s.name).filter(Boolean);
+  }, [sectorData]);
 
   if (!online || !sectorData || sectorData.length === 0) {
     return (
@@ -121,7 +126,7 @@ export default function RotationHeatmap({ sectorData, currentMonth, online, onSe
             </tr>
           </thead>
           <tbody>
-            {MORNINGSTAR_SECTORS.map((sectorName) => {
+            {sectorNames.map((sectorName) => {
               const months = sectorDataMap[sectorName] || new Array(NUM_MONTHS).fill(null);
 
               return (

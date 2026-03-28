@@ -34,25 +34,21 @@ const REGIME_CONFIG = {
 
 function deriveBreadthPct(breadth) {
   if (!breadth) return null;
-  // Try direct percentage first
   if (breadth.pct_above_ema200 != null) return breadth.pct_above_ema200;
   if (breadth.pct_above_21ema != null) return breadth.pct_above_21ema;
-  // Try from indicators structure
   const indicators = breadth.indicators || breadth;
-  const ema200 = indicators.ema200 || indicators.ema_200;
-  if (ema200?.current) {
-    const { count, total } = ema200.current;
-    if (count != null && total != null && total > 0) {
-      return (count / total) * 100;
+  for (const key of ['ema200', 'ema_200', 'ema21', 'ema50']) {
+    const ind = indicators[key];
+    if (ind?.current?.pct != null) return ind.current.pct;
+    if (ind?.current) {
+      const { count, total } = ind.current;
+      if (count != null && total != null && total > 0) return (count / total) * 100;
     }
   }
-  // Fallback to rsi_daily_40
   const rsi = indicators.rsi_daily_40;
   if (rsi?.current) {
     const { count, total } = rsi.current;
-    if (count != null && total != null && total > 0) {
-      return (count / total) * 100;
-    }
+    if (count != null && total != null && total > 0) return (count / total) * 100;
   }
   return null;
 }
@@ -107,7 +103,9 @@ export default function MorningBriefing({ regime, breadth, sentiment, nifty, loa
 
   const marketRegime = regime?.market_regime || regime?.regime || 'NEUTRAL';
   const config = REGIME_CONFIG[marketRegime] || REGIME_CONFIG.NEUTRAL;
-  const leadingSectors = regime?.leading_sectors || [];
+  const rawLeading = regime?.leading_sectors || [];
+  // leading_sectors can be array of strings or objects with .sector field
+  const leadingSectors = rawLeading.map((s) => (typeof s === 'string' ? s : s.sector || s.name || ''));
 
   const breadthPct = useMemo(() => deriveBreadthPct(breadth), [breadth]);
   const sentimentScore = sentiment?.composite_score ?? sentiment?.score;

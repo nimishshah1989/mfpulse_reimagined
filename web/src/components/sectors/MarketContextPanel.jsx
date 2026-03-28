@@ -1,13 +1,21 @@
 const REGIME_STYLES = {
   'Risk-On': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  BULL: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   'Risk-Off': 'bg-red-100 text-red-700 border-red-200',
+  BEAR: 'bg-red-100 text-red-700 border-red-200',
   Neutral: 'bg-amber-100 text-amber-700 border-amber-200',
+  CORRECTION: 'bg-amber-100 text-amber-700 border-amber-200',
+  NEUTRAL: 'bg-blue-100 text-blue-700 border-blue-200',
 };
 
 const REGIME_ICONS = {
   'Risk-On': '\u2191',
+  BULL: '\u2191',
   'Risk-Off': '\u2193',
+  BEAR: '\u2193',
   Neutral: '\u2194',
+  CORRECTION: '\u2193',
+  NEUTRAL: '\u2194',
 };
 
 function sentimentLabel(score) {
@@ -96,14 +104,28 @@ export default function MarketContextPanel({
     : [];
   const topImproving = improvingSectors[0] ?? null;
 
-  const breadthPct = breadth?.pct_above_50ma ?? breadth?.pct_above_21ema ?? null;
-  const breadthTrend = breadth?.pct_above_50ma_prev
-    ? breadthPct >= breadth.pct_above_50ma_prev
-      ? 'Rising'
-      : 'Fading'
-    : null;
+  // Derive breadth percentages from nested indicators structure
+  function derivePct(breadthData, key) {
+    if (!breadthData) return null;
+    // Direct field
+    if (breadthData[`pct_above_${key}`] != null) return breadthData[`pct_above_${key}`];
+    // Nested indicators
+    const ind = breadthData?.indicators?.[key];
+    if (ind?.current) {
+      if (ind.current.pct != null) return ind.current.pct;
+      const { count, total } = ind.current;
+      if (count != null && total != null && total > 0) return (count / total) * 100;
+    }
+    return null;
+  }
 
-  const sentimentScore = sentiment?.composite_score ?? null;
+  const pctAbove200 = derivePct(breadth, 'ema200');
+  const pctAbove50 = derivePct(breadth, 'ema50');
+  const pctAbove21 = derivePct(breadth, 'ema21');
+  const breadthPct = pctAbove200 ?? pctAbove21 ?? null;
+  const breadthTrend = null; // No previous data available in current API
+
+  const sentimentScore = sentiment?.composite_score ?? sentiment?.score ?? null;
   const sentimentText = sentimentScore != null ? sentimentLabel(sentimentScore) : null;
 
   const advDecline = breadth?.advance_decline_ratio ?? null;
@@ -126,19 +148,21 @@ export default function MarketContextPanel({
             <div className="flex items-center gap-2">
               <span
                 className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold border ${
-                  REGIME_STYLES[regime.regime_label] || REGIME_STYLES.Neutral
+                  REGIME_STYLES[regime.market_regime] || REGIME_STYLES[regime.regime_label] || REGIME_STYLES.Neutral
                 }`}
               >
-                <span className="text-base">{REGIME_ICONS[regime.regime_label] || REGIME_ICONS.Neutral}</span>
-                {regime.regime_label}
+                <span className="text-base">{REGIME_ICONS[regime.market_regime] || REGIME_ICONS[regime.regime_label] || REGIME_ICONS.Neutral}</span>
+                {regime.market_regime || regime.regime_label || 'Unknown'}
               </span>
             </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold font-mono tabular-nums text-slate-800">
-                {regime.score}
-              </span>
-              <span className="text-xs text-slate-400">/100</span>
-            </div>
+            {regime.sectors_scanned && (
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold font-mono tabular-nums text-slate-800">
+                  {regime.sectors_scanned}
+                </span>
+                <span className="text-xs text-slate-400">sectors</span>
+              </div>
+            )}
             <p className="text-[11px] text-slate-500 leading-snug">
               {leadingCount} of {totalSectors} sectors leading
             </p>
@@ -160,7 +184,7 @@ export default function MarketContextPanel({
           <div className="space-y-1">
             <SentimentGauge score={sentimentScore} />
             <p className="text-center text-xs font-semibold" style={{ color: sentimentColor(sentimentScore) }}>
-              {sentiment.label || sentimentText}
+              {sentiment.zone || sentiment.label || sentimentText}
             </p>
             <p className="text-[11px] text-slate-500 text-center leading-snug">
               {sentimentText === 'Fearful' ? 'Good for SIP accumulation' : sentimentText === 'Greedy' ? 'Caution advised' : 'Neutral zone'}
@@ -191,22 +215,22 @@ export default function MarketContextPanel({
                 </div>
               </div>
             )}
-            {breadth.pct_above_50ma != null && (
+            {pctAbove21 != null && (
               <div>
                 <div className="flex justify-between text-xs text-slate-600 mb-0.5">
-                  <span>Above 50d</span>
-                  <span className="font-mono tabular-nums">{breadth.pct_above_50ma}%</span>
+                  <span>Above 21 EMA</span>
+                  <span className="font-mono tabular-nums">{Math.round(pctAbove21)}%</span>
                 </div>
-                <ProgressBar value={breadth.pct_above_50ma} />
+                <ProgressBar value={pctAbove21} />
               </div>
             )}
-            {breadth.pct_above_200ma != null && (
+            {pctAbove200 != null && (
               <div>
                 <div className="flex justify-between text-xs text-slate-600 mb-0.5">
-                  <span>Above 200d</span>
-                  <span className="font-mono tabular-nums">{breadth.pct_above_200ma}%</span>
+                  <span>Above 200 EMA</span>
+                  <span className="font-mono tabular-nums">{Math.round(pctAbove200)}%</span>
                 </div>
-                <ProgressBar value={breadth.pct_above_200ma} />
+                <ProgressBar value={pctAbove200} />
               </div>
             )}
             {breadthTrend && (

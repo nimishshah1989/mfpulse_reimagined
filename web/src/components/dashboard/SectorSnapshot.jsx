@@ -48,8 +48,13 @@ function RSBar({ score, maxScore = 100 }) {
   );
 }
 
+function toTitleCase(str) {
+  return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : str;
+}
+
 function SectorRow({ sector }) {
-  const quadrant = sector.quadrant || 'Improving';
+  const rawQuadrant = sector.quadrant || 'Improving';
+  const quadrant = toTitleCase(rawQuadrant);
   const qStyle = QUADRANT_STYLES[quadrant] || QUADRANT_STYLES.Improving;
   const action = sector.action || '';
   const aStyle = ACTION_STYLES[action.toUpperCase()] || ACTION_STYLES.HOLD;
@@ -99,7 +104,14 @@ export default function SectorSnapshot({ sectors, loading }) {
   }
 
   // Sort by RS score descending, take top 5
-  const topSectors = [...sectors]
+  // Normalize sector data (quadrant casing, display name)
+  const normalized = sectors.map((s) => ({
+    ...s,
+    sector_name: s.sector_name || s.display_name || s.name || 'Unknown',
+    quadrant: toTitleCase(s.quadrant),
+  }));
+
+  const topSectors = [...normalized]
     .sort((a, b) => (b.rs_score || 0) - (a.rs_score || 0))
     .slice(0, 5);
 

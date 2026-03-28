@@ -4,15 +4,25 @@ import { formatPct } from '../../lib/format';
 
 function deriveBreadthPct(breadth) {
   if (!breadth) return null;
+  // Direct percentage fields
   if (breadth.pct_above_ema200 != null) return breadth.pct_above_ema200;
   if (breadth.pct_above_21ema != null) return breadth.pct_above_21ema;
+  // Nested indicators structure from MarketPulse: { indicators: { ema200: { current: { count, total, pct } } } }
   const indicators = breadth.indicators || breadth;
+  // Try ema200 first (most meaningful), then ema21, then any indicator with current.pct
+  for (const key of ['ema200', 'ema_200', 'ema21', 'ema50']) {
+    const ind = indicators[key];
+    if (ind?.current?.pct != null) return ind.current.pct;
+    if (ind?.current) {
+      const { count, total } = ind.current;
+      if (count != null && total != null && total > 0) return (count / total) * 100;
+    }
+  }
+  // Fallback: try rsi_daily_40
   const rsi = indicators.rsi_daily_40;
   if (rsi?.current) {
     const { count, total } = rsi.current;
-    if (count != null && total != null && total > 0) {
-      return (count / total) * 100;
-    }
+    if (count != null && total != null && total > 0) return (count / total) * 100;
   }
   return null;
 }
@@ -73,8 +83,10 @@ function SentimentZoneBadge({ zone }) {
   const zoneColors = {
     'Extreme Fear': 'bg-red-100 text-red-700',
     Fear: 'bg-red-50 text-red-600',
+    Bear: 'bg-red-50 text-red-600',
     Neutral: 'bg-blue-50 text-blue-600',
     Greed: 'bg-amber-50 text-amber-700',
+    Bull: 'bg-emerald-50 text-emerald-700',
     'Extreme Greed': 'bg-amber-100 text-amber-700',
   };
   const colors = zoneColors[zone] || 'bg-slate-100 text-slate-600';

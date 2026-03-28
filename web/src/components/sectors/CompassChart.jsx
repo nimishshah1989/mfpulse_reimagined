@@ -33,29 +33,29 @@ export default function CompassChart({
   const animFrameRef = useRef(null);
   const [pulsePhase, setPulsePhase] = useState(0);
 
-  // Auto-zoom axes to data range with padding, keeping midlines at 50/0
+  // Auto-zoom axes to data range with padding, always include 0 for both axes
   const xDomain = useMemo(() => {
-    if (!sectors.length) return [0, 100];
+    if (!sectors.length) return [-20, 25];
     const scores = sectors.map((s) => s.rs_score);
     const min = Math.min(...scores);
     const max = Math.max(...scores);
     const range = max - min || 10;
-    const pad = range * 0.15;
-    // Always include 50 (midline) in domain
+    const pad = range * 0.2;
+    // Always include 0 (zero line = benchmark) in domain
     return [
-      Math.max(0, Math.min(min - pad, 50 - pad)),
-      Math.min(100, Math.max(max + pad, 50 + pad)),
+      Math.min(min - pad, -pad),
+      Math.max(max + pad, pad),
     ];
   }, [sectors]);
 
   const yDomain = useMemo(() => {
-    if (!sectors.length) return [-20, 20];
+    if (!sectors.length) return [-10, 10];
     const moms = sectors.map((s) => s.rs_momentum);
     const min = Math.min(...moms);
     const max = Math.max(...moms);
     const range = max - min || 5;
-    const pad = range * 0.2;
-    // Always include 0 (midline) in domain
+    const pad = range * 0.25;
+    // Always include 0 (zero momentum) in domain
     return [
       Math.min(min - pad, -pad),
       Math.max(max + pad, pad),
@@ -108,8 +108,8 @@ export default function CompassChart({
 
     const x = xScale();
     const y = yScale();
-    const midX = x(50);
-    const midY = y(0);
+    const midX = x(0);  // RS Score = 0 means at benchmark
+    const midY = y(0);  // Momentum = 0 means flat
     const left = MARGIN.left;
     const right = width - MARGIN.right;
     const top = MARGIN.top;
