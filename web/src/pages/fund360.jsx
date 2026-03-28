@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import {
   fetchFundDetail,
@@ -101,7 +101,14 @@ export default function Fund360Page() {
 
   useEffect(() => {
     if (router.isReady) {
-      setMstarId(router.query.fund || null);
+      // Support both /fund360?fund=ID and /fund/ID URL patterns
+      const fromQuery = router.query.fund;
+      if (fromQuery) {
+        setMstarId(fromQuery);
+      } else if (typeof window !== 'undefined') {
+        const pathMatch = window.location.pathname.match(/\/fund\/([A-Za-z0-9]+)/);
+        if (pathMatch) setMstarId(pathMatch[1]);
+      }
     }
   }, [router.isReady, router.query.fund]);
 
@@ -179,6 +186,25 @@ export default function Fund360Page() {
     loadSecondary();
     return () => { cancelled = true; };
   }, [mstarId]);
+
+  // Compute peer averages for PeerPositioning bars
+  const peerAvgs = useMemo(() => {
+    if (!peers?.length) return {};
+    const keys = ['return_score', 'risk_score', 'consistency_score', 'alpha_score', 'efficiency_score', 'resilience_score'];
+    const avgs = {};
+    keys.forEach((k) => {
+      const vals = peers.filter((p) => p[k] != null).map((p) => Number(p[k]));
+      avgs[k] = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 50;
+    });
+    return avgs;
+  }, [peers]);
+
+  // Extract category returns more robustly
+  const categoryReturns = useMemo(() => {
+    if (fundDetail?.category_returns) return fundDetail.category_returns;
+    if (fundDetail?.returns?.category) return fundDetail.returns.category;
+    return null;
+  }, [fundDetail]);
 
   const handleFundSearch = useCallback(
     (id) => { router.push(`/fund360?fund=${id}`); },
@@ -305,7 +331,7 @@ export default function Fund360Page() {
           >
             <ReturnsBars
               fundReturns={fundReturns}
-              categoryReturns={fundDetail.category_returns || null}
+              categoryReturns={categoryReturns}
             />
           </Section>
         </div>
@@ -372,6 +398,7 @@ export default function Fund360Page() {
         >
           <PeerPositioning
             scores={lensScores}
+            peerAvgs={peerAvgs}
             peers={peers}
           />
         </CollapsibleSection>

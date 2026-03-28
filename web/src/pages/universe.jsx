@@ -75,6 +75,7 @@ export default function UniversePage() {
   const chartContainerRef = useRef(null);
   const [chartWidth, setChartWidth] = useState(800);
   const [chartHeight, setChartHeight] = useState(600);
+  const [chartMeasured, setChartMeasured] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -97,6 +98,7 @@ export default function UniversePage() {
         const rect = chartContainerRef.current.getBoundingClientRect();
         setChartWidth(Math.max(400, Math.floor(rect.width)));
         setChartHeight(Math.max(400, Math.floor(rect.height)));
+        setChartMeasured(true);
       }
     }
     measure();
@@ -320,7 +322,7 @@ export default function UniversePage() {
 
         {/* Center: Scatter Chart */}
         <div className="flex-1 min-w-0 flex flex-col bg-slate-50/50">
-          <div ref={chartContainerRef} className="flex-1 min-h-0 relative">
+          <div ref={chartContainerRef} className="flex-1 min-h-0 max-h-[700px] relative">
             {taggedFunds.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <EmptyState
@@ -330,6 +332,8 @@ export default function UniversePage() {
                   onAction={handleResetFilters}
                 />
               </div>
+            ) : !chartMeasured ? (
+              <SkeletonLoader variant="chart" className="flex-1 min-h-[400px]" />
             ) : (
               <BubbleScatter
                 data={taggedFunds}

@@ -263,6 +263,12 @@ if _frontend_dir.is_dir():
                     return FileResponse(str(asset))
                 return JSONResponse(status_code=404, content={"error": "Asset not found"})
 
+            # /fund/<id> → serve fund360 page (client-side routing)
+            if clean.startswith("fund/") and not clean.startswith("fund360"):
+                fund360_page = _frontend_dir / "fund360" / "index.html"
+                if fund360_page.is_file():
+                    return FileResponse(str(fund360_page))
+
             # Page directory (/fund360 -> /fund360/index.html)
             if clean:
                 page_index = _frontend_dir / clean / "index.html"

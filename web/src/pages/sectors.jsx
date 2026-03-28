@@ -264,6 +264,7 @@ export default function SectorsPage() {
           breadth={breadthData}
           sectorData={sectorData}
           online={mpOnline}
+          onRetry={() => loadMarketPulse(period)}
         />
 
         {/* Fund Drill-Down */}

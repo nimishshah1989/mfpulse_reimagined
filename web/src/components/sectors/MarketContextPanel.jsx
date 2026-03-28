@@ -84,6 +84,7 @@ export default function MarketContextPanel({
   breadth,
   sectorData,
   online,
+  onRetry,
 }) {
   const leadingCount = sectorData?.filter((s) => s.quadrant === 'Leading').length ?? 0;
   const totalSectors = sectorData?.length ?? 0;
@@ -143,7 +144,12 @@ export default function MarketContextPanel({
             </p>
           </div>
         ) : (
-          <span className="text-xs text-slate-400">No data</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400">No data</span>
+            {onRetry && (
+              <button onClick={onRetry} className="text-[10px] text-teal-600 hover:text-teal-700 underline underline-offset-2">Retry</button>
+            )}
+          </div>
         )}
       </div>
 
@@ -161,7 +167,12 @@ export default function MarketContextPanel({
             </p>
           </div>
         ) : (
-          <span className="text-xs text-slate-400">No data</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400">No data</span>
+            {onRetry && (
+              <button onClick={onRetry} className="text-[10px] text-teal-600 hover:text-teal-700 underline underline-offset-2">Retry</button>
+            )}
+          </div>
         )}
       </div>
 
@@ -205,7 +216,12 @@ export default function MarketContextPanel({
             )}
           </div>
         ) : (
-          <span className="text-xs text-slate-400">No data</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400">No data</span>
+            {onRetry && (
+              <button onClick={onRetry} className="text-[10px] text-teal-600 hover:text-teal-700 underline underline-offset-2">Retry</button>
+            )}
+          </div>
         )}
       </div>
 

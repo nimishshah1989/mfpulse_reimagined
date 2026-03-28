@@ -47,6 +47,7 @@ export default function HoldingsTable({ holdings, sectorQuadrants }) {
   }
 
   const maxWeight = Math.max(...holdings.map((h) => Number(h.weighting_pct || h.weight_pct) || 0));
+  const hasWeightData = maxWeight > 0;
   const sectorMap = {};
   let sectorIdx = 0;
 
@@ -68,8 +69,12 @@ export default function HoldingsTable({ holdings, sectorQuadrants }) {
             <th className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-3 text-left border-b border-slate-200">Holding</th>
             <th className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-3 text-left border-b border-slate-200">Sector</th>
             <th className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-3 text-center border-b border-slate-200 w-16">Type</th>
-            <th className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-3 text-right border-b border-slate-200 w-20">Weight</th>
-            <th className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-3 text-left border-b border-slate-200 w-32">Allocation</th>
+            {hasWeightData && (
+              <th className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-3 text-right border-b border-slate-200 w-20">Weight</th>
+            )}
+            {hasWeightData && (
+              <th className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-3 px-3 text-left border-b border-slate-200 w-32">Allocation</th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -112,23 +117,27 @@ export default function HoldingsTable({ holdings, sectorQuadrants }) {
                     </span>
                   )}
                 </td>
-                <td className="py-3.5 px-3 text-right">
-                  <span className="text-sm font-mono tabular-nums font-bold text-slate-800">
-                    {weight.toFixed(2)}%
-                  </span>
-                </td>
-                <td className="py-3.5 px-3">
-                  <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500 ease-out"
-                      style={{
-                        width: `${Math.min(barPct, 100)}%`,
-                        background: `linear-gradient(90deg, #0d9488 0%, #14b8a6 100%)`,
-                        opacity: 0.4 + (barPct / 100) * 0.6,
-                      }}
-                    />
-                  </div>
-                </td>
+                {hasWeightData && (
+                  <td className="py-3.5 px-3 text-right">
+                    <span className="text-sm font-mono tabular-nums font-bold text-slate-800">
+                      {weight.toFixed(2)}%
+                    </span>
+                  </td>
+                )}
+                {hasWeightData && (
+                  <td className="py-3.5 px-3">
+                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500 ease-out"
+                        style={{
+                          width: `${Math.min(barPct, 100)}%`,
+                          background: `linear-gradient(90deg, #0d9488 0%, #14b8a6 100%)`,
+                          opacity: 0.4 + (barPct / 100) * 0.6,
+                        }}
+                      />
+                    </div>
+                  </td>
+                )}
               </tr>
             );
           })}

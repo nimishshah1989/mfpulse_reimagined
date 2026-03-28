@@ -89,6 +89,22 @@ export default function MorningBriefing({ regime, breadth, sentiment, nifty, loa
     return <SkeletonLoader className="h-48 rounded-2xl" />;
   }
 
+  // No data at all — MarketPulse fully offline
+  if (!regime && !nifty && !sentiment && !breadth) {
+    return (
+      <div className="rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 p-6 shadow-lg">
+        <div className="relative z-10">
+          <p className="text-[11px] font-medium text-slate-400 tracking-widest uppercase mb-1">
+            Pulse Command Center
+          </p>
+          <p className="text-sm text-slate-400 mt-2">
+            MarketPulse is offline. Market signals will appear here when the service is available.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const marketRegime = regime?.market_regime || regime?.regime || 'NEUTRAL';
   const config = REGIME_CONFIG[marketRegime] || REGIME_CONFIG.NEUTRAL;
   const leadingSectors = regime?.leading_sectors || [];
@@ -97,8 +113,10 @@ export default function MorningBriefing({ regime, breadth, sentiment, nifty, loa
   const sentimentScore = sentiment?.composite_score ?? sentiment?.score;
   const sentimentZone = sentiment?.zone || deriveSentimentZone(sentimentScore);
 
-  const niftyPrice = nifty?.current_price;
-  const niftyChangePct = nifty?.change_pct;
+  // Unwrap nested {index: {current_price, change_pct}, returns: {...}} structure
+  const niftyIndex = nifty?.index ?? nifty;
+  const niftyPrice = niftyIndex?.current_price;
+  const niftyChangePct = niftyIndex?.change_pct;
 
   const today = new Date().toLocaleDateString('en-IN', {
     day: 'numeric',

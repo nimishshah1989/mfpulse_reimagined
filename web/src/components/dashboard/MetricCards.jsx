@@ -97,10 +97,12 @@ export default function MetricCards({ nifty, sentiment, breadth, universeStats, 
     );
   }
 
-  // Nifty 50
-  const niftyPrice = nifty?.current_price;
-  const niftyChangePct = nifty?.change_pct;
-  const nifty1m = nifty?.returns?.['1m'] ?? nifty?.returns?.['1M'];
+  // Nifty 50 — unwrap nested {index: {current_price, change_pct}, returns: {...}} structure
+  const niftyIndex = nifty?.index ?? nifty;
+  const niftyPrice = niftyIndex?.current_price;
+  const niftyChangePct = niftyIndex?.change_pct;
+  const niftyReturns = nifty?.returns ?? niftyIndex?.returns;
+  const nifty1m = niftyReturns?.['1m'] ?? niftyReturns?.['1M'];
   const niftyTrend = niftyChangePct != null ? (niftyChangePct >= 0 ? 'up' : 'down') : 'flat';
   const niftyColor = niftyChangePct != null
     ? niftyChangePct >= 0 ? 'text-emerald-600' : 'text-red-600'

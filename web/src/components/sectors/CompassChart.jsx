@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { scaleLinear } from 'd3-scale';
 import { QUADRANT_COLORS } from '../../lib/sectors';
 import { momentumColor } from '../../lib/lens';
@@ -33,13 +33,42 @@ export default function CompassChart({
   const animFrameRef = useRef(null);
   const [pulsePhase, setPulsePhase] = useState(0);
 
+  // Auto-zoom axes to data range with padding, keeping midlines at 50/0
+  const xDomain = useMemo(() => {
+    if (!sectors.length) return [0, 100];
+    const scores = sectors.map((s) => s.rs_score);
+    const min = Math.min(...scores);
+    const max = Math.max(...scores);
+    const range = max - min || 10;
+    const pad = range * 0.15;
+    // Always include 50 (midline) in domain
+    return [
+      Math.max(0, Math.min(min - pad, 50 - pad)),
+      Math.min(100, Math.max(max + pad, 50 + pad)),
+    ];
+  }, [sectors]);
+
+  const yDomain = useMemo(() => {
+    if (!sectors.length) return [-20, 20];
+    const moms = sectors.map((s) => s.rs_momentum);
+    const min = Math.min(...moms);
+    const max = Math.max(...moms);
+    const range = max - min || 5;
+    const pad = range * 0.2;
+    // Always include 0 (midline) in domain
+    return [
+      Math.min(min - pad, -pad),
+      Math.max(max + pad, pad),
+    ];
+  }, [sectors]);
+
   const xScale = useCallback(
-    () => scaleLinear().domain([0, 100]).range([MARGIN.left, width - MARGIN.right]),
-    [width]
+    () => scaleLinear().domain(xDomain).range([MARGIN.left, width - MARGIN.right]),
+    [width, xDomain]
   );
   const yScale = useCallback(
-    () => scaleLinear().domain([-20, 20]).range([height - MARGIN.bottom, MARGIN.top]),
-    [height]
+    () => scaleLinear().domain(yDomain).range([height - MARGIN.bottom, MARGIN.top]),
+    [height, yDomain]
   );
 
   const getRadius = (s) => Math.max(8, Math.min(22, 4 + (s.fund_count || 0) * 0.4));
@@ -127,16 +156,26 @@ export default function CompassChart({
     // Reset baseline
     ctx.textBaseline = 'alphabetic';
 
-    // Axes ticks
+    // Axes ticks — dynamic based on data domain
     ctx.fillStyle = '#64748b';
     ctx.font = '10px Inter, sans-serif';
     ctx.textAlign = 'center';
-    for (const v of [0, 25, 50, 75, 100]) {
+    const xTicks = [];
+    const xStep = Math.max(5, Math.round((xDomain[1] - xDomain[0]) / 5));
+    for (let v = Math.ceil(xDomain[0] / xStep) * xStep; v <= xDomain[1]; v += xStep) {
+      xTicks.push(v);
+    }
+    for (const v of xTicks) {
       const px = x(v);
       ctx.fillText(String(v), px, bottom + 16);
     }
     ctx.textAlign = 'right';
-    for (const v of [-20, -10, 0, 10, 20]) {
+    const yTicks = [];
+    const yStep = Math.max(1, Math.round((yDomain[1] - yDomain[0]) / 5));
+    for (let v = Math.ceil(yDomain[0] / yStep) * yStep; v <= yDomain[1]; v += yStep) {
+      yTicks.push(v);
+    }
+    for (const v of yTicks) {
       const py = y(v);
       ctx.fillText(String(v), left - 8, py + 3);
     }
@@ -248,7 +287,7 @@ export default function CompassChart({
     }
 
     ctx.textBaseline = 'alphabetic';
-  }, [sectors, selectedSector, width, height, xScale, yScale, pulsePhase]);
+  }, [sectors, selectedSector, width, height, xScale, yScale, xDomain, yDomain, pulsePhase]);
 
   useEffect(() => { draw(); }, [draw]);
 

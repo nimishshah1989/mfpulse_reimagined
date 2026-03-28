@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { LENS_OPTIONS } from '../../lib/lens';
 
 const PURCHASE_MODES = ['Regular', 'Direct', 'Both'];
@@ -52,6 +52,8 @@ export default function HorizontalFilterBar({
   filteredCount,
   totalCount,
 }) {
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+
   const {
     purchaseMode = 'Regular',
     dividendType = 'Growth',
@@ -96,8 +98,29 @@ export default function HorizontalFilterBar({
 
   return (
     <div className="space-y-1.5 flex-shrink-0">
-      {/* Row 1: Filters */}
-      <div className="flex items-center gap-1.5 flex-wrap px-1">
+      {/* Mobile: compact toggle + count */}
+      <div className="flex items-center justify-between px-1 md:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+          </svg>
+          Filters
+          {hasActiveFilters && (
+            <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+          )}
+        </button>
+        <span className="text-[11px] text-slate-400 font-mono tabular-nums">
+          <span className="font-semibold text-slate-700">{filteredCount.toLocaleString('en-IN')}</span>
+          {' / '}{totalCount.toLocaleString('en-IN')}
+        </span>
+      </div>
+
+      {/* Desktop filters (always visible) / Mobile filters (toggled) */}
+      <div className={`${mobileFiltersOpen ? 'flex' : 'hidden'} md:flex items-center gap-1.5 flex-wrap px-1`}>
         {/* Purchase mode */}
         <div className="flex gap-0.5">
           {PURCHASE_MODES.map((m) => (

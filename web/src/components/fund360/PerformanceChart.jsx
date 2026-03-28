@@ -88,9 +88,12 @@ export default function PerformanceChart({ mstarId, initialData = [], fundReturn
     }
   }, [mstarId]);
 
+  // Filter out null/undefined nav data points
+  const cleanData = data.filter((d) => d.nav != null);
+
   // Period change calculation
-  const firstNav = data.length > 0 ? Number(data[0].nav) : null;
-  const lastNav = data.length > 0 ? Number(data[data.length - 1].nav) : null;
+  const firstNav = cleanData.length > 0 ? Number(cleanData[0].nav) : null;
+  const lastNav = cleanData.length > 0 ? Number(cleanData[cleanData.length - 1].nav) : null;
   const periodChange = firstNav && lastNav ? ((lastNav - firstNav) / firstNav) * 100 : null;
   const isPositive = periodChange != null && periodChange >= 0;
 
@@ -136,13 +139,13 @@ export default function PerformanceChart({ mstarId, initialData = [], fundReturn
           </svg>
           Loading chart data...
         </div>
-      ) : data.length === 0 ? (
+      ) : cleanData.length === 0 ? (
         <div className="flex items-center justify-center h-[350px] text-slate-400 text-sm">
           No NAV data available for this period
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={350}>
-          <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+          <ComposedChart data={cleanData} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
             <defs>
               <linearGradient id="navGradient360" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={isPositive ? '#0d9488' : '#dc2626'} stopOpacity={0.2} />

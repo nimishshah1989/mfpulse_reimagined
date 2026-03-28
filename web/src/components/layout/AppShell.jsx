@@ -60,14 +60,10 @@ function MarketTicker() {
       const res = await fetchMarketRegime();
       setMarket(res.data);
     } catch {
+      // Fallback when MarketPulse is offline — show stale placeholders, market closed
       setMarket({
-        indices: [
-          { name: 'NIFTY 50', value: 22847, change_pct: 1.24 },
-          { name: 'SENSEX', value: 75234, change_pct: 1.18 },
-          { name: '10Y G-Sec', value: 7.12, change_pct: -0.03 },
-          { name: 'USD/INR', value: 83.42, change_pct: -0.15 },
-        ],
-        market_open: true,
+        indices: [],
+        market_open: false,
       });
     }
   }, []);
@@ -117,16 +113,25 @@ function MarketTicker() {
 
 export default function AppShell({ children, activeTab, onTabChange }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const currentNav = NAV_ITEMS.find((n) => n.key === activeTab) || NAV_ITEMS[0];
 
   return (
     <div className="flex h-screen bg-slate-50">
-      {/* Sidebar */}
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/30 z-40 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar — hidden on mobile, slide-out drawer when mobileOpen */}
       <aside
         className={`flex flex-col bg-white border-r border-slate-200/80 transition-all duration-200 flex-shrink-0 ${
           collapsed ? 'w-14' : 'w-48'
-        }`}
+        } hidden md:flex`}
       >
         {/* Logo */}
         <div className="flex items-center gap-2 px-3 py-3 border-b border-slate-100">
@@ -182,10 +187,66 @@ export default function AppShell({ children, activeTab, onTabChange }) {
         </button>
       </aside>
 
+      {/* Mobile drawer sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-48 flex flex-col bg-white border-r border-slate-200/80 transition-transform duration-200 md:hidden ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex items-center justify-between px-3 py-3 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-teal-600 rounded-md flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+              J
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-slate-800 tracking-wide leading-none">JHAVERI</div>
+              <div className="text-[8px] font-medium text-slate-400 uppercase tracking-[0.15em] leading-tight mt-0.5">MF Pulse</div>
+            </div>
+          </div>
+          <button type="button" onClick={() => setMobileOpen(false)} className="p-1 text-slate-400 hover:text-slate-600">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <nav className="flex-1 py-1.5">
+          {NAV_ITEMS.map((item) => {
+            const isActive = activeTab === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => { onTabChange(item.key); setMobileOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-[13px] font-medium transition-colors ${
+                  isActive
+                    ? 'bg-teal-50 text-teal-700 border-r-2 border-teal-600'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                }`}
+              >
+                <span className={`flex-shrink-0 ${isActive ? 'text-teal-600' : 'text-slate-400'}`}>
+                  {item.icon}
+                </span>
+                <span className="truncate">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
+
       {/* Main area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-slate-200/80 px-5 py-2 flex items-center justify-between">
+          {/* Mobile hamburger */}
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="md:hidden p-1 mr-2 text-slate-500 hover:text-slate-700"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </button>
           <h1 className="text-[15px] font-semibold text-slate-800">
             {currentNav.label}
           </h1>
