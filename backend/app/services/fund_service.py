@@ -24,7 +24,7 @@ def derive_dividend_type(fund_name: str) -> str:
     return "Growth"
 
 
-VALID_PERIODS = {"1m", "3m", "6m", "1y", "3y", "5y", "max"}
+VALID_PERIODS = {"1m", "3m", "6m", "1y", "3y", "5y", "max", "since_inception"}
 
 PERIOD_DAYS = {
     "1m": 31,
@@ -131,7 +131,7 @@ class FundService:
             )
 
         start_date = None
-        if period != "max":
+        if period not in ("max", "since_inception"):
             days = PERIOD_DAYS[period]
             start_date = date.today() - timedelta(days=days)
 

@@ -38,6 +38,7 @@ export default function SectorsPage() {
   const [selectedSector, setSelectedSector] = useState(null);
   const [drillDownSort, setDrillDownSort] = useState('composite');
   const [drillDownCategory, setDrillDownCategory] = useState('all');
+  const [drillDownPurchaseMode, setDrillDownPurchaseMode] = useState('Regular');
   const [exposureLoading, setExposureLoading] = useState(false);
 
   // Compass sizing
@@ -213,7 +214,7 @@ export default function SectorsPage() {
         <div ref={compassRef} className="w-full">
           {!mpOnline ? (
             <EmptyState
-              icon={'\uD83D\uDCE1'}
+              icon={<svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" /></svg>}
               message="MarketPulse offline — sector data unavailable"
               action="Retry"
               onAction={() => loadMarketPulse(period)}
@@ -269,6 +270,8 @@ export default function SectorsPage() {
             onSortChange={setDrillDownSort}
             categoryFilter={drillDownCategory}
             onCategoryFilterChange={setDrillDownCategory}
+            purchaseMode={drillDownPurchaseMode}
+            onPurchaseModeChange={setDrillDownPurchaseMode}
           />
         </div>
 

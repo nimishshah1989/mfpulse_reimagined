@@ -37,7 +37,11 @@ class MarketPulseClient:
         self._cache: dict[str, _CacheEntry] = {}
 
     def _get(self, path: str, params: Optional[dict] = None, ttl: int = 900) -> Optional[dict]:
-        """Generic GET with caching. Returns None on any failure."""
+        """Generic GET with caching. Returns None on any failure.
+
+        If MarketPulse returns a wrapped response like ``{"data": [...], "success": true}``,
+        we unwrap and return just the ``data`` value so the MF Pulse proxy doesn't double-wrap.
+        """
         cache_key = f"{path}:{params}"
         cached = self._cache.get(cache_key)
         if cached and cached.is_valid:
@@ -49,6 +53,9 @@ class MarketPulseClient:
                 response = client.get(url, params=params)
                 response.raise_for_status()
                 data = response.json()
+                # Unwrap nested response envelope from MarketPulse
+                if isinstance(data, dict) and "data" in data and "success" in data:
+                    data = data["data"]
                 self._cache[cache_key] = _CacheEntry(data, ttl)
                 return data
         except httpx.TimeoutException:

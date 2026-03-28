@@ -40,6 +40,8 @@ function topTiers(fund) {
   return tiers.slice(0, 3);
 }
 
+const PURCHASE_MODES = ['Regular', 'Direct', 'Both'];
+
 export default function FundDrillDown({
   sector,
   funds,
@@ -50,15 +52,22 @@ export default function FundDrillDown({
   onSortChange,
   categoryFilter,
   onCategoryFilterChange,
+  purchaseMode = 'Regular',
+  onPurchaseModeChange,
 }) {
   const router = useRouter();
+
+  const filteredByMode = useMemo(() => {
+    if (purchaseMode === 'Both') return funds;
+    return funds.filter((f) => f.purchase_mode === purchaseMode);
+  }, [funds, purchaseMode]);
 
   const rankedFunds = useMemo(
     () =>
       sector
-        ? deriveDrillDownFunds({ sector, funds, sectorExposures, sort, categoryFilter })
+        ? deriveDrillDownFunds({ sector, funds: filteredByMode, sectorExposures, sort, categoryFilter })
         : [],
-    [sector, funds, sectorExposures, sort, categoryFilter],
+    [sector, filteredByMode, sectorExposures, sort, categoryFilter],
   );
 
   if (sector === null) {
@@ -111,6 +120,21 @@ export default function FundDrillDown({
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
+        {/* Purchase mode */}
+        <div className="flex gap-0.5">
+          {PURCHASE_MODES.map((m) => (
+            <Pill
+              key={m}
+              active={purchaseMode === m}
+              onClick={() => onPurchaseModeChange?.(m)}
+            >
+              {m}
+            </Pill>
+          ))}
+        </div>
+
+        <div className="w-px h-4 bg-slate-200" />
+
         <div className="flex flex-wrap gap-1">
           {SORT_OPTIONS.map((opt) => (
             <Pill

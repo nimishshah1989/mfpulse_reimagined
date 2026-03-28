@@ -27,11 +27,14 @@ const LENS_KEYS = [
   { key: 'resilience_score', label: 'Res' },
 ];
 
+const PURCHASE_MODES = ['Regular', 'Direct'];
+
 export default function FundSelector({ funds, allocations, onAddFund, onRemoveFund, onSetAllocation, totalInvestment }) {
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [activeTierFilter, setActiveTierFilter] = useState(null);
+  const [purchaseMode, setPurchaseMode] = useState('Regular');
   const debounceRef = useRef(null);
 
   const doSearch = useCallback(async (params) => {
@@ -53,16 +56,18 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
     }
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      doSearch({ search });
+      const modeVal = purchaseMode === 'Regular' ? 1 : 2;
+      doSearch({ search, purchase_mode: modeVal });
     }, 300);
     return () => clearTimeout(debounceRef.current);
-  }, [search, doSearch]);
+  }, [search, doSearch, purchaseMode]);
 
   const handleQuickFilter = useCallback((params) => {
     setSearch('');
     setActiveTierFilter(null);
-    doSearch(params);
-  }, [doSearch]);
+    const modeVal = purchaseMode === 'Regular' ? 1 : 2;
+    doSearch({ ...params, purchase_mode: modeVal });
+  }, [doSearch, purchaseMode]);
 
   const handleTierFilter = useCallback((tier) => {
     if (activeTierFilter === tier) {
@@ -72,7 +77,8 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
     }
     setActiveTierFilter(tier);
     setSearch('');
-    doSearch({ return_class: tier, sort: 'return_score', order: 'desc', limit: 20 });
+    const modeVal = purchaseMode === 'Regular' ? 1 : 2;
+    doSearch({ return_class: tier, sort: 'return_score', order: 'desc', limit: 20, purchase_mode: modeVal });
   }, [activeTierFilter, doSearch]);
 
   const totalAlloc = Object.values(allocations).reduce((s, v) => s + (v || 0), 0);
@@ -94,6 +100,25 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
           onChange={(e) => setSearch(e.target.value)}
           className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
         />
+      </div>
+
+      {/* Purchase mode toggle */}
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Plan:</span>
+        {PURCHASE_MODES.map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setPurchaseMode(m)}
+            className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all ${
+              purchaseMode === m
+                ? 'bg-teal-600 text-white shadow-sm'
+                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            }`}
+          >
+            {m}
+          </button>
+        ))}
       </div>
 
       {/* Filter pills row */}

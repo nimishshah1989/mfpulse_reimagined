@@ -10,7 +10,7 @@ const BUCKET_DEFINITIONS = [
     name: 'Consistent Alpha Generators',
     description: 'Strong alpha with rock-solid consistency',
     color: 'emerald',
-    emoji: '\u2B50',
+    emoji: null,
     filter: (f) =>
       (f.alpha_class === 'ALPHA_MACHINE' || f.alpha_class === 'POSITIVE') &&
       (f.consistency_class === 'ROCK_SOLID' || f.consistency_class === 'CONSISTENT'),
@@ -21,7 +21,7 @@ const BUCKET_DEFINITIONS = [
     name: 'Low-Risk Leaders',
     description: 'Top returns with minimal volatility',
     color: 'teal',
-    emoji: '\uD83D\uDEE1\uFE0F',
+    emoji: null,
     filter: (f) =>
       f.risk_class === 'LOW_RISK' &&
       (f.return_class === 'LEADER' || f.return_class === 'STRONG'),
@@ -32,7 +32,7 @@ const BUCKET_DEFINITIONS = [
     name: 'High Efficiency Picks',
     description: 'Maximum return per rupee of expense',
     color: 'blue',
-    emoji: '\u26A1',
+    emoji: null,
     filter: (f) =>
       f.efficiency_class === 'LEAN' &&
       f.return_class !== 'WEAK',
@@ -43,7 +43,7 @@ const BUCKET_DEFINITIONS = [
     name: 'Turnaround Candidates',
     description: 'Weak returns but positive alpha -- potential comeback',
     color: 'amber',
-    emoji: '\uD83D\uDD04',
+    emoji: null,
     filter: (f) =>
       f.return_class === 'WEAK' &&
       f.alpha_class === 'POSITIVE',
@@ -54,7 +54,7 @@ const BUCKET_DEFINITIONS = [
     name: 'Fortress Funds',
     description: 'Low risk with rock-solid consistency',
     color: 'indigo',
-    emoji: '\uD83C\uDFF0',
+    emoji: null,
     filter: (f) =>
       f.risk_class === 'LOW_RISK' &&
       (f.consistency_class === 'ROCK_SOLID' || f.consistency_class === 'CONSISTENT'),
@@ -65,7 +65,7 @@ const BUCKET_DEFINITIONS = [
     name: 'Avoid Zone',
     description: 'Weak returns with high risk or erratic behavior',
     color: 'red',
-    emoji: '\u26A0\uFE0F',
+    emoji: null,
     filter: (f) =>
       f.return_class === 'WEAK' &&
       (f.risk_class === 'HIGH_RISK' || f.consistency_class === 'ERRATIC'),
@@ -124,7 +124,7 @@ function BucketCard({ bucket, count, topFundName, onClick }) {
       className={`flex-shrink-0 w-[200px] rounded-xl border ${colors.border} ${colors.bg} p-4 text-left transition-all hover:shadow-md cursor-pointer`}
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xl">{bucket.emoji}</span>
+        <span className={`w-3 h-3 rounded-full ${colors.accent}`} />
         <span className={`text-xs font-bold px-2 py-0.5 rounded-full font-mono tabular-nums ${colors.accent}`}>
           {count}
         </span>

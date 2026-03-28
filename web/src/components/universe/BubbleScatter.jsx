@@ -257,31 +257,31 @@ export default function BubbleScatter({
       ctx.restore(); // zoom transform
       ctx.restore(); // clip
 
-      // Quadrant labels OUTSIDE the chart (in margins), not affected by zoom
-      ctx.font = 'bold 13px Inter, sans-serif';
+      // Quadrant labels — subtle, inside chart area corners
+      ctx.font = '8px Inter, sans-serif';
+      ctx.globalAlpha = 0.25;
 
-      // Sweet Spot -- top right
+      // Top right — high return, low risk
       ctx.fillStyle = '#059669';
       ctx.textAlign = 'right';
-      ctx.fillText('SWEET SPOT', innerW, -10);
+      ctx.fillText('High return · Low risk', innerW - 6, 14);
 
-      // High Risk / High Return -- top left
+      // Top left — high risk, high return
       ctx.fillStyle = '#d97706';
       ctx.textAlign = 'left';
-      ctx.font = '12px Inter, sans-serif';
-      ctx.fillText('HIGH RISK / HIGH RETURN', 0, -10);
+      ctx.fillText('High risk · High return', 6, 14);
 
-      // Steady / Low Return -- bottom right
-      ctx.font = '12px Inter, sans-serif';
+      // Bottom right — steady, low return
       ctx.fillStyle = '#2563eb';
       ctx.textAlign = 'right';
-      ctx.fillText('STEADY / LOW RETURN', innerW, innerH + 50);
+      ctx.fillText('Steady · Low return', innerW - 6, innerH - 6);
 
-      // Avoid Zone -- bottom left
-      ctx.font = 'bold 13px Inter, sans-serif';
+      // Bottom left — avoid zone
       ctx.fillStyle = '#dc2626';
       ctx.textAlign = 'left';
-      ctx.fillText('AVOID ZONE', 0, innerH + 50);
+      ctx.fillText('High risk · Low return', 6, innerH - 6);
+
+      ctx.globalAlpha = 1;
 
       // X-axis label
       ctx.fillStyle = '#475569';
