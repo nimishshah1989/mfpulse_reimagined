@@ -27,9 +27,11 @@ from app.core.morningstar_config import APIS, UNIVERSE_CODE, API_BASE, Morningst
 from app.ingestion import field_maps
 from app.models.db.category_returns import CategoryReturnsDaily
 from app.models.db.fund_master import FundMaster
+from app.models.db.holdings import FundHoldingsSnapshot
 from app.models.db.nav_daily import NavDaily
 from app.models.db.rank_monthly import RankMonthly
 from app.models.db.risk_stats import RiskStatsMonthly
+from app.models.db.sector_exposure import FundSectorExposure
 from app.repositories.audit_repo import AuditRepository
 from app.repositories.ingestion_repo import IngestionRepository
 
@@ -241,7 +243,13 @@ class MorningstarFetcher:
             ("NAV_FIELD_MAP", getattr(field_maps, "NAV_FIELD_MAP", {})),
             ("RANK_FIELD_MAP", getattr(field_maps, "RANK_FIELD_MAP", {})),
             ("CATEGORY_RETURNS_FIELD_MAP", getattr(field_maps, "CATEGORY_RETURNS_FIELD_MAP", {})),
+            ("HOLDINGS_FIELD_MAP", getattr(field_maps, "HOLDINGS_FIELD_MAP", {})),
         ]
+
+        # Special maps for holdings API: sector exposure and holding details
+        sector_map = getattr(field_maps, "SECTOR_EXPOSURE_MAP", {})
+        detail_map = getattr(field_maps, "HOLDING_DETAIL_FIELD_MAP", {})
+        is_holdings_api = api.db_target == "holdings"
 
         # Parse each <data> element (one per fund)
         fund_records: list[dict] = []
@@ -250,10 +258,13 @@ class MorningstarFetcher:
             if not mstar_id:
                 continue
 
-            record: dict[str, str] = {"mstar_id": mstar_id}
+            record: dict = {"mstar_id": mstar_id}
             api_elem = data_elem.find("api")
             if api_elem is None:
                 continue
+
+            # For holdings API: collect pipe-delimited detail fields
+            detail_raw: dict[str, str] = {}
 
             for child in api_elem:
                 raw_tag = child.tag
@@ -267,6 +278,18 @@ class MorningstarFetcher:
                     stripped = raw_tag.split("-", 1)[1]
                 else:
                     stripped = raw_tag
+
+                # Holdings API: check sector and detail maps first
+                if is_holdings_api:
+                    if stripped in sector_map:
+                        sector_name = sector_map[stripped]
+                        record[f"sector_{sector_name}"] = value.strip()
+                        result.mapped_fields += 1
+                        continue
+                    if stripped in detail_map:
+                        detail_raw[detail_map[stripped]] = value.strip()
+                        result.mapped_fields += 1
+                        continue
 
                 # Look up in primary field map
                 if stripped in field_map:
@@ -286,6 +309,12 @@ class MorningstarFetcher:
                     if not found:
                         result.unmapped_fields += 1
 
+            # Convert pipe-delimited holding details into list of dicts
+            if detail_raw:
+                detail_records = self._split_holding_details(detail_raw)
+                if detail_records:
+                    record["holding_details"] = detail_records
+
             if len(record) > 1:  # has more than just mstar_id
                 fund_records.append(record)
 
@@ -304,6 +333,39 @@ class MorningstarFetcher:
             if len(c) > 1:  # more than just mstar_id / category_code
                 coerced.append(c)
         return coerced
+
+    @staticmethod
+    def _split_holding_details(detail_raw: dict[str, str]) -> list[dict[str, str]]:
+        """Split pipe-delimited holding detail fields into a list of dicts.
+
+        Morningstar returns holding details as pipe-delimited values:
+          HoldingDetail_Name: "HDFC Bank|Infosys|TCS"
+          HoldingDetail_Weighting: "8.5|6.2|5.1"
+
+        Returns a list of dicts, one per holding.
+        """
+        if not detail_raw:
+            return []
+
+        # Split all fields by pipe
+        split_fields: dict[str, list[str]] = {}
+        max_len = 0
+        for key, value in detail_raw.items():
+            parts = value.split("|")
+            split_fields[key] = parts
+            max_len = max(max_len, len(parts))
+
+        # Build list of holding dicts
+        holdings: list[dict[str, str]] = []
+        for i in range(max_len):
+            holding: dict[str, str] = {}
+            for key, parts in split_fields.items():
+                if i < len(parts) and parts[i]:
+                    holding[key] = parts[i]
+            if holding:
+                holdings.append(holding)
+
+        return holdings
 
     def _write_to_db(self, api: MorningstarAPI, records: list[dict], result: FetchResult) -> None:
         """Route records to the appropriate repository batch upsert method."""
@@ -388,6 +450,66 @@ class MorningstarFetcher:
                 if deduped:
                     coerced = self._coerce_records(deduped, CategoryReturnsDaily)
                     self.ingestion_repo.upsert_category_returns(coerced)
+
+            elif target == "holdings":
+                # Portfolio Data API returns 3 types in one response:
+                # 1. Snapshot fields → fund_holdings_snapshot
+                # 2. Sector fields (sector_*) → fund_sector_exposure
+                # 3. Holding details (holding_details list) → fund_holding_detail
+                holdings_field_values = set(field_maps.HOLDINGS_FIELD_MAP.values())
+
+                for record in records:
+                    mstar_id = record.get("mstar_id")
+                    if not mstar_id:
+                        continue
+
+                    # Extract snapshot fields
+                    snapshot_rec = {
+                        k: v for k, v in record.items()
+                        if k in holdings_field_values or k == "mstar_id"
+                    }
+                    if "portfolio_date" not in snapshot_rec:
+                        snapshot_rec["portfolio_date"] = today
+
+                    # Upsert snapshot
+                    coerced_snapshot = self._coerce_records([snapshot_rec], FundHoldingsSnapshot)
+                    if coerced_snapshot:
+                        self.ingestion_repo.upsert_holdings_snapshot(coerced_snapshot)
+
+                    # Extract sector exposure fields (prefixed with "sector_")
+                    sector_records = []
+                    portfolio_date = snapshot_rec.get("portfolio_date", today)
+                    for key, value in record.items():
+                        if key.startswith("sector_"):
+                            sector_name = key[len("sector_"):]
+                            sector_records.append({
+                                "mstar_id": mstar_id,
+                                "portfolio_date": portfolio_date,
+                                "sector_name": sector_name,
+                                "net_pct": value,
+                            })
+                    if sector_records:
+                        coerced_sectors = self._coerce_records(sector_records, FundSectorExposure)
+                        if coerced_sectors:
+                            self.ingestion_repo.upsert_sector_exposure(coerced_sectors)
+
+                    # Extract holding details
+                    holding_details = record.get("holding_details")
+                    if holding_details:
+                        # Look up the snapshot ID for FK
+                        from sqlalchemy import select
+                        stmt = select(FundHoldingsSnapshot).where(
+                            FundHoldingsSnapshot.mstar_id == mstar_id,
+                            FundHoldingsSnapshot.portfolio_date == (
+                                date.fromisoformat(portfolio_date)
+                                if isinstance(portfolio_date, str) else portfolio_date
+                            ),
+                        )
+                        snapshot = self.db.execute(stmt).scalars().first()
+                        if snapshot:
+                            self.ingestion_repo.upsert_holding_details(
+                                snapshot.id, holding_details,
+                            )
 
             self.db.commit()
 
