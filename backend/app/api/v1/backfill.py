@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.services.nav_backfill_service import NAVBackfillService, backfill_progress
 
 router = APIRouter(prefix="/backfill", tags=["backfill"])
@@ -18,17 +18,22 @@ def trigger_nav_backfill(
     start_date: str = Query(default="2016-01-01"),
     end_date: Optional[str] = Query(default=None),
     concurrency: int = Query(default=10, ge=1, le=50),
-    db: Session = Depends(get_db),
 ) -> dict:
     """Launch full NAV backfill in a background thread. Returns immediately."""
-    service = NAVBackfillService(db)
 
     def _run() -> None:
-        service.backfill_all(
-            start_date=start_date,
-            end_date=end_date,
-            concurrency=concurrency,
-        )
+        # Background thread needs its own session — request session is
+        # tied to the request lifecycle and can't be used across threads.
+        bg_db = SessionLocal()
+        try:
+            service = NAVBackfillService(bg_db)
+            service.backfill_all(
+                start_date=start_date,
+                end_date=end_date,
+                concurrency=concurrency,
+            )
+        finally:
+            bg_db.close()
 
     thread = threading.Thread(target=_run, daemon=True)
     thread.start()
