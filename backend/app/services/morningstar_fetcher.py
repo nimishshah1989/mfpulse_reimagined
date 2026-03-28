@@ -452,64 +452,76 @@ class MorningstarFetcher:
                     self.ingestion_repo.upsert_category_returns(coerced)
 
             elif target == "holdings":
-                # Portfolio Data API returns 3 types in one response:
-                # 1. Snapshot fields → fund_holdings_snapshot
-                # 2. Sector fields (sector_*) → fund_sector_exposure
-                # 3. Holding details (holding_details list) → fund_holding_detail
+                # Portfolio Data API returns 3 types in one response.
+                # Split into batches for efficient DB writes.
                 holdings_field_values = set(field_maps.HOLDINGS_FIELD_MAP.values())
+                all_snapshot_recs: list[dict] = []
+                all_sector_recs: list[dict] = []
+                # details_by_key: (mstar_id, portfolio_date) → list of detail dicts
+                details_by_key: dict[tuple[str, str], list[dict]] = {}
 
                 for record in records:
                     mstar_id = record.get("mstar_id")
                     if not mstar_id:
                         continue
 
-                    # Extract snapshot fields
+                    # 1. Snapshot fields
                     snapshot_rec = {
                         k: v for k, v in record.items()
                         if k in holdings_field_values or k == "mstar_id"
                     }
                     if "portfolio_date" not in snapshot_rec:
                         snapshot_rec["portfolio_date"] = today
+                    all_snapshot_recs.append(snapshot_rec)
 
-                    # Upsert snapshot
-                    coerced_snapshot = self._coerce_records([snapshot_rec], FundHoldingsSnapshot)
-                    if coerced_snapshot:
-                        self.ingestion_repo.upsert_holdings_snapshot(coerced_snapshot)
-
-                    # Extract sector exposure fields (prefixed with "sector_")
-                    sector_records = []
                     portfolio_date = snapshot_rec.get("portfolio_date", today)
+
+                    # 2. Sector exposure fields (prefixed with "sector_")
                     for key, value in record.items():
                         if key.startswith("sector_"):
                             sector_name = key[len("sector_"):]
-                            sector_records.append({
+                            all_sector_recs.append({
                                 "mstar_id": mstar_id,
                                 "portfolio_date": portfolio_date,
                                 "sector_name": sector_name,
                                 "net_pct": value,
                             })
-                    if sector_records:
-                        coerced_sectors = self._coerce_records(sector_records, FundSectorExposure)
-                        if coerced_sectors:
-                            self.ingestion_repo.upsert_sector_exposure(coerced_sectors)
 
-                    # Extract holding details
+                    # 3. Holding details — queue for after snapshot upsert
                     holding_details = record.get("holding_details")
                     if holding_details:
-                        # Look up the snapshot ID for FK
-                        from sqlalchemy import select
-                        stmt = select(FundHoldingsSnapshot).where(
-                            FundHoldingsSnapshot.mstar_id == mstar_id,
-                            FundHoldingsSnapshot.portfolio_date == (
-                                date.fromisoformat(portfolio_date)
-                                if isinstance(portfolio_date, str) else portfolio_date
-                            ),
+                        details_by_key[(mstar_id, str(portfolio_date))] = holding_details
+
+                # Batch upsert snapshots
+                if all_snapshot_recs:
+                    coerced = self._coerce_records(all_snapshot_recs, FundHoldingsSnapshot)
+                    if coerced:
+                        self.ingestion_repo.upsert_holdings_snapshot(coerced)
+                        self.db.flush()
+
+                # Batch upsert sector exposure
+                if all_sector_recs:
+                    coerced = self._coerce_records(all_sector_recs, FundSectorExposure)
+                    if coerced:
+                        self.ingestion_repo.upsert_sector_exposure(coerced)
+
+                # Holding details — need snapshot IDs from DB
+                if details_by_key:
+                    from sqlalchemy import select
+                    snapshots = self.db.execute(
+                        select(
+                            FundHoldingsSnapshot.id,
+                            FundHoldingsSnapshot.mstar_id,
+                            FundHoldingsSnapshot.portfolio_date,
                         )
-                        snapshot = self.db.execute(stmt).scalars().first()
-                        if snapshot:
-                            self.ingestion_repo.upsert_holding_details(
-                                snapshot.id, holding_details,
-                            )
+                    ).fetchall()
+                    snap_lookup = {
+                        (s.mstar_id, str(s.portfolio_date)): s.id for s in snapshots
+                    }
+                    for (mid, pdate), details in details_by_key.items():
+                        snap_id = snap_lookup.get((mid, pdate))
+                        if snap_id:
+                            self.ingestion_repo.upsert_holding_details(snap_id, details)
 
             self.db.commit()
 

@@ -489,12 +489,14 @@ class TestWriteHoldings:
         result = FetchResult(api.name)
         from app.repositories.ingestion_repo import UpsertResult
         fetcher.ingestion_repo.upsert_holdings_snapshot.return_value = UpsertResult(inserted=1)
-        # Mock the snapshot query to return a snapshot with an ID
+        # Mock the snapshot lookup query (fetchall returns list of row-like objects)
         import uuid
         mock_snapshot_id = uuid.uuid4()
-        mock_snapshot = MagicMock()
-        mock_snapshot.id = mock_snapshot_id
-        fetcher.db.execute.return_value.scalars.return_value.first.return_value = mock_snapshot
+        mock_row = MagicMock()
+        mock_row.id = mock_snapshot_id
+        mock_row.mstar_id = "F001"
+        mock_row.portfolio_date = "2026-03-15"
+        fetcher.db.execute.return_value.fetchall.return_value = [mock_row]
         fetcher._write_to_db(api, records, result)
         fetcher.ingestion_repo.upsert_holding_details.assert_called_once()
         call_args = fetcher.ingestion_repo.upsert_holding_details.call_args
