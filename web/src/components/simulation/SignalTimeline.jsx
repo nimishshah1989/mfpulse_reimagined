@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { scaleTime, scaleLinear } from 'd3-scale'
-import { extent, max, bisector } from 'd3-array'
+import { extent, max as d3Max, bisector as d3Bisector } from 'd3-array'
 import { timeFormat } from 'd3-time-format'
 import { formatINR } from '../../lib/format'
 import { getSignalColor, computeStartDate } from '../../lib/simulation'
@@ -78,9 +78,9 @@ function SignalTimeline({ navHistory, cashflowEvents, period = '5Y', width = 800
 
   const capitalScale = useMemo(() => {
     if (!capitalData.length) return null
-    const max = max(capitalData, d => d.capital) || 1
+    const capMax = d3Max(capitalData, d => d.capital) || 1
     return scaleLinear()
-      .domain([0, max * 1.1])
+      .domain([0, capMax * 1.1])
       .range([capPanelBottom, navPanelBottom + 4])
   }, [capitalData, capPanelBottom, navPanelBottom])
 
@@ -140,10 +140,10 @@ function SignalTimeline({ navHistory, cashflowEvents, period = '5Y', width = 800
     ctx.stroke()
 
     // Signal markers
-    const bisector = bisector(d => d.date).left
+    const navBisect = d3Bisector(d => d.date).left
     visibleEvents.forEach(evt => {
       const x = xScale(evt.date)
-      const idx = bisector(visibleNav, evt.date)
+      const idx = navBisect(visibleNav, evt.date)
       const navPt = visibleNav[Math.min(idx, visibleNav.length - 1)]
       if (!navPt) return
       const y = navScale(navPt.nav)
@@ -192,14 +192,14 @@ function SignalTimeline({ navHistory, cashflowEvents, period = '5Y', width = 800
 
   useEffect(() => { draw() }, [draw])
 
-  const bisector = useMemo(() => bisector(d => d.date).left, [])
+  const dateBisect = useMemo(() => d3Bisector(d => d.date).left, [])
 
   const handleMouseMove = useCallback((e) => {
     const rect = e.currentTarget.getBoundingClientRect()
     const mx = e.clientX - rect.left
     const my = e.clientY - rect.top
     const date = xScale.invert(mx)
-    const idx = bisector(visibleNav, date)
+    const idx = dateBisect(visibleNav, date)
     const clamped = Math.max(0, Math.min(idx, visibleNav.length - 1))
     const pt = visibleNav[clamped]
     if (!pt) return
@@ -208,7 +208,7 @@ function SignalTimeline({ navHistory, cashflowEvents, period = '5Y', width = 800
       ev.date.toDateString() === pt.date.toDateString()
     )
     setTooltip({ x: mx, y: my, date: pt.date, nav: pt.nav, events: dayEvents })
-  }, [xScale, bisector, visibleNav, visibleEvents])
+  }, [xScale, dateBisect, visibleNav, visibleEvents])
 
   const handleMouseLeave = useCallback(() => setTooltip(null), [])
 
