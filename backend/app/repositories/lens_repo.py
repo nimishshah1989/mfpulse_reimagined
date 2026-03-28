@@ -166,6 +166,54 @@ class LensRepository:
             result.append(d)
         return result, total
 
+    def get_all_scores_batch(self, mstar_ids: list[str]) -> dict[str, dict]:
+        """Latest lens scores for multiple funds in a single query."""
+        if not mstar_ids:
+            return {}
+        latest_sub = (
+            self.db.query(
+                FundLensScores.mstar_id,
+                func.max(FundLensScores.computed_date).label("max_date"),
+            )
+            .filter(FundLensScores.mstar_id.in_(mstar_ids))
+            .group_by(FundLensScores.mstar_id)
+            .subquery()
+        )
+        rows = (
+            self.db.query(FundLensScores)
+            .join(
+                latest_sub,
+                (FundLensScores.mstar_id == latest_sub.c.mstar_id)
+                & (FundLensScores.computed_date == latest_sub.c.max_date),
+            )
+            .all()
+        )
+        return {r.mstar_id: self._scores_to_dict(r) for r in rows}
+
+    def get_all_classifications_batch(self, mstar_ids: list[str]) -> dict[str, dict]:
+        """Latest classifications for multiple funds in a single query."""
+        if not mstar_ids:
+            return {}
+        latest_sub = (
+            self.db.query(
+                FundClassification.mstar_id,
+                func.max(FundClassification.computed_date).label("max_date"),
+            )
+            .filter(FundClassification.mstar_id.in_(mstar_ids))
+            .group_by(FundClassification.mstar_id)
+            .subquery()
+        )
+        rows = (
+            self.db.query(FundClassification)
+            .join(
+                latest_sub,
+                (FundClassification.mstar_id == latest_sub.c.mstar_id)
+                & (FundClassification.computed_date == latest_sub.c.max_date),
+            )
+            .all()
+        )
+        return {r.mstar_id: self._classification_to_dict(r) for r in rows}
+
     def get_score_history(
         self,
         mstar_id: str,

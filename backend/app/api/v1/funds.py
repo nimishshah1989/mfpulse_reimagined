@@ -25,6 +25,19 @@ LENS_TIER_FILTERS = {
 }
 
 
+@router.get("/universe")
+def get_universe_data(db: Session = Depends(get_db)) -> dict:
+    """Single-query bulk endpoint for Universe Explorer — all funds with lens scores."""
+    service = FundService(db)
+    data = service.get_universe_data()
+    return {
+        "success": True,
+        "data": data,
+        "meta": {"timestamp": Meta().timestamp, "count": len(data)},
+        "error": None,
+    }
+
+
 @router.get("")
 def list_funds(
     category: Optional[str] = None,

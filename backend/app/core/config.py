@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     # Data feeds
     feed_csv_dir: str = "/app/data_feeds"
 
+    # Admin
+    admin_api_key: str = ""
+
     # Scheduler
     scheduler_enabled: bool = True
 

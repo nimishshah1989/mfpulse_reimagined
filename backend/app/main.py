@@ -1,6 +1,8 @@
 """MF Pulse Engine — FastAPI application."""
 
 import logging
+import time
+import uuid
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -8,6 +10,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
@@ -74,12 +77,56 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# GZip compression for responses > 1KB
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+# Request logging middleware
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next) -> Response:
+        request_id = str(uuid.uuid4())[:8]
+        start = time.monotonic()
+        response = await call_next(request)
+        duration_ms = round((time.monotonic() - start) * 1000, 1)
+        logger.info(
+            "request",
+            extra={
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status": response.status_code,
+                "duration_ms": duration_ms,
+            },
+        )
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+
+app.add_middleware(RequestLoggingMiddleware)
+
+
+# Cache-Control middleware for GET endpoints
+class CacheControlMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response = await call_next(request)
+        if request.method == "GET" and response.status_code == 200:
+            path = request.url.path
+            if path.startswith("/api/v1/market/"):
+                response.headers["Cache-Control"] = "public, max-age=60"
+            elif path.startswith("/api/v1/"):
+                response.headers["Cache-Control"] = "public, max-age=300"
+        return response
+
+
+app.add_middleware(CacheControlMiddleware)
+
 
 # Global exception handler
 @app.exception_handler(MFPulseError)
 async def mfpulse_error_handler(request: Request, exc: MFPulseError) -> JSONResponse:
     status_map = {
         "NOT_FOUND": 404,
+        "UNAUTHORIZED": 401,
         "VALIDATION_ERROR": 422,
         "INGESTION_ERROR": 502,
         "MORNINGSTAR_ERROR": 502,
@@ -110,12 +157,81 @@ app.include_router(api_v1_router)
 # Root health endpoint (outside /api/v1)
 @app.get("/health")
 def health() -> dict:
+    from app.core.database import SessionLocal
     db_ok = check_db_connection()
-    return {
+    result = {
         "status": "ok" if db_ok else "degraded",
         "database": "connected" if db_ok else "disconnected",
         "version": settings.app_version,
+        "fund_count": 0,
+        "latest_nav_date": None,
+        "lens_score_count": 0,
     }
+    if db_ok:
+        try:
+            from sqlalchemy import text
+            db = SessionLocal()
+            try:
+                row = db.execute(text(
+                    "SELECT count(*) FROM fund_master WHERE is_eligible = true"
+                )).scalar()
+                result["fund_count"] = row or 0
+                nav_date = db.execute(text(
+                    "SELECT max(nav_date) FROM nav_daily"
+                )).scalar()
+                result["latest_nav_date"] = str(nav_date) if nav_date else None
+                lens_count = db.execute(text(
+                    "SELECT count(*) FROM fund_lens_scores"
+                )).scalar()
+                result["lens_score_count"] = lens_count or 0
+            finally:
+                db.close()
+        except Exception:
+            pass
+    return result
+
+
+@app.get("/health/ready")
+def health_ready() -> JSONResponse:
+    """Returns 200 only when system has sufficient data to serve requests."""
+    from app.core.database import SessionLocal
+    db_ok = check_db_connection()
+    if not db_ok:
+        return JSONResponse(
+            status_code=503,
+            content={"ready": False, "reason": "database disconnected"},
+        )
+    try:
+        from sqlalchemy import text
+        db = SessionLocal()
+        try:
+            fund_count = db.execute(text(
+                "SELECT count(*) FROM fund_master WHERE is_eligible = true"
+            )).scalar() or 0
+            lens_count = db.execute(text(
+                "SELECT count(*) FROM fund_lens_scores"
+            )).scalar() or 0
+        finally:
+            db.close()
+        if fund_count < 1000:
+            return JSONResponse(
+                status_code=503,
+                content={"ready": False, "reason": f"insufficient funds: {fund_count}"},
+            )
+        if lens_count == 0:
+            return JSONResponse(
+                status_code=503,
+                content={"ready": False, "reason": "no lens scores computed"},
+            )
+        return JSONResponse(
+            status_code=200,
+            content={"ready": True, "fund_count": fund_count, "lens_count": lens_count},
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=503,
+            content={"ready": False, "reason": str(e)},
+        )
 
 
 # Static frontend serving via middleware.

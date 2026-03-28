@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { fetchAllFunds, fetchCategories, fetchAMCs } from '../lib/api';
+import { fetchUniverseData, fetchCategories, fetchAMCs } from '../lib/api';
+import { cachedFetch } from '../lib/cache';
 import { formatCount } from '../lib/format';
 import { LENS_OPTIONS } from '../lib/lens';
 import Pill from '../components/shared/Pill';
@@ -14,10 +15,6 @@ const BubbleScatter = dynamic(
   () => import('../components/universe/BubbleScatter'),
   { ssr: false, loading: () => <SkeletonLoader variant="chart" className="h-[600px]" /> }
 );
-
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
-let _fundsCache = null;
-let _fundsCacheTime = 0;
 
 const DEFAULT_FILTERS = {
   purchaseMode: 'Regular',
@@ -50,23 +47,14 @@ export default function UniversePage() {
   const contentRef = useRef(null);
   const [chartWidth, setChartWidth] = useState(800);
 
-  // Load data on mount with client-side cache
+  // Load data on mount with client-side cache (single bulk endpoint)
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
-        const now = Date.now();
 
-        let funds;
-        if (_fundsCache && now - _fundsCacheTime < CACHE_TTL_MS) {
-          funds = _fundsCache;
-        } else {
-          funds = await fetchAllFunds();
-          _fundsCache = funds;
-          _fundsCacheTime = now;
-        }
-
-        const [cats, amcList] = await Promise.all([
+        const [funds, cats, amcList] = await Promise.all([
+          cachedFetch('universe', fetchUniverseData, 600),
           fetchCategories().then((r) => r.data || []),
           fetchAMCs().then((r) => r.data || []),
         ]);

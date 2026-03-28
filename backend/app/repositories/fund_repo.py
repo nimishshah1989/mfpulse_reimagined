@@ -1,5 +1,6 @@
 """Read operations for fund data. All queries name columns explicitly."""
 
+import re
 from datetime import date
 from typing import Optional
 
@@ -11,6 +12,9 @@ from app.models.db.nav_daily import NavDaily
 from app.models.db.risk_stats import RiskStatsMonthly
 from app.models.db.rank_monthly import RankMonthly
 from app.models.db.category_returns import CategoryReturnsDaily
+
+_PURCHASE_MODE_MAP = {1: "Regular", 2: "Direct"}
+_IDCW_PATTERN = re.compile(r"\b(IDCW|Dividend)\b", re.IGNORECASE)
 
 
 class FundRepository:
@@ -295,6 +299,8 @@ class FundRepository:
                 "amc_name": f.amc_name,
                 "category_name": f.category_name,
                 "net_expense_ratio": f.net_expense_ratio,
+                "purchase_mode": _PURCHASE_MODE_MAP.get(f.purchase_mode, "Unknown"),
+                "dividend_type": "IDCW" if _IDCW_PATTERN.search(f.fund_name or "") else "Growth",
             }
             for f in funds
         ]

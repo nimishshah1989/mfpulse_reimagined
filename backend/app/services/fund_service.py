@@ -1,7 +1,8 @@
 """Fund data service — orchestrates queries across repositories."""
 
+import re
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -9,6 +10,18 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import NotFoundError, ValidationError
 from app.repositories.fund_repo import FundRepository
 from app.repositories.holdings_repo import HoldingsRepository
+
+
+PURCHASE_MODE_MAP = {1: "Regular", 2: "Direct"}
+
+_IDCW_PATTERN = re.compile(r"\b(IDCW|Dividend)\b", re.IGNORECASE)
+
+
+def derive_dividend_type(fund_name: str) -> str:
+    """Derive dividend type from fund name. IDCW/Dividend → 'IDCW', else → 'Growth'."""
+    if _IDCW_PATTERN.search(fund_name):
+        return "IDCW"
+    return "Growth"
 
 
 VALID_PERIODS = {"1m", "3m", "6m", "1y", "3y", "5y", "max"}
@@ -123,6 +136,12 @@ class FundService:
         rows = self.fund_repo.get_nav_history(
             mstar_id, start_date=start_date,
         )
+
+        # Synthesize NAV from cumulative daily returns when nav column is NULL
+        needs_synthesis = rows and rows[0].get("nav") is None
+        if needs_synthesis:
+            rows = self._synthesize_nav(rows)
+
         return [
             {
                 "date": r["nav_date"],
@@ -194,6 +213,61 @@ class FundService:
         """Sector allocation breakdown."""
         return self.holdings_repo.get_sector_exposure(mstar_id)
 
+    def get_universe_data(self) -> list[dict]:
+        """Bulk data for Universe Explorer — all eligible Regular funds with lens + returns."""
+        from app.repositories.lens_repo import LensRepository
+
+        funds, _ = self.fund_repo.get_all_funds(
+            purchase_mode=None,
+            eligible_only=True,
+            limit=50000,
+            offset=0,
+        )
+        mstar_ids = [f.mstar_id for f in funds]
+        nav_map = self.fund_repo.get_latest_navs_batch(mstar_ids)
+
+        lens_repo = LensRepository(self.db)
+        # Batch fetch all latest lens scores
+        all_scores = lens_repo.get_all_scores_batch(mstar_ids)
+        all_classes = lens_repo.get_all_classifications_batch(mstar_ids)
+
+        result = []
+        for fund in funds:
+            mid = fund.mstar_id
+            nav = nav_map.get(mid, {})
+            scores = all_scores.get(mid, {})
+            cls = all_classes.get(mid, {})
+            raw_mode = getattr(fund, "purchase_mode", None)
+            fund_name = fund.fund_name or fund.legal_name or ""
+            result.append({
+                "mstar_id": mid,
+                "fund_name": fund.fund_name,
+                "amc_name": fund.amc_name,
+                "category_name": fund.category_name,
+                "broad_category": getattr(fund, "broad_category", None),
+                "purchase_mode": PURCHASE_MODE_MAP.get(raw_mode, "Unknown"),
+                "dividend_type": derive_dividend_type(fund_name),
+                "return_1y": nav.get("return_1y"),
+                "return_3y": nav.get("return_3y"),
+                "return_5y": nav.get("return_5y"),
+                "net_expense_ratio": getattr(fund, "net_expense_ratio", None),
+                "latest_nav": nav.get("nav"),
+                "return_score": scores.get("return_score"),
+                "risk_score": scores.get("risk_score"),
+                "consistency_score": scores.get("consistency_score"),
+                "alpha_score": scores.get("alpha_score"),
+                "efficiency_score": scores.get("efficiency_score"),
+                "resilience_score": scores.get("resilience_score"),
+                "return_class": cls.get("return_class"),
+                "risk_class": cls.get("risk_class"),
+                "consistency_class": cls.get("consistency_class"),
+                "alpha_class": cls.get("alpha_class"),
+                "efficiency_class": cls.get("efficiency_class"),
+                "resilience_class": cls.get("resilience_class"),
+                "headline_tag": cls.get("headline_tag"),
+            })
+        return result
+
     def get_risk_history(
         self, mstar_id: str, limit: int = 12,
     ) -> list[dict]:
@@ -233,7 +307,27 @@ class FundService:
     # --- Private helpers ---
 
     @staticmethod
+    def _synthesize_nav(rows: list[dict]) -> list[dict]:
+        """Synthesize NAV from cumulative daily returns when nav is NULL.
+
+        Starts at 100 and compounds daily returns chronologically.
+        Rows come in desc order from repo, so reverse for compounding.
+        """
+        # Work chronologically (oldest first)
+        chronological = list(reversed(rows))
+        synthetic = Decimal("100")
+        for r in chronological:
+            ret = r.get("return_1d")
+            if ret is not None:
+                synthetic = synthetic * (1 + Decimal(str(ret)) / 100)
+            r["nav"] = str(synthetic.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP))
+        # Restore desc order
+        return list(reversed(chronological))
+
+    @staticmethod
     def _to_fund_summary(fund: object, latest_nav: Optional[dict]) -> dict:
+        raw_mode = getattr(fund, "purchase_mode", None)
+        fund_name = fund.fund_name or getattr(fund, "legal_name", "") or ""
         return {
             "mstar_id": fund.mstar_id,
             "fund_name": fund.fund_name,
@@ -244,7 +338,8 @@ class FundService:
             "inception_date": getattr(fund, "inception_date", None),
             "isin": getattr(fund, "isin", None),
             "amfi_code": getattr(fund, "amfi_code", None),
-            "purchase_mode": getattr(fund, "purchase_mode", None),
+            "purchase_mode": PURCHASE_MODE_MAP.get(raw_mode, "Unknown"),
+            "dividend_type": derive_dividend_type(fund_name),
             "net_expense_ratio": getattr(fund, "net_expense_ratio", None),
             "latest_nav": latest_nav.get("nav") if latest_nav else None,
             "latest_nav_date": latest_nav.get("nav_date") if latest_nav else None,

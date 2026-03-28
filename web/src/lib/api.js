@@ -38,6 +38,15 @@ export async function fetchAllFunds(params = {}) {
   return allFunds;
 }
 
+/**
+ * Fetch all funds via the bulk universe endpoint (single query).
+ * Returns flat array with fund data + lens scores + classifications.
+ */
+export async function fetchUniverseData() {
+  const res = await apiFetch('/api/v1/funds/universe');
+  return res.data || [];
+}
+
 // Fund APIs
 export const fetchFunds = (params) =>
   apiFetch(`/api/v1/funds?${new URLSearchParams(params)}`);
