@@ -15,12 +15,16 @@ from app.ingestion.field_maps import (
     HOLDING_DETAIL_FIELD_MAP,
     SECTOR_EXPOSURE_MAP,
     CATEGORY_RETURNS_FIELD_MAP,
+    ASSET_ALLOCATION_MAP,
+    CREDIT_QUALITY_MAP,
 )
 from app.models.db.fund_master import FundMaster
 from app.models.db.nav_daily import NavDaily
 from app.models.db.risk_stats import RiskStatsMonthly
 from app.models.db.rank_monthly import RankMonthly
 from app.models.db.holdings import FundHoldingsSnapshot, FundHoldingDetail
+from app.models.db.asset_allocation import FundAssetAllocation
+from app.models.db.credit_quality import FundCreditQuality
 from app.models.db.category_returns import CategoryReturnsDaily
 
 
@@ -32,6 +36,8 @@ ALL_MAPS = {
     "HOLDINGS_FIELD_MAP": (HOLDINGS_FIELD_MAP, FundHoldingsSnapshot),
     "HOLDING_DETAIL_FIELD_MAP": (HOLDING_DETAIL_FIELD_MAP, FundHoldingDetail),
     "CATEGORY_RETURNS_FIELD_MAP": (CATEGORY_RETURNS_FIELD_MAP, CategoryReturnsDaily),
+    "ASSET_ALLOCATION_MAP": (ASSET_ALLOCATION_MAP, FundAssetAllocation),
+    "CREDIT_QUALITY_MAP": (CREDIT_QUALITY_MAP, FundCreditQuality),
 }
 
 
@@ -109,3 +115,40 @@ def test_maps_are_non_empty() -> None:
     """All field maps must have at least one entry."""
     for map_name, (field_map, _) in ALL_MAPS.items():
         assert len(field_map) > 0, f"{map_name} is empty"
+
+
+def test_asset_allocation_map_has_7_fields() -> None:
+    """Asset allocation: 4 asset types + 3 market cap buckets."""
+    assert len(ASSET_ALLOCATION_MAP) == 7
+
+
+def test_credit_quality_map_has_8_ratings() -> None:
+    """Credit quality: AAA through not_rated."""
+    assert len(CREDIT_QUALITY_MAP) == 8
+
+
+def test_asset_allocation_map_db_columns_exist() -> None:
+    """Asset allocation map columns exist on FundAssetAllocation model."""
+    model_columns = {c.key for c in FundAssetAllocation.__table__.columns}
+    for ms_field, db_col in ASSET_ALLOCATION_MAP.items():
+        assert db_col in model_columns, (
+            f"ASSET_ALLOCATION_MAP: '{ms_field}' maps to '{db_col}' "
+            f"but FundAssetAllocation has no such column"
+        )
+
+
+def test_credit_quality_map_db_columns_exist() -> None:
+    """Credit quality map columns exist on FundCreditQuality model."""
+    model_columns = {c.key for c in FundCreditQuality.__table__.columns}
+    for ms_field, db_col in CREDIT_QUALITY_MAP.items():
+        assert db_col in model_columns, (
+            f"CREDIT_QUALITY_MAP: '{ms_field}' maps to '{db_col}' "
+            f"but FundCreditQuality has no such column"
+        )
+
+
+def test_holdings_aliases_has_portfolio_date() -> None:
+    """HOLDINGS_FIELD_ALIASES should map MostCurrentPortfolioDate → portfolio_date."""
+    from app.ingestion.field_maps import HOLDINGS_FIELD_ALIASES
+    assert "MostCurrentPortfolioDate" in HOLDINGS_FIELD_ALIASES
+    assert HOLDINGS_FIELD_ALIASES["MostCurrentPortfolioDate"] == "portfolio_date"

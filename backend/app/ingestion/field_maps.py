@@ -288,6 +288,12 @@ HOLDINGS_FIELD_MAP: dict[str, str] = {
     "EstFundLevelNetFlow": "est_fund_net_flow",
 }
 
+# Aliases for fields that appear under different names across APIs.
+# These are merged into the primary map at runtime in the parser.
+HOLDINGS_FIELD_ALIASES: dict[str, str] = {
+    "MostCurrentPortfolioDate": "portfolio_date",
+}
+
 HOLDING_DETAIL_FIELD_MAP: dict[str, str] = {
     "HoldingDetail_Name": "holding_name",
     "HoldingDetail_ISIN": "isin",
@@ -316,6 +322,27 @@ SECTOR_EXPOSURE_MAP: dict[str, str] = {
     "EquitySectorRealEstateNet": "Real Estate",
     "EquitySectorTechnologyNet": "Technology",
     "EquitySectorUtilitiesNet": "Utilities",
+}
+
+ASSET_ALLOCATION_MAP: dict[str, str] = {
+    "AssetAllocEquityNet": "equity_net",
+    "AssetAllocBondNet": "bond_net",
+    "AssetAllocCashNet": "cash_net",
+    "AssetAllocOtherNet": "other_net",
+    "IndiaLargeCapPct": "india_large_cap_pct",
+    "IndiaMidCapPct": "india_mid_cap_pct",
+    "IndiaSmallCapPct": "india_small_cap_pct",
+}
+
+CREDIT_QUALITY_MAP: dict[str, str] = {
+    "CreditQualAAA": "aaa_pct",
+    "CreditQualAA": "aa_pct",
+    "CreditQualA": "a_pct",
+    "CreditQualBBB": "bbb_pct",
+    "CreditQualBB": "bb_pct",
+    "CreditQualB": "b_pct",
+    "CreditQualBelowB": "below_b_pct",
+    "CreditQualNotRated": "not_rated_pct",
 }
 
 CATEGORY_RETURNS_FIELD_MAP: dict[str, str] = {

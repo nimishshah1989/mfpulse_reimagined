@@ -32,6 +32,8 @@ from app.models.db.nav_daily import NavDaily
 from app.models.db.rank_monthly import RankMonthly
 from app.models.db.risk_stats import RiskStatsMonthly
 from app.models.db.sector_exposure import FundSectorExposure
+from app.models.db.asset_allocation import FundAssetAllocation
+from app.models.db.credit_quality import FundCreditQuality
 from app.repositories.audit_repo import AuditRepository
 from app.repositories.ingestion_repo import IngestionRepository
 
@@ -233,8 +235,13 @@ class MorningstarFetcher:
             result.errors.append(f"API returned status {status_code}: {msg}")
             return [], result
 
-        # Get the field map for this API
-        field_map = getattr(field_maps, api.field_map_name, {})
+        # Get the field map for this API, merging any aliases
+        field_map = dict(getattr(field_maps, api.field_map_name, {}))
+        aliases = getattr(field_maps, "HOLDINGS_FIELD_ALIASES", {})
+        if api.db_target in ("holdings", "holdings_snapshot", "holdings_detail"):
+            for alias_key, alias_val in aliases.items():
+                if alias_key not in field_map:
+                    field_map[alias_key] = alias_val
 
         # All field maps for cross-lookup (risk API returns master fields too)
         all_maps = [
@@ -244,12 +251,17 @@ class MorningstarFetcher:
             ("RANK_FIELD_MAP", getattr(field_maps, "RANK_FIELD_MAP", {})),
             ("CATEGORY_RETURNS_FIELD_MAP", getattr(field_maps, "CATEGORY_RETURNS_FIELD_MAP", {})),
             ("HOLDINGS_FIELD_MAP", getattr(field_maps, "HOLDINGS_FIELD_MAP", {})),
+            ("ASSET_ALLOCATION_MAP", getattr(field_maps, "ASSET_ALLOCATION_MAP", {})),
+            ("CREDIT_QUALITY_MAP", getattr(field_maps, "CREDIT_QUALITY_MAP", {})),
         ]
 
-        # Special maps for holdings API: sector exposure and holding details
+        # Special maps for holdings APIs: sector exposure, asset allocation, credit quality, holding details
         sector_map = getattr(field_maps, "SECTOR_EXPOSURE_MAP", {})
         detail_map = getattr(field_maps, "HOLDING_DETAIL_FIELD_MAP", {})
-        is_holdings_api = api.db_target == "holdings"
+        asset_alloc_map = getattr(field_maps, "ASSET_ALLOCATION_MAP", {})
+        credit_quality_map = getattr(field_maps, "CREDIT_QUALITY_MAP", {})
+        is_holdings_api = api.db_target in ("holdings", "holdings_snapshot")
+        is_detail_api = api.db_target in ("holdings", "holdings_detail")
 
         # Parse each <data> element (one per fund)
         fund_records: list[dict] = []
@@ -279,13 +291,24 @@ class MorningstarFetcher:
                 else:
                     stripped = raw_tag
 
-                # Holdings API: check sector and detail maps first
+                # Holdings APIs: check sector, asset alloc, credit quality, and detail maps
                 if is_holdings_api:
                     if stripped in sector_map:
                         sector_name = sector_map[stripped]
                         record[f"sector_{sector_name}"] = value.strip()
                         result.mapped_fields += 1
                         continue
+                    if stripped in asset_alloc_map:
+                        db_col = asset_alloc_map[stripped]
+                        record[f"asset_alloc_{db_col}"] = value.strip()
+                        result.mapped_fields += 1
+                        continue
+                    if stripped in credit_quality_map:
+                        db_col = credit_quality_map[stripped]
+                        record[f"credit_{db_col}"] = value.strip()
+                        result.mapped_fields += 1
+                        continue
+                if is_holdings_api or is_detail_api:
                     if stripped in detail_map:
                         detail_raw[detail_map[stripped]] = value.strip()
                         result.mapped_fields += 1
@@ -451,12 +474,14 @@ class MorningstarFetcher:
                     coerced = self._coerce_records(deduped, CategoryReturnsDaily)
                     self.ingestion_repo.upsert_category_returns(coerced)
 
-            elif target == "holdings":
-                # Portfolio Data API returns 3 types in one response.
+            elif target in ("holdings", "holdings_snapshot", "holdings_detail"):
+                # Portfolio APIs return multiple types in one response.
                 # Split into batches for efficient DB writes.
                 holdings_field_values = set(field_maps.HOLDINGS_FIELD_MAP.values())
                 all_snapshot_recs: list[dict] = []
                 all_sector_recs: list[dict] = []
+                all_asset_alloc_recs: list[dict] = []
+                all_credit_quality_recs: list[dict] = []
                 # details_by_key: (mstar_id, portfolio_date) → list of detail dicts
                 details_by_key: dict[tuple[str, str], list[dict]] = {}
 
@@ -487,7 +512,31 @@ class MorningstarFetcher:
                                 "net_pct": value,
                             })
 
-                    # 3. Holding details — queue for after snapshot upsert
+                    # 3. Asset allocation fields (prefixed with "asset_alloc_")
+                    asset_alloc_rec: dict = {
+                        "mstar_id": mstar_id,
+                        "portfolio_date": portfolio_date,
+                    }
+                    for key, value in record.items():
+                        if key.startswith("asset_alloc_"):
+                            db_col = key[len("asset_alloc_"):]
+                            asset_alloc_rec[db_col] = value
+                    if len(asset_alloc_rec) > 2:
+                        all_asset_alloc_recs.append(asset_alloc_rec)
+
+                    # 4. Credit quality fields (prefixed with "credit_")
+                    credit_rec: dict = {
+                        "mstar_id": mstar_id,
+                        "portfolio_date": portfolio_date,
+                    }
+                    for key, value in record.items():
+                        if key.startswith("credit_"):
+                            db_col = key[len("credit_"):]
+                            credit_rec[db_col] = value
+                    if len(credit_rec) > 2:
+                        all_credit_quality_recs.append(credit_rec)
+
+                    # 5. Holding details — queue for after snapshot upsert
                     holding_details = record.get("holding_details")
                     if holding_details:
                         details_by_key[(mstar_id, str(portfolio_date))] = holding_details
@@ -504,6 +553,18 @@ class MorningstarFetcher:
                     coerced = self._coerce_records(all_sector_recs, FundSectorExposure)
                     if coerced:
                         self.ingestion_repo.upsert_sector_exposure(coerced)
+
+                # Batch upsert asset allocation
+                if all_asset_alloc_recs:
+                    coerced = self._coerce_records(all_asset_alloc_recs, FundAssetAllocation)
+                    if coerced:
+                        self.ingestion_repo.upsert_asset_allocation(coerced)
+
+                # Batch upsert credit quality
+                if all_credit_quality_recs:
+                    coerced = self._coerce_records(all_credit_quality_recs, FundCreditQuality)
+                    if coerced:
+                        self.ingestion_repo.upsert_credit_quality(coerced)
 
                 # Holding details — need snapshot IDs from DB
                 if details_by_key:

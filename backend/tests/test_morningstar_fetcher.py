@@ -9,7 +9,7 @@ import pytest
 
 os.environ.setdefault("DATABASE_URL", "postgresql://fie:changeme@localhost:5432/mf_pulse")
 
-from app.core.morningstar_config import APIS, MorningstarAPI
+from app.core.morningstar_config import APIS, API_NAME_MAP, MorningstarAPI
 from app.models.db.fund_master import FundMaster
 from app.models.db.nav_daily import NavDaily
 from app.models.db.rank_monthly import RankMonthly
@@ -412,7 +412,7 @@ class TestFetchOrchestration:
         mock_client_cls.return_value = mock_client
 
         results = fetcher.fetch_all()
-        assert len(results) == 9
+        assert len(results) == 11  # 9 original + 2 new holdings APIs
 
     @patch("app.services.morningstar_fetcher.httpx.Client")
     def test_fetch_nav_only_calls_2_apis(self, mock_client_cls, fetcher) -> None:
@@ -537,3 +537,178 @@ class TestWriteHoldings:
         assert record.get("sector_Technology") == "25.5"
         # Detail fields (pipe-delimited lists)
         assert "holding_details" in record
+
+
+class TestNewAPIs:
+    """Tests for Portfolio Summary and Fund Holdings Detail APIs."""
+
+    def test_config_has_portfolio_summary_api(self) -> None:
+        """morningstar_config has Portfolio Summary API."""
+        assert "portfolio_summary" in API_NAME_MAP
+
+    def test_config_has_holdings_detail_api(self) -> None:
+        """morningstar_config has Fund Holdings Detail API."""
+        assert "holdings_detail" in API_NAME_MAP
+
+    def test_portfolio_summary_api_properties(self) -> None:
+        """Portfolio Summary API has correct hash and db_target."""
+        api = API_NAME_MAP["portfolio_summary"]
+        assert api.hash == "ryt74bh4koatkf2w"
+        assert api.db_target == "holdings_snapshot"
+
+    def test_holdings_detail_api_properties(self) -> None:
+        """Fund Holdings Detail API has correct hash and db_target."""
+        api = API_NAME_MAP["holdings_detail"]
+        assert api.hash == "fq9mxhk7xeb20f3b"
+        assert api.db_target == "holdings_detail"
+
+
+class TestWriteHoldingsSnapshot:
+    """Portfolio Summary API → splits into snapshot + sector + asset alloc + credit quality."""
+
+    def test_write_holdings_snapshot_upserts_snapshot(self, fetcher) -> None:
+        """holdings_snapshot target → upsert_holdings_snapshot called."""
+        api = MorningstarAPI("Portfolio Summary", "ryt74bh4koatkf2w", "holdings_snapshot", "HOLDINGS_FIELD_MAP")
+        records = [{
+            "mstar_id": "F001",
+            "portfolio_date": "2026-03-15",
+            "num_holdings": "50",
+        }]
+        result = FetchResult(api.name)
+        from app.repositories.ingestion_repo import UpsertResult
+        fetcher.ingestion_repo.upsert_holdings_snapshot.return_value = UpsertResult(inserted=1)
+        fetcher._write_to_db(api, records, result)
+        fetcher.ingestion_repo.upsert_holdings_snapshot.assert_called_once()
+
+    def test_write_holdings_snapshot_extracts_sectors(self, fetcher) -> None:
+        """holdings_snapshot target with sector fields → upsert_sector_exposure called."""
+        api = MorningstarAPI("Portfolio Summary", "ryt74bh4koatkf2w", "holdings_snapshot", "HOLDINGS_FIELD_MAP")
+        records = [{
+            "mstar_id": "F001",
+            "portfolio_date": "2026-03-15",
+            "num_holdings": "50",
+            "sector_Technology": "25.5",
+            "sector_Financial Services": "18.3",
+        }]
+        result = FetchResult(api.name)
+        from app.repositories.ingestion_repo import UpsertResult
+        fetcher.ingestion_repo.upsert_holdings_snapshot.return_value = UpsertResult(inserted=1)
+        fetcher._write_to_db(api, records, result)
+        fetcher.ingestion_repo.upsert_sector_exposure.assert_called_once()
+        sector_recs = fetcher.ingestion_repo.upsert_sector_exposure.call_args[0][0]
+        assert len(sector_recs) == 2
+
+    def test_write_holdings_snapshot_extracts_asset_allocation(self, fetcher) -> None:
+        """holdings_snapshot target with asset alloc fields → upsert_asset_allocation called."""
+        api = MorningstarAPI("Portfolio Summary", "ryt74bh4koatkf2w", "holdings_snapshot", "HOLDINGS_FIELD_MAP")
+        records = [{
+            "mstar_id": "F001",
+            "portfolio_date": "2026-03-15",
+            "asset_alloc_equity_net": "85.5",
+            "asset_alloc_bond_net": "10.2",
+            "asset_alloc_cash_net": "4.3",
+        }]
+        result = FetchResult(api.name)
+        from app.repositories.ingestion_repo import UpsertResult
+        fetcher.ingestion_repo.upsert_holdings_snapshot.return_value = UpsertResult(inserted=1)
+        fetcher._write_to_db(api, records, result)
+        fetcher.ingestion_repo.upsert_asset_allocation.assert_called_once()
+        alloc_recs = fetcher.ingestion_repo.upsert_asset_allocation.call_args[0][0]
+        assert alloc_recs[0]["mstar_id"] == "F001"
+        assert "equity_net" in alloc_recs[0]
+
+    def test_write_holdings_snapshot_extracts_credit_quality(self, fetcher) -> None:
+        """holdings_snapshot target with credit quality fields → upsert_credit_quality called."""
+        api = MorningstarAPI("Portfolio Summary", "ryt74bh4koatkf2w", "holdings_snapshot", "HOLDINGS_FIELD_MAP")
+        records = [{
+            "mstar_id": "F001",
+            "portfolio_date": "2026-03-15",
+            "credit_aaa_pct": "30.0",
+            "credit_aa_pct": "25.0",
+        }]
+        result = FetchResult(api.name)
+        from app.repositories.ingestion_repo import UpsertResult
+        fetcher.ingestion_repo.upsert_holdings_snapshot.return_value = UpsertResult(inserted=1)
+        fetcher._write_to_db(api, records, result)
+        fetcher.ingestion_repo.upsert_credit_quality.assert_called_once()
+        credit_recs = fetcher.ingestion_repo.upsert_credit_quality.call_args[0][0]
+        assert credit_recs[0]["mstar_id"] == "F001"
+        assert "aaa_pct" in credit_recs[0]
+
+    def test_parse_xml_holdings_snapshot_maps_asset_alloc(self, fetcher) -> None:
+        """Portfolio Summary XML → asset allocation fields mapped with prefix."""
+        xml = _build_xml([{
+            "_id": "F001",
+            "PD-MostCurrentPortfolioDate": "2026-03-15",
+            "PD-AssetAllocEquityNet": "85.5",
+            "PD-AssetAllocBondNet": "10.2",
+            "PD-IndiaLargeCapPct": "60.0",
+        }])
+        api = MorningstarAPI("Portfolio Summary", "ryt74bh4koatkf2w", "holdings_snapshot", "HOLDINGS_FIELD_MAP")
+        records, result = fetcher._parse_xml(xml, api)
+        assert result.fund_count == 1
+        record = records[0]
+        assert record.get("asset_alloc_equity_net") == "85.5"
+        assert record.get("asset_alloc_india_large_cap_pct") == "60.0"
+
+    def test_parse_xml_holdings_snapshot_maps_credit_quality(self, fetcher) -> None:
+        """Portfolio Summary XML → credit quality fields mapped with prefix."""
+        xml = _build_xml([{
+            "_id": "F001",
+            "PD-MostCurrentPortfolioDate": "2026-03-15",
+            "PD-CreditQualAAA": "30.0",
+            "PD-CreditQualAA": "25.0",
+            "PD-CreditQualNotRated": "5.0",
+        }])
+        api = MorningstarAPI("Portfolio Summary", "ryt74bh4koatkf2w", "holdings_snapshot", "HOLDINGS_FIELD_MAP")
+        records, result = fetcher._parse_xml(xml, api)
+        record = records[0]
+        assert record.get("credit_aaa_pct") == "30.0"
+        assert record.get("credit_aa_pct") == "25.0"
+        assert record.get("credit_not_rated_pct") == "5.0"
+
+
+class TestWriteHoldingsDetail:
+    """Fund Holdings Detail API → creates snapshot + inserts individual holdings."""
+
+    def test_write_holdings_detail_creates_details(self, fetcher) -> None:
+        """holdings_detail target → holding details inserted via snapshot FK."""
+        api = MorningstarAPI("Fund Holdings Detail", "fq9mxhk7xeb20f3b", "holdings_detail", "HOLDING_DETAIL_FIELD_MAP")
+        records = [{
+            "mstar_id": "F001",
+            "portfolio_date": "2026-03-15",
+            "holding_details": [
+                {"holding_name": "HDFC Bank", "weighting_pct": "8.5"},
+                {"holding_name": "Infosys", "weighting_pct": "6.2"},
+            ],
+        }]
+        result = FetchResult(api.name)
+        from app.repositories.ingestion_repo import UpsertResult
+        fetcher.ingestion_repo.upsert_holdings_snapshot.return_value = UpsertResult(inserted=1)
+        import uuid
+        mock_snapshot_id = uuid.uuid4()
+        mock_row = MagicMock()
+        mock_row.id = mock_snapshot_id
+        mock_row.mstar_id = "F001"
+        mock_row.portfolio_date = "2026-03-15"
+        fetcher.db.execute.return_value.fetchall.return_value = [mock_row]
+        fetcher._write_to_db(api, records, result)
+        fetcher.ingestion_repo.upsert_holding_details.assert_called_once()
+
+    def test_parse_xml_holdings_detail_maps_pipe_delimited(self, fetcher) -> None:
+        """Fund Holdings Detail XML → pipe-delimited holding details parsed."""
+        xml = _build_xml([{
+            "_id": "F001",
+            "PD-MostCurrentPortfolioDate": "2026-03-15",
+            "PD-HoldingDetail_Name": "HDFC Bank|Infosys|TCS",
+            "PD-HoldingDetail_Weighting": "8.5|6.2|5.1",
+            "PD-HoldingDetail_ISIN": "INE040A01034|INE009A01021|INE467B01029",
+        }])
+        api = MorningstarAPI("Fund Holdings Detail", "fq9mxhk7xeb20f3b", "holdings_detail", "HOLDING_DETAIL_FIELD_MAP")
+        records, result = fetcher._parse_xml(xml, api)
+        assert result.fund_count == 1
+        record = records[0]
+        assert "holding_details" in record
+        details = record["holding_details"]
+        assert len(details) == 3
+        assert details[0]["holding_name"] == "HDFC Bank"
