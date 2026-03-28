@@ -23,7 +23,7 @@ function formatAxisDate(dateStr) {
 
 function TooltipContent({ active, payload }) {
   if (!active || !payload?.length) return null;
-  const { nav_date, nav } = payload[0].payload;
+  const { date: nav_date, nav } = payload[0].payload;
   return (
     <div className="rounded-lg bg-white px-3 py-2 shadow-lg border border-slate-200 text-sm">
       <p className="text-slate-500">{nav_date}</p>
@@ -55,8 +55,9 @@ export default function PerformanceChart({ mstarId, initialData = [] }) {
     setLoading(true);
     try {
       const result = await fetchNAVHistory(mstarId, p);
-      navCache.current.set(p, result);
-      setData(result);
+      const navPoints = result?.data ?? result ?? [];
+      navCache.current.set(p, navPoints);
+      setData(navPoints);
     } catch {
       setData([]);
     } finally {
@@ -94,7 +95,7 @@ export default function PerformanceChart({ mstarId, initialData = [] }) {
               </linearGradient>
             </defs>
             <XAxis
-              dataKey="nav_date"
+              dataKey="date"
               tickFormatter={formatAxisDate}
               tick={{ fontSize: 11, fill: '#94a3b8' }}
               axisLine={false}

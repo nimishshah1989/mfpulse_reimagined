@@ -57,11 +57,14 @@ export default function CompareMode({ primaryFund, primaryScores, onClose }) {
     setSearchQuery('');
     setSearchResults([]);
     try {
-      const [detail, scores] = await Promise.all([
+      const [detailRaw, scores] = await Promise.all([
         fetchFundDetail(fund.mstar_id),
         fetchFundLensScores(fund.mstar_id),
       ]);
-      setCompareFunds((prev) => [...prev, { detail: detail?.data ?? detail, scores: scores?.data ?? scores }]);
+      // Flatten nested { fund: {...}, returns: {...} } structure
+      const rawData = detailRaw?.data ?? detailRaw;
+      const fundData = rawData?.fund ? { ...rawData.fund, returns: rawData.returns } : rawData;
+      setCompareFunds((prev) => [...prev, { detail: fundData, scores: scores?.data ?? scores }]);
     } catch {
       // silently ignore
     }
