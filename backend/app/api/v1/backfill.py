@@ -1,4 +1,4 @@
-"""API endpoints for historical NAV backfill."""
+"""API endpoints for historical NAV and holdings backfill."""
 
 import threading
 from datetime import date, datetime, timezone
@@ -9,6 +9,10 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db, SessionLocal
 from app.services.nav_backfill_service import NAVBackfillService, backfill_progress
+from app.services.holdings_backfill_service import (
+    HoldingsBackfillService,
+    holdings_backfill_progress,
+)
 
 router = APIRouter(prefix="/backfill", tags=["backfill"])
 
@@ -98,6 +102,87 @@ def get_backfill_status(db: Session = Depends(get_db)) -> dict:
     status["db_total_navs"] = row.navs if row else 0
     status["db_earliest_date"] = str(row.earliest) if row and row.earliest else None
     status["db_latest_date"] = str(row.latest) if row and row.latest else None
+
+    return {
+        "success": True,
+        "data": status,
+        "meta": {"timestamp": datetime.now(timezone.utc).isoformat()},
+        "error": None,
+    }
+
+
+# --- Holdings Backfill ---
+
+@router.post("/holdings")
+def trigger_holdings_backfill(
+    concurrency: int = Query(default=10, ge=1, le=50),
+) -> dict:
+    """Launch full holdings backfill in a background thread. Returns immediately.
+
+    Fetches individual stock/bond holdings for all Regular funds (~3K)
+    via per-fund Morningstar API. ~2-3 hours at 10 concurrency.
+    Each fund commits independently — safe to interrupt.
+    """
+    def _run() -> None:
+        bg_db = SessionLocal()
+        try:
+            service = HoldingsBackfillService(bg_db)
+            service.fetch_all(concurrency=concurrency)
+        finally:
+            bg_db.close()
+
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()
+
+    return {
+        "success": True,
+        "data": {
+            "status": "Holdings backfill launched in background",
+            "concurrency": concurrency,
+        },
+        "meta": {"timestamp": datetime.now(timezone.utc).isoformat()},
+        "error": None,
+    }
+
+
+@router.post("/holdings/single/{mstar_id}")
+def backfill_single_holdings(
+    mstar_id: str,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Fetch holdings for one fund synchronously. For testing."""
+    service = HoldingsBackfillService(db)
+    count = service.fetch_fund_holdings(mstar_id)
+
+    return {
+        "success": True,
+        "data": {
+            "mstar_id": mstar_id,
+            "holdings_count": count,
+        },
+        "meta": {"timestamp": datetime.now(timezone.utc).isoformat()},
+        "error": None,
+    }
+
+
+@router.get("/holdings/status")
+def get_holdings_backfill_status(db: Session = Depends(get_db)) -> dict:
+    """Return current holdings backfill progress with DB totals."""
+    from sqlalchemy import text
+
+    status = holdings_backfill_progress.get_status()
+
+    row = db.execute(
+        text(
+            "SELECT COUNT(DISTINCT fhs.mstar_id) AS funds,"
+            " COUNT(fhd.id) AS details"
+            " FROM fund_holdings_snapshot fhs"
+            " LEFT JOIN fund_holding_detail fhd ON fhd.snapshot_id = fhs.id"
+        )
+    ).first()
+
+    status["db_funds_with_snapshots"] = row.funds if row else 0
+    status["db_total_holding_details"] = row.details if row else 0
 
     return {
         "success": True,
