@@ -76,9 +76,28 @@ def backfill_single_fund(
 
 
 @router.get("/nav/status")
-def get_backfill_status() -> dict:
-    """Return current backfill progress."""
+def get_backfill_status(db: Session = Depends(get_db)) -> dict:
+    """Return current backfill progress with actual DB totals."""
+    from sqlalchemy import func, text
+    from app.models.db.nav_daily import NavDaily
+
     status = backfill_progress.get_status()
+
+    # Always include actual DB counts — immune to container restarts
+    row = db.execute(
+        text(
+            "SELECT COUNT(DISTINCT mstar_id) AS funds,"
+            " COUNT(*) AS navs,"
+            " MIN(nav_date) AS earliest,"
+            " MAX(nav_date) AS latest"
+            " FROM nav_daily"
+        )
+    ).first()
+
+    status["db_total_funds"] = row.funds if row else 0
+    status["db_total_navs"] = row.navs if row else 0
+    status["db_earliest_date"] = str(row.earliest) if row and row.earliest else None
+    status["db_latest_date"] = str(row.latest) if row and row.latest else None
 
     return {
         "success": True,
