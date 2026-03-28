@@ -13,12 +13,22 @@ docker compose up -d           # Starts API + PostgreSQL
 
 ## Production Deployment
 
+Smart deploy script auto-detects changes and picks the fastest mode:
+
 ```bash
-# On EC2 13.206.34.214
-docker build -t mf-pulse .
-docker run -d --name mf-pulse --restart always \
-  --network host --env-file .env mf-pulse
+./scripts/deploy.sh              # auto-detect changes, pick fastest mode
+./scripts/deploy.sh frontend     # static files only (~30s, no restart)
+./scripts/deploy.sh backend      # Python code sync + restart (~10s)
+./scripts/deploy.sh rebuild      # Docker build with cache (~1-2 min)
+./scripts/deploy.sh full         # Docker build without cache (~3 min)
+./scripts/deploy.sh auto feature/my-branch   # deploy a specific branch
 ```
+
+**How it works:**
+- **Frontend-only changes** (web/): `pnpm build` on EC2, `docker cp` static files into container. No Docker rebuild, no restart — FastAPI already serves from `web/out/`.
+- **Backend-only changes** (backend/): `docker cp` Python code into container + `docker restart`.
+- **Dependency/Dockerfile changes**: Full `docker compose build` with or without cache.
+- **Auto mode** (default): Runs `git diff` to detect what changed, picks the fastest applicable mode.
 
 ## Architecture
 

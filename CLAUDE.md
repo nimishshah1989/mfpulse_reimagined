@@ -253,6 +253,28 @@ Read `docs/prs/PR-XX.md` before building each PR.
 
 ---
 
+## DEPLOYMENT
+
+Smart deploy script at `scripts/deploy.sh`. The key insight: frontend is static HTML served by FastAPI — changing frontend files only needs `pnpm build` + `docker cp`, not a Docker rebuild.
+
+| Mode | When to use | Speed | Restart? |
+|------|------------|-------|----------|
+| `frontend` | web/ changes only (components, pages, styles) | ~30s | No |
+| `backend` | backend/app/ or scripts/ changes only | ~10s | Yes |
+| `rebuild` | requirements.txt, package.json, or Dockerfile changes | ~1-2 min | Yes |
+| `full` | Major Dockerfile restructuring, broken cache | ~3 min | Yes |
+| `auto` | Default — detects changes via git diff, picks fastest | Varies | Depends |
+
+```bash
+./scripts/deploy.sh              # auto-detect (default)
+./scripts/deploy.sh frontend     # force frontend-only deploy
+./scripts/deploy.sh auto feature/my-branch   # specific branch
+```
+
+**Never use `full` or `rebuild` for frontend-only changes.** The auto mode handles this correctly.
+
+---
+
 ## SESSION RULES
 
 1. Read this file first at every session start.
