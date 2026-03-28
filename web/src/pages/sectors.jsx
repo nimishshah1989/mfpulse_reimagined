@@ -69,7 +69,15 @@ export default function SectorsPage() {
 
     let anySuccess = false;
     if (sectorsRes.status === 'fulfilled') {
-      setSectorData(sectorsRes.value.data || []);
+      const raw = sectorsRes.value.data || [];
+      // Normalize: MarketPulse uses display_name + uppercase quadrants
+      const toTitleCase = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : str;
+      const normalized = (Array.isArray(raw) ? raw : []).map((s) => ({
+        ...s,
+        sector_name: s.sector_name || s.display_name || s.name || 'Unknown',
+        quadrant: toTitleCase(s.quadrant),
+      }));
+      setSectorData(normalized);
       anySuccess = true;
     }
     if (breadthRes.status === 'fulfilled') {
