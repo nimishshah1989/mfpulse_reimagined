@@ -118,37 +118,38 @@ def health() -> dict:
     }
 
 
-# Static frontend serving
-# Mount _next assets at their expected path, then catch-all for SPA pages
+# Static frontend serving — mounted AFTER all API routes
+# Uses a sub-application so it never intercepts /api/* or /health
 _frontend_dir = Path("web/out")
 if _frontend_dir.is_dir():
-    # Serve Next.js static assets (_next/static/*)
+    # Create a separate FastAPI app for frontend so it doesn't interfere
+    _frontend_app = FastAPI()
+
+    # Serve Next.js static assets
     _next_dir = _frontend_dir / "_next"
     if _next_dir.is_dir():
-        app.mount("/_next", StaticFiles(directory=str(_next_dir)), name="next_assets")
+        _frontend_app.mount("/_next", StaticFiles(directory=str(_next_dir)), name="next_assets")
 
-    # SPA catch-all: serve the matching HTML file or index.html
-    # This must be LAST so /api/* and /health are handled by FastAPI first
-    @app.get("/{full_path:path}")
-    async def serve_frontend(request: Request, full_path: str):
-        # Try exact file (e.g. favicon.ico)
+    @_frontend_app.get("/{full_path:path}")
+    async def _serve_page(full_path: str):
+        # Exact file (favicon.ico, etc.)
         file_path = _frontend_dir / full_path
         if file_path.is_file():
             return FileResponse(str(file_path))
-
-        # Try as a page directory (e.g. /fund360 -> /fund360/index.html)
+        # Page directory (e.g. /fund360 -> /fund360/index.html)
         page_index = _frontend_dir / full_path / "index.html"
         if page_index.is_file():
             return FileResponse(str(page_index))
-
-        # Try with .html extension
+        # .html extension
         html_path = _frontend_dir / f"{full_path}.html"
         if html_path.is_file():
             return FileResponse(str(html_path))
-
-        # Fallback to root index.html (SPA client-side routing)
+        # SPA fallback
         root_index = _frontend_dir / "index.html"
         if root_index.is_file():
             return FileResponse(str(root_index))
-
         return JSONResponse(status_code=404, content={"error": "Not found"})
+
+    # Mount at root — but as a sub-app, it only handles requests that
+    # don't match any route in the main app (API routes take priority)
+    app.mount("/", _frontend_app)
