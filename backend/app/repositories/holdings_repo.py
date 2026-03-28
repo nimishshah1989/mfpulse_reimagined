@@ -21,13 +21,29 @@ class HoldingsRepository:
         self.db = db
 
     def get_latest_snapshot(self, mstar_id: str) -> Optional[dict]:
-        """Latest portfolio snapshot (AUM, PE, PB, style box, etc.)."""
+        """Latest portfolio snapshot (AUM, PE, PB, style box, etc.).
+
+        Prefers the newest snapshot with non-null AUM (newer empty snapshots
+        may exist from partial ingestion runs).
+        """
+        # Try newest with AUM first
         snap = (
             self.db.query(FundHoldingsSnapshot)
-            .filter(FundHoldingsSnapshot.mstar_id == mstar_id)
+            .filter(
+                FundHoldingsSnapshot.mstar_id == mstar_id,
+                FundHoldingsSnapshot.aum.isnot(None),
+            )
             .order_by(FundHoldingsSnapshot.portfolio_date.desc())
             .first()
         )
+        if snap is None:
+            # Fall back to newest regardless
+            snap = (
+                self.db.query(FundHoldingsSnapshot)
+                .filter(FundHoldingsSnapshot.mstar_id == mstar_id)
+                .order_by(FundHoldingsSnapshot.portfolio_date.desc())
+                .first()
+            )
         if snap is None:
             return None
         return self._snapshot_to_dict(snap)
@@ -35,32 +51,65 @@ class HoldingsRepository:
     def get_latest_snapshots_batch(
         self, mstar_ids: list[str], chunk_size: int = 1000,
     ) -> dict[str, dict]:
-        """Latest holdings snapshot for multiple funds — chunked to avoid large IN clauses."""
+        """Latest holdings snapshot (with AUM) for multiple funds.
+
+        Prefers the newest snapshot that has non-null AUM. Falls back to the
+        absolute newest snapshot if no AUM-bearing row exists. Chunked to
+        avoid large IN clauses.
+        """
         if not mstar_ids:
             return {}
         result: dict[str, dict] = {}
         for i in range(0, len(mstar_ids), chunk_size):
             chunk = mstar_ids[i : i + chunk_size]
-            latest_sub = (
+            # First pass: latest snapshot WITH AUM data
+            latest_aum_sub = (
                 self.db.query(
                     FundHoldingsSnapshot.mstar_id,
                     func.max(FundHoldingsSnapshot.portfolio_date).label("max_date"),
                 )
-                .filter(FundHoldingsSnapshot.mstar_id.in_(chunk))
+                .filter(
+                    FundHoldingsSnapshot.mstar_id.in_(chunk),
+                    FundHoldingsSnapshot.aum.isnot(None),
+                )
                 .group_by(FundHoldingsSnapshot.mstar_id)
                 .subquery()
             )
             rows = (
                 self.db.query(FundHoldingsSnapshot)
                 .join(
-                    latest_sub,
-                    (FundHoldingsSnapshot.mstar_id == latest_sub.c.mstar_id)
-                    & (FundHoldingsSnapshot.portfolio_date == latest_sub.c.max_date),
+                    latest_aum_sub,
+                    (FundHoldingsSnapshot.mstar_id == latest_aum_sub.c.mstar_id)
+                    & (FundHoldingsSnapshot.portfolio_date == latest_aum_sub.c.max_date),
                 )
                 .all()
             )
             for r in rows:
                 result[r.mstar_id] = self._snapshot_to_dict(r)
+
+            # Second pass: funds in this chunk not yet found (no AUM rows)
+            missing = [mid for mid in chunk if mid not in result]
+            if missing:
+                fallback_sub = (
+                    self.db.query(
+                        FundHoldingsSnapshot.mstar_id,
+                        func.max(FundHoldingsSnapshot.portfolio_date).label("max_date"),
+                    )
+                    .filter(FundHoldingsSnapshot.mstar_id.in_(missing))
+                    .group_by(FundHoldingsSnapshot.mstar_id)
+                    .subquery()
+                )
+                fallback_rows = (
+                    self.db.query(FundHoldingsSnapshot)
+                    .join(
+                        fallback_sub,
+                        (FundHoldingsSnapshot.mstar_id == fallback_sub.c.mstar_id)
+                        & (FundHoldingsSnapshot.portfolio_date == fallback_sub.c.max_date),
+                    )
+                    .all()
+                )
+                for r in fallback_rows:
+                    result[r.mstar_id] = self._snapshot_to_dict(r)
         return result
 
     def get_top_holdings(self, mstar_id: str, limit: int = 10) -> list[dict]:
