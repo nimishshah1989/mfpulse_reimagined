@@ -74,7 +74,7 @@ class FundHoldingDetail(Base, UUIDPrimaryKey):
     market_value: Mapped[None] = mapped_column(Numeric(16, 2), nullable=True)
     global_sector: Mapped[Optional[str]] = mapped_column(String(100))
     country: Mapped[Optional[str]] = mapped_column(String(50))
-    currency: Mapped[Optional[str]] = mapped_column(String(10))
+    currency: Mapped[Optional[str]] = mapped_column(String(50))
     coupon: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
     maturity_date: Mapped[Optional[date]] = mapped_column(Date)
     credit_quality: Mapped[Optional[str]] = mapped_column(String(20))
