@@ -4,9 +4,12 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
+import os
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_v1_router
@@ -115,8 +118,37 @@ def health() -> dict:
     }
 
 
-# Static frontend serving (Sprint 3)
-try:
-    app.mount("/", StaticFiles(directory="web/out", html=True), name="frontend")
-except Exception:
-    pass  # No frontend build yet — that's fine
+# Static frontend serving
+# Mount _next assets at their expected path, then catch-all for SPA pages
+_frontend_dir = Path("web/out")
+if _frontend_dir.is_dir():
+    # Serve Next.js static assets (_next/static/*)
+    _next_dir = _frontend_dir / "_next"
+    if _next_dir.is_dir():
+        app.mount("/_next", StaticFiles(directory=str(_next_dir)), name="next_assets")
+
+    # SPA catch-all: serve the matching HTML file or index.html
+    # This must be LAST so /api/* and /health are handled by FastAPI first
+    @app.get("/{full_path:path}")
+    async def serve_frontend(request: Request, full_path: str):
+        # Try exact file (e.g. favicon.ico)
+        file_path = _frontend_dir / full_path
+        if file_path.is_file():
+            return FileResponse(str(file_path))
+
+        # Try as a page directory (e.g. /fund360 -> /fund360/index.html)
+        page_index = _frontend_dir / full_path / "index.html"
+        if page_index.is_file():
+            return FileResponse(str(page_index))
+
+        # Try with .html extension
+        html_path = _frontend_dir / f"{full_path}.html"
+        if html_path.is_file():
+            return FileResponse(str(html_path))
+
+        # Fallback to root index.html (SPA client-side routing)
+        root_index = _frontend_dir / "index.html"
+        if root_index.is_file():
+            return FileResponse(str(root_index))
+
+        return JSONResponse(status_code=404, content={"error": "Not found"})
