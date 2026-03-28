@@ -566,6 +566,28 @@ class TestNewAPIs:
 class TestWriteHoldingsSnapshot:
     """Portfolio Summary API → splits into snapshot + sector + asset alloc + credit quality."""
 
+    @pytest.fixture(autouse=True)
+    def mock_regular_ids(self, fetcher):
+        """All holdings_snapshot tests assume F001 is a Regular fund."""
+        fetcher._get_regular_fund_ids = MagicMock(return_value={"F001"})
+
+    def test_write_holdings_snapshot_filters_regular_only(self, fetcher) -> None:
+        """holdings_snapshot target → only Regular funds (purchase_mode=1) written."""
+        api = MorningstarAPI("Portfolio Summary", "ryt74bh4koatkf2w", "holdings_snapshot", "HOLDINGS_FIELD_MAP")
+        records = [
+            {"mstar_id": "F001", "portfolio_date": "2026-03-15", "num_holdings": "50"},
+            {"mstar_id": "F002", "portfolio_date": "2026-03-15", "num_holdings": "30"},  # Direct fund
+        ]
+        result = FetchResult(api.name)
+        # F001 is Regular (via autouse fixture), F002 is not
+        from app.repositories.ingestion_repo import UpsertResult
+        fetcher.ingestion_repo.upsert_holdings_snapshot.return_value = UpsertResult(inserted=1)
+        fetcher._write_to_db(api, records, result)
+        coerced = fetcher.ingestion_repo.upsert_holdings_snapshot.call_args[0][0]
+        mstar_ids = {r["mstar_id"] for r in coerced}
+        assert "F001" in mstar_ids
+        assert "F002" not in mstar_ids
+
     def test_write_holdings_snapshot_upserts_snapshot(self, fetcher) -> None:
         """holdings_snapshot target → upsert_holdings_snapshot called."""
         api = MorningstarAPI("Portfolio Summary", "ryt74bh4koatkf2w", "holdings_snapshot", "HOLDINGS_FIELD_MAP")
@@ -670,6 +692,11 @@ class TestWriteHoldingsSnapshot:
 
 class TestWriteHoldingsDetail:
     """Fund Holdings Detail API → creates snapshot + inserts individual holdings."""
+
+    @pytest.fixture(autouse=True)
+    def mock_regular_ids(self, fetcher):
+        """All holdings_detail tests assume F001 is a Regular fund."""
+        fetcher._get_regular_fund_ids = MagicMock(return_value={"F001"})
 
     def test_write_holdings_detail_creates_details(self, fetcher) -> None:
         """holdings_detail target → holding details inserted via snapshot FK."""

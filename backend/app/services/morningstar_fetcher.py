@@ -90,6 +90,15 @@ class MorningstarFetcher:
         ).fetchall()
         return {row.mstar_id: row.category_name for row in rows}
 
+    def _get_regular_fund_ids(self) -> set[str]:
+        """Return mstar_ids where purchase_mode=1 (Regular plans only)."""
+        rows = self.db.execute(
+            FundMaster.__table__.select().with_only_columns(
+                FundMaster.__table__.c.mstar_id,
+            ).where(FundMaster.__table__.c.purchase_mode == 1)
+        ).fetchall()
+        return {row.mstar_id for row in rows}
+
     def _get_column_types(self, model_cls: type) -> dict[str, type]:
         """Build {col_name: sqlalchemy_type_class} map, cached per model."""
         if model_cls not in self._col_type_cache:
@@ -476,6 +485,16 @@ class MorningstarFetcher:
 
             elif target in ("holdings", "holdings_snapshot", "holdings_detail"):
                 # Portfolio APIs return multiple types in one response.
+                # Filter to Regular funds only for dedicated holdings APIs.
+                if target in ("holdings_snapshot", "holdings_detail"):
+                    regular_ids = self._get_regular_fund_ids()
+                    before = len(records)
+                    records = [r for r in records if r.get("mstar_id") in regular_ids]
+                    logger.info(
+                        "Holdings filter: %d total → %d Regular funds",
+                        before, len(records),
+                    )
+
                 # Split into batches for efficient DB writes.
                 holdings_field_values = set(field_maps.HOLDINGS_FIELD_MAP.values())
                 all_snapshot_recs: list[dict] = []
