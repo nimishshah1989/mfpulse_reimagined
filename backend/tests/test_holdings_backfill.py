@@ -243,6 +243,7 @@ class TestHoldingsBackfillService:
                 from app.repositories.ingestion_repo import UpsertResult
                 mock_repo_cls.return_value = mock_thread_repo
                 mock_thread_repo.upsert_holdings_snapshot.return_value = UpsertResult(inserted=1)
+                mock_thread_repo.upsert_holding_details.return_value = UpsertResult(inserted=2)
 
                 # Mock snapshot ID lookup
                 mock_snap = MagicMock()

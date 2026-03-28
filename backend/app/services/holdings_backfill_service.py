@@ -30,7 +30,7 @@ from app.ingestion.field_maps import HOLDING_DETAIL_NESTED_MAP
 from app.models.db.fund_master import FundMaster
 from app.models.db.holdings import FundHoldingsSnapshot
 from app.repositories.audit_repo import AuditRepository
-from app.repositories.ingestion_repo import IngestionRepository
+from app.repositories.ingestion_repo import IngestionRepository, UpsertResult
 
 logger = logging.getLogger(__name__)
 
@@ -270,16 +270,15 @@ class HoldingsBackfillService:
                 return 0
 
             # Upsert snapshot (creates if not exists)
-            today = str(date.today())
+            today = date.today()
             snapshot_rec = {
                 "mstar_id": mstar_id,
-                "portfolio_date": date.today(),
+                "portfolio_date": today,
                 "num_holdings": len(holdings),
             }
             repo.upsert_holdings_snapshot([snapshot_rec])
-            db.flush()
 
-            # Look up the snapshot ID
+            # Look up the snapshot ID (use date object, not string)
             snap = db.execute(
                 select(FundHoldingsSnapshot.id)
                 .where(FundHoldingsSnapshot.mstar_id == mstar_id)
@@ -287,10 +286,16 @@ class HoldingsBackfillService:
             ).fetchone()
 
             if snap:
-                repo.upsert_holding_details(snap.id, holdings)
+                result = repo.upsert_holding_details(snap.id, holdings)
+                if result.errors:
+                    logger.error("Holdings insert errors for %s: %s", mstar_id, result.errors)
+                logger.info("Holdings for %s: %d parsed, %d inserted, %d failed",
+                            mstar_id, len(holdings), result.inserted, result.failed)
+            else:
+                logger.error("Snapshot lookup failed for %s on %s — holdings not inserted", mstar_id, today)
+                return 0
 
-            logger.info("Holdings for %s: %d holdings inserted", mstar_id, len(holdings))
-            return len(holdings)
+            return result.inserted
         except Exception:
             logger.exception("Error fetching holdings for %s", mstar_id)
             raise
