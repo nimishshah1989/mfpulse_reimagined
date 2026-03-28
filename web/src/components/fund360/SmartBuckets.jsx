@@ -149,7 +149,9 @@ const COLOR_MAP = {
  *   onSelect       func(bucketId, fundIds) -- called when a bucket is clicked
  *   universe       array -- optional pre-loaded universe data
  */
-export default function SmartBuckets({ activeBucket, onSelect, universe: externalUniverse }) {
+const PURCHASE_MODE_LABEL = { 1: 'Regular', 2: 'Direct' };
+
+export default function SmartBuckets({ activeBucket, onSelect, universe: externalUniverse, purchaseMode = 1 }) {
   const [universe, setUniverse] = useState(externalUniverse || []);
   const [loading, setLoading] = useState(!externalUniverse);
   const scrollRef = useRef(null);
@@ -168,8 +170,13 @@ export default function SmartBuckets({ activeBucket, onSelect, universe: externa
     return () => { cancelled = true; };
   }, [externalUniverse]);
 
+  const modeLabel = PURCHASE_MODE_LABEL[purchaseMode];
+  const filteredUniverse = modeLabel
+    ? universe.filter((f) => f.purchase_mode === modeLabel)
+    : universe;
+
   const bucketCounts = BUCKETS.map((bucket) => {
-    const matching = universe.filter(bucket.filter);
+    const matching = filteredUniverse.filter(bucket.filter);
     return { ...bucket, count: matching.length, fundIds: matching.map((f) => f.mstar_id) };
   });
 

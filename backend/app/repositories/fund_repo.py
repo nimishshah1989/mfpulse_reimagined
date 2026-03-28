@@ -28,6 +28,7 @@ class FundRepository:
     def get_all_funds(
         self,
         category: Optional[str] = None,
+        broad_category: Optional[str] = None,
         amc: Optional[str] = None,
         search: Optional[str] = None,
         purchase_mode: Optional[int] = 1,
@@ -44,6 +45,8 @@ class FundRepository:
             query = query.filter(FundMaster.is_eligible.is_(True))
         if category:
             query = query.filter(FundMaster.category_name == category)
+        if broad_category:
+            query = query.filter(FundMaster.broad_category == broad_category)
         if amc:
             query = query.filter(FundMaster.amc_name == amc)
         if purchase_mode is not None:

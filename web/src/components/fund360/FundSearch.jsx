@@ -12,6 +12,11 @@ import SmartBuckets from './SmartBuckets';
 import FundCardGrid from './FundCardGrid';
 
 const BROAD_CATEGORIES = ['All', 'Equity', 'Fixed Income', 'Allocation', 'Alternative Strategies'];
+const PURCHASE_MODES = [
+  { label: 'Regular', value: 1 },
+  { label: 'Direct', value: 2 },
+  { label: 'Both', value: 0 },
+];
 
 /**
  * FundSearch -- the explorer page shown when no fund is selected.
@@ -34,13 +39,14 @@ export default function FundSearch({ onSelect }) {
   const [activeBucket, setActiveBucket] = useState(null);
   const [bucketFundIds, setBucketFundIds] = useState([]);
   const [universe, setUniverse] = useState([]);
+  const [purchaseMode, setPurchaseMode] = useState(1);
 
   useEffect(() => {
     Promise.allSettled([fetchCategories(), fetchAMCs()]).then(([catRes, amcRes]) => {
       if (catRes.status === 'fulfilled') setCategories(catRes.value.data || []);
       if (amcRes.status === 'fulfilled') setAmcs(amcRes.value.data || []);
     });
-    fetchFunds({ limit: 20, sort: 'return_1y', order: 'desc' })
+    fetchFunds({ limit: 20, sort: 'return_1y', order: 'desc', purchase_mode: 1 })
       .then((res) => setTopFunds(res.data || []))
       .catch(() => {})
       .finally(() => setTopLoading(false));
@@ -59,10 +65,11 @@ export default function FundSearch({ onSelect }) {
       setActiveBucket(null);
       setBucketFundIds([]);
     }
-  }, [query, selectedCategory, selectedAmc, selectedBroad]);
+  }, [query, selectedCategory, selectedAmc, selectedBroad, purchaseMode]);
 
   useEffect(() => {
     const params = { limit: 40 };
+    if (purchaseMode > 0) params.purchase_mode = purchaseMode;
     if (query.length >= 2) params.search = query;
     if (selectedCategory) params.category = selectedCategory;
     if (selectedAmc) params.amc = selectedAmc;
@@ -87,7 +94,7 @@ export default function FundSearch({ onSelect }) {
       }
     }, 200);
     return () => clearTimeout(timer);
-  }, [query, selectedCategory, selectedAmc, selectedBroad]);
+  }, [query, selectedCategory, selectedAmc, selectedBroad, purchaseMode]);
 
   const handleBucketSelect = (bucketId, fundIds) => {
     setActiveBucket(bucketId);
@@ -96,6 +103,7 @@ export default function FundSearch({ onSelect }) {
     setSelectedCategory('');
     setSelectedAmc('');
     setSelectedBroad('All');
+    setPurchaseMode(1);
   };
 
   let displayFunds;
@@ -132,6 +140,7 @@ export default function FundSearch({ onSelect }) {
           activeBucket={activeBucket}
           onSelect={handleBucketSelect}
           universe={universe.length > 0 ? universe : undefined}
+          purchaseMode={purchaseMode}
         />
 
         {/* Search bar */}
@@ -180,6 +189,25 @@ export default function FundSearch({ onSelect }) {
             ))}
           </div>
 
+          <div className="w-px h-6 bg-slate-200" />
+
+          <div className="flex gap-1">
+            {PURCHASE_MODES.map((pm) => (
+              <button
+                key={pm.value}
+                type="button"
+                onClick={() => setPurchaseMode(pm.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  purchaseMode === pm.value
+                    ? 'bg-slate-700 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {pm.label}
+              </button>
+            ))}
+          </div>
+
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
@@ -206,7 +234,7 @@ export default function FundSearch({ onSelect }) {
             ))}
           </select>
 
-          {(selectedCategory || selectedAmc || selectedBroad !== 'All' || query || activeBucket) && (
+          {(selectedCategory || selectedAmc || selectedBroad !== 'All' || query || activeBucket || purchaseMode !== 1) && (
             <button
               type="button"
               onClick={() => {
@@ -216,6 +244,7 @@ export default function FundSearch({ onSelect }) {
                 setSelectedAmc('');
                 setActiveBucket(null);
                 setBucketFundIds([]);
+                setPurchaseMode(1);
               }}
               className="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors"
             >

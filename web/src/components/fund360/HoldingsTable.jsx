@@ -20,13 +20,21 @@ const SECTOR_COLORS = [
   'bg-orange-50 text-orange-700',
 ];
 
+const QUADRANT_SHORT = {
+  Leading:   { label: 'Leading',   cls: 'bg-emerald-100 text-emerald-700' },
+  Improving: { label: 'Improving', cls: 'bg-teal-100 text-teal-700' },
+  Weakening: { label: 'Weakening', cls: 'bg-amber-100 text-amber-700' },
+  Lagging:   { label: 'Lagging',   cls: 'bg-red-100 text-red-700' },
+};
+
 /**
  * HoldingsTable -- top holdings with weight bars, sector tags, type badges.
  *
  * Props:
- *   holdings  array
+ *   holdings         array
+ *   sectorQuadrants  object -- map of sector display_name → { quadrant }
  */
-export default function HoldingsTable({ holdings }) {
+export default function HoldingsTable({ holdings, sectorQuadrants }) {
   if (!holdings || holdings.length === 0) {
     return (
       <div className="py-16 text-center">
@@ -84,11 +92,18 @@ export default function HoldingsTable({ holdings }) {
                   </span>
                 </td>
                 <td className="py-3.5 px-3">
-                  {sector && (
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium ${getSectorColor(sector)}`}>
-                      {sector}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {sector && (
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium ${getSectorColor(sector)}`}>
+                        {sector}
+                      </span>
+                    )}
+                    {sector && sectorQuadrants && sectorQuadrants[sector] && QUADRANT_SHORT[sectorQuadrants[sector].quadrant] && (
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold ${QUADRANT_SHORT[sectorQuadrants[sector].quadrant].cls}`}>
+                        {QUADRANT_SHORT[sectorQuadrants[sector].quadrant].label}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="py-3.5 px-3 text-center">
                   {typeInfo && (

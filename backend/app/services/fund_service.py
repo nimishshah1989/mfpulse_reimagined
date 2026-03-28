@@ -47,6 +47,7 @@ class FundService:
     def list_funds(
         self,
         category: Optional[str] = None,
+        broad_category: Optional[str] = None,
         amc: Optional[str] = None,
         search: Optional[str] = None,
         purchase_mode: Optional[int] = 1,
@@ -58,6 +59,7 @@ class FundService:
         """List funds with compact FundSummary including latest NAV."""
         funds, total = self.fund_repo.get_all_funds(
             category=category,
+            broad_category=broad_category,
             amc=amc,
             search=search,
             purchase_mode=purchase_mode,

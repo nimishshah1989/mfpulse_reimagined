@@ -41,6 +41,7 @@ def get_universe_data(db: Session = Depends(get_db)) -> dict:
 @router.get("")
 def list_funds(
     category: Optional[str] = None,
+    broad_category: Optional[str] = None,
     amc: Optional[str] = None,
     search: Optional[str] = None,
     purchase_mode: int = 1,
@@ -86,6 +87,7 @@ def list_funds(
 
     funds, total = service.list_funds(
         category=category,
+        broad_category=broad_category,
         amc=amc,
         search=search,
         purchase_mode=purchase_mode,

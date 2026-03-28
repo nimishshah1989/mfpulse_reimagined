@@ -8,6 +8,7 @@ import {
   fetchSectorExposure,
   fetchPeers,
   fetchFundRisk,
+  fetchSectors,
 } from '../lib/api';
 import { LENS_OPTIONS, LENS_CLASS_KEYS } from '../lib/lens';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
@@ -32,7 +33,7 @@ import PeerPositioning from '../components/fund360/PeerPositioning';
 function Section({ title, icon, count, children }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
           {icon}
           {title}
@@ -43,7 +44,7 @@ function Section({ title, icon, count, children }) {
           </span>
         )}
       </div>
-      <div className="px-5 py-5">{children}</div>
+      <div className="px-4 py-4">{children}</div>
     </div>
   );
 }
@@ -63,6 +64,7 @@ export default function Fund360Page() {
   const [sectors, setSectors] = useState([]);
   const [peers, setPeers] = useState(null);
   const [riskStats, setRiskStats] = useState(null);
+  const [sectorQuadrants, setSectorQuadrants] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [compareOpen, setCompareOpen] = useState(false);
@@ -115,14 +117,15 @@ export default function Fund360Page() {
     return () => { cancelled = true; };
   }, [mstarId]);
 
-  // Secondary data load (peers + risk)
+  // Secondary data load (peers + risk + sector quadrants)
   useEffect(() => {
     if (!mstarId) return;
     let cancelled = false;
     async function loadSecondary() {
-      const [pRes, rRes] = await Promise.allSettled([
+      const [pRes, rRes, sRes] = await Promise.allSettled([
         fetchPeers(mstarId),
         fetchFundRisk(mstarId),
+        fetchSectors('3M'),
       ]);
       if (cancelled) return;
       if (pRes.status === 'fulfilled') {
@@ -132,6 +135,17 @@ export default function Fund360Page() {
       if (rRes.status === 'fulfilled') {
         const riskData = rRes.value.data;
         setRiskStats(Array.isArray(riskData) ? riskData[0] || null : riskData || null);
+      }
+      if (sRes.status === 'fulfilled') {
+        const sectorData = sRes.value.data;
+        if (Array.isArray(sectorData)) {
+          const qMap = {};
+          for (const s of sectorData) {
+            const name = s.display_name || s.sector_name || s.name;
+            if (name) qMap[name] = { quadrant: s.quadrant || s.rs_quadrant || 'Neutral' };
+          }
+          setSectorQuadrants(qMap);
+        }
       }
     }
     loadSecondary();
@@ -204,48 +218,15 @@ export default function Fund360Page() {
         onCompare={() => setCompareOpen(true)}
       />
 
-      <div className="px-6 py-6 space-y-6">
-        {/* ===== AI INTELLIGENCE BRIEF ===== */}
-        <NarrativeCard
-          mstarId={mstarId}
-          headlineTag={lensScores?.headline_tag}
-        />
-
-        {/* ===== TWO-COLUMN: Chart + Lens Profile ===== */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Left column (60%) */}
-          <div className="lg:col-span-3 space-y-6">
-            <Section
-              title="NAV Performance"
-              icon={
-                <svg className="w-4 h-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                </svg>
-              }
-            >
-              <PerformanceChart
-                mstarId={mstarId}
-                initialData={navData}
-                fundReturns={fundReturns}
-              />
-            </Section>
-
-            <Section
-              title="Returns vs Category"
-              icon={
-                <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              }
-            >
-              <ReturnsBars
-                fundReturns={fundReturns}
-                categoryReturns={fundDetail.category_returns || null}
-              />
-            </Section>
+      <div className="px-6 py-4 space-y-4">
+        {/* ===== ROW 1: Narrative (1/3) + Six Lens Cards as 2x3 grid (2/3) ===== */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-1">
+            <NarrativeCard
+              mstarId={mstarId}
+              headlineTag={lensScores?.headline_tag}
+            />
           </div>
-
-          {/* Right column (40%) -- Six-Lens Profile */}
           {lensScores && (
             <div className="lg:col-span-2">
               <Section
@@ -257,7 +238,7 @@ export default function Fund360Page() {
                   </svg>
                 }
               >
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {LENS_OPTIONS.map((lens) => {
                     const classKey = LENS_CLASS_KEYS[lens.key];
                     return (
@@ -279,23 +260,53 @@ export default function Fund360Page() {
           )}
         </div>
 
-        {/* ===== FULL-WIDTH SECTIONS ===== */}
+        {/* ===== ROW 2: Performance Chart (1/2) + Asset Allocation & Returns (1/2) ===== */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Section
+            title="NAV Performance"
+            icon={
+              <svg className="w-4 h-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+              </svg>
+            }
+          >
+            <PerformanceChart
+              mstarId={mstarId}
+              initialData={navData}
+              fundReturns={fundReturns}
+            />
+          </Section>
 
-        {/* Holdings */}
-        <Section
-          title="Top Holdings"
-          count={holdings.length > 0 ? holdings.length : undefined}
-          icon={
-            <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-          }
-        >
-          <HoldingsTable holdings={holdings} />
-        </Section>
+          <div className="space-y-4">
+            <Section
+              title="Asset Allocation"
+              icon={
+                <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                </svg>
+              }
+            >
+              <AssetAllocation mstarId={mstarId} />
+            </Section>
 
-        {/* Sector + Asset Allocation side by side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Section
+              title="Returns vs Category"
+              icon={
+                <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              }
+            >
+              <ReturnsBars
+                fundReturns={fundReturns}
+                categoryReturns={fundDetail.category_returns || null}
+              />
+            </Section>
+          </div>
+        </div>
+
+        {/* ===== ROW 3: Sector Allocation (1/2) + Holdings Table (1/2) ===== */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Section
             title="Sector Allocation"
             icon={
@@ -305,22 +316,23 @@ export default function Fund360Page() {
               </svg>
             }
           >
-            <SectorAllocation sectors={sectors} />
+            <SectorAllocation sectors={sectors} sectorQuadrants={sectorQuadrants} />
           </Section>
 
           <Section
-            title="Asset Allocation"
+            title="Top Holdings"
+            count={holdings.length > 0 ? holdings.length : undefined}
             icon={
-              <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+              <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
             }
           >
-            <AssetAllocation mstarId={mstarId} />
+            <HoldingsTable holdings={holdings} sectorQuadrants={sectorQuadrants} />
           </Section>
         </div>
 
-        {/* Risk Profile */}
+        {/* ===== ROW 4: Risk Profile (full width) ===== */}
         <Section
           title="Risk Profile"
           icon={
@@ -332,7 +344,7 @@ export default function Fund360Page() {
           <RiskProfile riskStats={riskStats || fundDetail.risk_stats || null} />
         </Section>
 
-        {/* Peer Positioning */}
+        {/* ===== ROW 5: Peer Positioning (full width) ===== */}
         <Section
           title="Peer Positioning"
           icon={

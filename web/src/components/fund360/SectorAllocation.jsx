@@ -4,13 +4,21 @@ const PALETTE = [
   '#0891b2', '#16a34a', '#9333ea', '#e11d48', '#d97706',
 ];
 
+const QUADRANT_BADGE = {
+  Leading:    { label: 'Leading',    bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  Improving:  { label: 'Improving',  bg: 'bg-teal-100',    text: 'text-teal-700' },
+  Weakening:  { label: 'Weakening',  bg: 'bg-amber-100',   text: 'text-amber-700' },
+  Lagging:    { label: 'Lagging',    bg: 'bg-red-100',     text: 'text-red-700' },
+};
+
 /**
- * SectorAllocation -- stacked horizontal bar + detail table.
+ * SectorAllocation -- stacked horizontal bar + detail table + MarketPulse quadrant tags.
  *
  * Props:
- *   sectors array -- { sector_name, net_pct|allocation_pct }
+ *   sectors          array  -- { sector_name, net_pct|allocation_pct }
+ *   sectorQuadrants  object -- map of sector display_name → { quadrant: 'Leading'|'Improving'|'Weakening'|'Lagging' }
  */
-export default function SectorAllocation({ sectors }) {
+export default function SectorAllocation({ sectors, sectorQuadrants }) {
   if (!sectors || sectors.length === 0) {
     return (
       <div className="py-16 text-center">
@@ -67,16 +75,23 @@ export default function SectorAllocation({ sectors }) {
         {sorted.map((s, i) => {
           const alloc = Number(s.net_pct || s.allocation_pct) || 0;
           const barPct = maxAlloc > 0 ? (alloc / maxAlloc) * 100 : 0;
+          const qKey = sectorQuadrants ? (sectorQuadrants[s.sector_name]?.quadrant || null) : null;
+          const quadrantInfo = qKey ? QUADRANT_BADGE[qKey] || null : null;
           return (
-            <div key={s.sector_name} className="flex items-center gap-3 py-2 group hover:bg-slate-50 rounded-lg px-2 -mx-2 transition-colors">
+            <div key={s.sector_name} className="flex items-center gap-2 py-1.5 group hover:bg-slate-50 rounded-lg px-2 -mx-2 transition-colors">
               <div
                 className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
                 style={{ backgroundColor: PALETTE[i % PALETTE.length] }}
               />
-              <span className="text-xs font-medium text-slate-700 w-40 truncate flex-shrink-0">
+              <span className="text-xs font-medium text-slate-700 w-32 truncate flex-shrink-0">
                 {s.sector_name}
               </span>
-              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
+              {quadrantInfo && (
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold flex-shrink-0 ${quadrantInfo.bg} ${quadrantInfo.text}`}>
+                  {quadrantInfo.label}
+                </span>
+              )}
+              <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
                 <div
                   className="h-full rounded-full transition-all duration-500 ease-out"
                   style={{
@@ -95,12 +110,32 @@ export default function SectorAllocation({ sectors }) {
       </div>
 
       {/* Total */}
-      <div className="flex items-center justify-between pt-3 border-t border-slate-200">
+      <div className="flex items-center justify-between pt-2 border-t border-slate-200">
         <span className="text-xs font-medium text-slate-500">Total allocated</span>
         <span className="text-sm font-mono tabular-nums font-bold text-slate-700">
           {total.toFixed(1)}%
         </span>
       </div>
+
+      {/* MarketPulse leading sectors insight */}
+      {sectorQuadrants && (() => {
+        const leadingPct = sorted.reduce((sum, s) => {
+          const alloc = Number(s.net_pct || s.allocation_pct) || 0;
+          const q = sectorQuadrants[s.sector_name]?.quadrant;
+          return q === 'Leading' ? sum + alloc : sum;
+        }, 0);
+        if (leadingPct <= 0) return null;
+        return (
+          <div className="flex items-start gap-2 bg-emerald-50 rounded-lg px-3 py-2">
+            <svg className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+            <span className="text-[11px] text-emerald-700 font-medium">
+              {leadingPct.toFixed(1)}% of holdings are in leading sectors per MarketPulse
+            </span>
+          </div>
+        );
+      })()}
     </div>
   );
 }
