@@ -200,10 +200,26 @@ XIRR, CAGR, max drawdown, Sharpe, rolling 1Y XIRR, signal hit rate, capital effi
 - **AMFI Code:** Used by mfapi.in. Example: `119551`
 - **category_name (FundLevelCategoryName):** SEBI category = peer group for lens scoring.
 
+### API Center Architecture (8 APIs → 5 DB targets)
+Multiple APIs contribute fields to the same table. The fetcher routes fields by destination.
+
+| API # | API Name | DB Target(s) | Key Fields |
+|-------|----------|-------------|------------|
+| 1 | Identifier Data | `fund_master` | mstar_id, fund_id, amc_id, isin, amfi_code, legal_name, fund_name, amc_name |
+| 2 | Additional Data | `fund_master` | purchase_mode, expense ratios, risk labels, benchmark, lock_in_period |
+| 3 | Category Data | `fund_master` | category_name, broad_category |
+| 4 | Nav Data | `nav_daily` | nav, nav_date, nav_change, nav_52wk_high/low |
+| 5 | Return Data | `nav_daily` | return_1d through return_3y, return_since_inception |
+| 6 | Risk Stats | `risk_stats_monthly` + `fund_master` + `nav_daily` | sharpe, alpha, beta, std_dev, sortino, mean + managers, inception_date + return_4y/5y/7y/ytd, cumulative returns |
+| 7 | Rank Data | `rank_monthly` | quartile ranks 1m-10y, absolute ranks, calendar year percentiles |
+| 8 | Category Return Data | `category_returns_daily` | category returns 2y-10y (derived category_code from fund_master lookup) |
+
+**Multi-API nullable columns:** `nav` (nav_daily), `legal_name`, `category_name` (fund_master) are nullable because different APIs provide different column subsets. The batch upsert groups records by key signature so each API's INSERT only includes its own columns.
+
 ### Feed Schedule
 | Feed | Frequency | Tables |
 |------|-----------|--------|
-| NAV | Daily 9PM IST | `nav_daily` |
+| NAV + Returns | Daily 9PM IST | `nav_daily` |
 | Master | Weekly Mon 6AM | `fund_master` |
 | Risk Stats | Monthly 5th BD | `risk_stats_monthly` |
 | Ranks | Monthly | `rank_monthly` |

@@ -49,72 +49,118 @@ class IngestionRepository:
         """Remove keys not in the model's columns."""
         return {k: v for k, v in record.items() if k in valid_cols}
 
+    @staticmethod
+    def _get_required_columns(model_cls: type) -> set[str]:
+        """Get NOT NULL column names excluding auto-generated ones (id, timestamps)."""
+        auto_cols = {"id", "created_at", "updated_at"}
+        table = model_cls.__table__
+        return {
+            col.name
+            for col in table.columns
+            if not col.nullable
+            and col.name not in auto_cols
+            and col.default is None
+            and col.server_default is None
+        }
+
+    @staticmethod
+    def _normalize_batch_keys(batch: list[dict]) -> list[dict]:
+        """Ensure all dicts in a batch have identical keys.
+
+        SQLAlchemy's insert().values(list_of_dicts) requires every dict to
+        have the same keys.  Records from the Morningstar API have inconsistent
+        fields (e.g. some funds have ``isin``, others don't).  This pads
+        missing keys with ``None``.
+        """
+        if not batch:
+            return batch
+        all_keys = set().union(*(d.keys() for d in batch))
+        return [{k: d.get(k) for k in all_keys} for d in batch]
+
     def _batch_upsert(
         self,
         model_cls: type,
         records: list[dict],
         conflict_cols: list[str],
         exclude_from_update: list[str] | None = None,
+        do_nothing_on_conflict: bool = False,
     ) -> UpsertResult:
-        """Generic batch upsert using PostgreSQL ON CONFLICT."""
+        """Generic batch upsert using PostgreSQL ON CONFLICT.
+
+        Records are grouped by their key signature so that each sub-batch
+        contains dicts with identical keys.  This avoids padding missing
+        columns with None (which would overwrite existing data or violate
+        NOT NULL constraints).
+        """
         result = UpsertResult()
         valid_cols = self._get_column_names(model_cls)
+        table = model_cls.__table__
 
         if exclude_from_update is None:
             exclude_from_update = []
-        # Always exclude id and created_at from updates
         exclude_set = set(exclude_from_update + ["id", "created_at"])
 
-        for batch_start in range(0, len(records), BATCH_SIZE):
-            batch = records[batch_start:batch_start + BATCH_SIZE]
-            try:
-                rows_to_insert = []
-                for rec in batch:
-                    filtered = self._filter_record(rec, valid_cols)
-                    # Add UUID id for new records
-                    if "id" not in filtered:
-                        filtered["id"] = uuid.uuid4()
-                    rows_to_insert.append(filtered)
+        # Filter and prepare all records
+        prepared: list[dict] = []
+        for rec in records:
+            filtered = self._filter_record(rec, valid_cols)
+            if "id" not in filtered:
+                filtered["id"] = uuid.uuid4()
+            prepared.append(filtered)
 
-                if not rows_to_insert:
-                    continue
+        # Group records by their key signature so each sub-batch has uniform keys.
+        # This avoids normalization padding None into columns records don't provide.
+        from collections import defaultdict
+        groups: dict[frozenset[str], list[dict]] = defaultdict(list)
+        for row in prepared:
+            key_sig = frozenset(row.keys())
+            groups[key_sig].append(row)
 
-                table = model_cls.__table__
-                stmt = pg_insert(table).values(rows_to_insert)
+        for key_sig, group_rows in groups.items():
+            for batch_start in range(0, len(group_rows), BATCH_SIZE):
+                batch = group_rows[batch_start:batch_start + BATCH_SIZE]
+                try:
+                    stmt = pg_insert(table).values(batch)
 
-                # Build update dict for ON CONFLICT
-                update_cols = {
-                    col.name: stmt.excluded[col.name]
-                    for col in table.columns
-                    if col.name not in exclude_set
-                    and col.name not in conflict_cols
-                }
+                    if do_nothing_on_conflict:
+                        stmt = stmt.on_conflict_do_nothing(
+                            index_elements=conflict_cols,
+                        )
+                    else:
+                        # ON CONFLICT UPDATE only columns this group provides
+                        update_cols = {
+                            col.name: stmt.excluded[col.name]
+                            for col in table.columns
+                            if col.name not in exclude_set
+                            and col.name not in conflict_cols
+                            and col.name in key_sig
+                        }
 
-                if update_cols:
-                    stmt = stmt.on_conflict_do_update(
-                        index_elements=conflict_cols,
-                        set_=update_cols,
+                        if update_cols:
+                            stmt = stmt.on_conflict_do_update(
+                                index_elements=conflict_cols,
+                                set_=update_cols,
+                            )
+                        else:
+                            stmt = stmt.on_conflict_do_nothing(
+                                index_elements=conflict_cols,
+                            )
+
+                    self.db.execute(stmt)
+                    self.db.commit()
+                    result.inserted += len(batch)
+                except Exception as e:
+                    self.db.rollback()
+                    result.failed += len(batch)
+                    result.errors.append({
+                        "batch_start": batch_start,
+                        "error": str(e),
+                    })
+                    logger.warning(
+                        "Batch upsert failed at offset %d: %s",
+                        batch_start,
+                        str(e),
                     )
-                else:
-                    stmt = stmt.on_conflict_do_nothing(
-                        index_elements=conflict_cols,
-                    )
-
-                self.db.execute(stmt)
-                self.db.commit()
-                result.inserted += len(rows_to_insert)
-            except Exception as e:
-                self.db.rollback()
-                result.failed += len(batch)
-                result.errors.append({
-                    "batch_start": batch_start,
-                    "error": str(e),
-                })
-                logger.warning(
-                    "Batch upsert failed at offset %d: %s",
-                    batch_start,
-                    str(e),
-                )
 
         return result
 
@@ -208,6 +254,28 @@ class IngestionRepository:
             records,
             conflict_cols=["category_code", "as_of_date"],
         )
+
+    def insert_nav_daily_backfill(self, records: list[dict]) -> UpsertResult:
+        """Insert historical NAV. ON CONFLICT DO NOTHING — never overwrite fresh daily data."""
+        return self._batch_upsert(
+            NavDaily,
+            records,
+            conflict_cols=["mstar_id", "nav_date"],
+            do_nothing_on_conflict=True,
+        )
+
+    def get_earliest_nav_dates(self) -> dict[str, datetime]:
+        """Return {mstar_id: earliest_nav_date} for skip-if-backfilled logic."""
+        from sqlalchemy import func, select
+        stmt = (
+            select(
+                NavDaily.mstar_id,
+                func.min(NavDaily.nav_date).label("earliest"),
+            )
+            .group_by(NavDaily.mstar_id)
+        )
+        rows = self.db.execute(stmt).fetchall()
+        return {row.mstar_id: row.earliest for row in rows}
 
     def create_ingestion_log(
         self,

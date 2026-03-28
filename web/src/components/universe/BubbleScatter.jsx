@@ -1,5 +1,8 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import * as d3 from 'd3';
+import { scaleLinear } from 'd3-scale';
+import { quadtree } from 'd3-quadtree';
+import { zoom, zoomIdentity } from 'd3-zoom';
+import { select } from 'd3-selection';
 import { BROAD_COLORS, LENS_LABELS } from '../../lib/lens';
 import BubbleTooltip from './BubbleTooltip';
 
@@ -47,7 +50,7 @@ export default function BubbleScatter({
   const canvasRef = useRef(null);
   const overlayRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
-  const [transform, setTransform] = useState(d3.zoomIdentity);
+  const [transform, setTransform] = useState(zoomIdentity);
   const quadtreeRef = useRef(null);
   const animRef = useRef(null);
   const prevPositions = useRef(new Map());
@@ -57,11 +60,11 @@ export default function BubbleScatter({
   const innerH = height - margin.top - margin.bottom;
 
   const xScale = useMemo(
-    () => d3.scaleLinear().domain([0, 100]).range([0, innerW]),
+    () => scaleLinear().domain([0, 100]).range([0, innerW]),
     [innerW]
   );
   const yScale = useMemo(
-    () => d3.scaleLinear().domain([0, 100]).range([innerH, 0]),
+    () => scaleLinear().domain([0, 100]).range([innerH, 0]),
     [innerH]
   );
 
@@ -78,8 +81,7 @@ export default function BubbleScatter({
 
   // Build quadtree for hit detection
   useEffect(() => {
-    quadtreeRef.current = d3
-      .quadtree()
+    quadtreeRef.current = quadtree()
       .x((d) => xScale(d.x))
       .y((d) => yScale(d.y))
       .addAll(positions);
@@ -229,11 +231,11 @@ export default function BubbleScatter({
   useEffect(() => {
     const overlay = overlayRef.current;
     if (!overlay) return;
-    const zoom = d3.zoom().scaleExtent([0.5, 10]).on('zoom', (event) => {
+    const zoom = zoom().scaleExtent([0.5, 10]).on('zoom', (event) => {
       setTransform(event.transform);
     });
-    d3.select(overlay).call(zoom);
-    return () => { d3.select(overlay).on('.zoom', null); };
+    select(overlay).call(zoom);
+    return () => { select(overlay).on('.zoom', null); };
   }, []);
 
   // Redraw on zoom
@@ -291,7 +293,7 @@ export default function BubbleScatter({
     <div className="relative">
       <button
         type="button"
-        onClick={() => setTransform(d3.zoomIdentity)}
+        onClick={() => setTransform(zoomIdentity)}
         className="absolute top-2 right-2 z-10 px-2 py-1 text-xs bg-white border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50"
       >
         Reset Zoom

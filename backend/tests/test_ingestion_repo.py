@@ -295,6 +295,99 @@ class TestGetRecentIngestionLogs:
         mock_q.limit.assert_called_once_with(20)
 
 
+class TestBatchUpsertKeyGrouping:
+    """Records with different key signatures are grouped into separate sub-batches."""
+
+    def test_inconsistent_keys_processed_in_groups(self) -> None:
+        """Records with different keys should be grouped and each group upserted."""
+        db = MagicMock()
+        repo = IngestionRepository(db)
+
+        from app.models.db.fund_master import FundMaster
+
+        records = [
+            {"mstar_id": "F001", "legal_name": "Fund A", "fund_name": "Fund A", "isin": "INE001"},
+            {"mstar_id": "F002", "legal_name": "Fund B", "fund_name": "Fund B"},  # no isin
+            {"mstar_id": "F003", "legal_name": "Fund C"},  # no fund_name, no isin
+        ]
+
+        result = repo._batch_upsert(FundMaster, records, conflict_cols=["mstar_id"])
+
+        # All 3 records should be inserted (in separate groups by key sig)
+        assert result.inserted == 3
+        # Multiple execute calls (one per key signature group)
+        assert db.execute.call_count >= 2
+
+    def test_normalize_batch_keys_helper(self) -> None:
+        """Directly test the _normalize_batch_keys helper."""
+        batch = [
+            {"a": 1, "b": 2},
+            {"a": 3, "c": 4},
+            {"b": 5},
+        ]
+        normalized = IngestionRepository._normalize_batch_keys(batch)
+        all_keys = {"a", "b", "c"}
+        for row in normalized:
+            assert set(row.keys()) == all_keys
+        assert normalized[0] == {"a": 1, "b": 2, "c": None}
+        assert normalized[1] == {"a": 3, "b": None, "c": 4}
+        assert normalized[2] == {"a": None, "b": 5, "c": None}
+
+
+class TestOnConflictUpdateOnlyProvidedKeys:
+    """ON CONFLICT UPDATE should only set columns the records actually provide."""
+
+    def test_update_cols_exclude_missing_keys(self) -> None:
+        """Records providing a subset of columns should not overwrite other columns."""
+        db = MagicMock()
+        repo = IngestionRepository(db)
+
+        from app.models.db.fund_master import FundMaster
+
+        # Simulate Category Data API: provides category_name + broad_category
+        # but NOT fund_name or isin (those come from a different API)
+        records = [
+            {"mstar_id": "F001", "legal_name": "Fund A", "category_name": "Large Cap", "broad_category": "Equity"},
+            {"mstar_id": "F002", "legal_name": "Fund B", "category_name": "Mid Cap", "broad_category": "Equity"},
+        ]
+
+        repo._batch_upsert(FundMaster, records, conflict_cols=["mstar_id"])
+
+        assert db.execute.called
+        stmt = db.execute.call_args[0][0]
+        compiled = stmt.compile()
+        sql_str = str(compiled)
+        # category_name and broad_category should be in the SET clause
+        assert "category_name" in sql_str
+        assert "broad_category" in sql_str
+        # fund_name and isin are NOT in the records — must NOT be in SET
+        set_clause = sql_str.split("SET")[1] if "SET" in sql_str else ""
+        assert "fund_name" not in set_clause
+        assert "isin" not in set_clause
+
+    def test_update_only_records_can_upsert(self) -> None:
+        """Records with only conflict key + update fields should still work
+        (for updating existing rows via ON CONFLICT)."""
+        db = MagicMock()
+        repo = IngestionRepository(db)
+
+        from app.models.db.fund_master import FundMaster
+
+        # API #3 records: have mstar_id + category_name but NOT legal_name.
+        # These are meant to UPDATE existing rows, not insert new ones.
+        records = [
+            {"mstar_id": "F001", "category_name": "Large Cap"},
+            {"mstar_id": "F002", "category_name": "Mid Cap"},
+        ]
+
+        result = repo._batch_upsert(FundMaster, records, conflict_cols=["mstar_id"])
+
+        # Should attempt the upsert (will fail for truly new rows at DB level,
+        # but should work for ON CONFLICT UPDATE of existing rows)
+        assert db.execute.called
+        assert result.inserted == 2
+
+
 class TestBatchUpsertErrorHandling:
     def test_batch_error_rolls_back(self) -> None:
         db = MagicMock()
@@ -307,6 +400,66 @@ class TestBatchUpsertErrorHandling:
         assert result.failed > 0
         assert len(result.errors) > 0
         db.rollback.assert_called()
+
+
+class TestBatchUpsertDoNothingOnConflict:
+    """When do_nothing_on_conflict=True, existing rows should NOT be overwritten."""
+
+    def test_do_nothing_generates_correct_sql(self) -> None:
+        db = MagicMock()
+        repo = IngestionRepository(db)
+
+        from app.models.db.nav_daily import NavDaily
+
+        records = [
+            {"mstar_id": "F001", "nav_date": date(2024, 1, 2), "nav": Decimal("152.34")},
+        ]
+        result = repo._batch_upsert(
+            NavDaily, records, conflict_cols=["mstar_id", "nav_date"],
+            do_nothing_on_conflict=True,
+        )
+
+        assert db.execute.called
+        stmt = db.execute.call_args[0][0]
+        compiled = stmt.compile()
+        sql_str = str(compiled)
+        # Should use DO NOTHING, not DO UPDATE
+        assert "DO NOTHING" in sql_str.upper() or "ON CONFLICT" in sql_str.upper()
+        # Should NOT have a SET clause
+        assert "SET" not in sql_str.upper().split("ON CONFLICT")[1] if "ON CONFLICT" in sql_str.upper() else True
+
+    def test_insert_nav_daily_backfill_uses_do_nothing(self) -> None:
+        db = MagicMock()
+        repo = IngestionRepository(db)
+        repo._batch_upsert = MagicMock(return_value=UpsertResult(inserted=3))
+
+        records = [
+            {"mstar_id": "F001", "nav_date": date(2024, 1, 2), "nav": Decimal("152.34")},
+            {"mstar_id": "F001", "nav_date": date(2024, 1, 3), "nav": Decimal("153.12")},
+            {"mstar_id": "F001", "nav_date": date(2024, 1, 4), "nav": Decimal("151.98")},
+        ]
+        result = repo.insert_nav_daily_backfill(records)
+        assert result.inserted == 3
+        call_kwargs = repo._batch_upsert.call_args
+        assert call_kwargs[1].get("do_nothing_on_conflict") is True or \
+               (len(call_kwargs[0]) > 3 and call_kwargs[0][3] is True)
+
+
+class TestGetEarliestNavDates:
+    def test_returns_dict(self) -> None:
+        db = MagicMock()
+        repo = IngestionRepository(db)
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = [
+            MagicMock(mstar_id="F001", earliest=date(2020, 1, 1)),
+            MagicMock(mstar_id="F002", earliest=date(2018, 6, 15)),
+        ]
+        db.execute.return_value = mock_result
+
+        result = repo.get_earliest_nav_dates()
+        assert isinstance(result, dict)
+        assert result["F001"] == date(2020, 1, 1)
+        assert result["F002"] == date(2018, 6, 15)
 
 
 class TestFreshnessRepository:

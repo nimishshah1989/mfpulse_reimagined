@@ -1,9 +1,9 @@
 # mfpulse_reimagined — Auto-Generated Summary
-_Last updated: 2026-03-27 19:38 (auto-generated — Claude did not write a proper summary)_
+_Last updated: 2026-03-28 00:13 (auto-generated — Claude did not write a proper summary)_
 
 ## Current state
-Branch: main | Last commit: cc6c214 docs(01): capture phase context
-Recent changes:  9 files changed, 1059 insertions(+), 11 deletions(-)
+Branch: fix/morningstar-type-coercion | Last commit: dda0020 fix: make legal_name nullable for multi-API ingestion
+Recent changes:  4 files changed, 112 insertions(+), 128 deletions(-)
 QA: not run
 
 ## Next session starts here

@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useRouter } from 'next/router';
 import { fetchAllFunds, fetchCategories, fetchAMCs } from '../lib/api';
 import { formatCount } from '../lib/format';
 import FilterPanel from '../components/universe/FilterPanel';
-import BubbleScatter from '../components/universe/BubbleScatter';
-import Treemap from '../components/universe/Treemap';
+import dynamic from 'next/dynamic';
+const BubbleScatter = dynamic(() => import('../components/universe/BubbleScatter'), { ssr: false, loading: () => <SkeletonLoader variant="chart" className="h-[600px]" /> });
+const Treemap = dynamic(() => import('../components/universe/Treemap'), { ssr: false, loading: () => <SkeletonLoader variant="chart" className="h-[500px]" /> });
 import Heatmap from '../components/universe/Heatmap';
 import FundDetailPanel from '../components/universe/FundDetailPanel';
 import Pill from '../components/shared/Pill';
@@ -16,6 +18,7 @@ const DEFAULT_THRESHOLDS = Object.fromEntries(
 );
 
 export default function UniversePage() {
+  const router = useRouter();
   // Raw data
   const [allFunds, setAllFunds] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -297,13 +300,10 @@ export default function UniversePage() {
           fund={selectedFund}
           onClose={() => setSelectedFund(null)}
           onDeepDive={() => {
-            // Navigate to fund360 tab — will be handled by parent
-            alert(`Deep Dive: ${selectedFund.mstar_id} — Coming in PR-08`);
+            router.push(`/fund360?fund=${selectedFund.mstar_id}`);
           }}
           onSimulate={() => {
-            alert(
-              `Simulate: ${selectedFund.mstar_id} — Coming in PR-10`
-            );
+            router.push(`/simulation?fund=${selectedFund.mstar_id}`);
           }}
         />
       )}

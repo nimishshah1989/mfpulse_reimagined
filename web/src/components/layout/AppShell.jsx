@@ -11,13 +11,7 @@ const NAV_ITEMS = [
   { key: 'dashboard', emoji: '\uD83D\uDCCA', label: 'Pulse Dashboard' },
 ];
 
-const COMING_SOON = {
-  fund360: 'PR-08',
-  sectors: 'PR-09',
-  simulation: 'PR-10',
-  strategy: 'PR-11',
-  dashboard: 'PR-11',
-};
+const COMING_SOON = {};
 
 function MarketTicker() {
   const [market, setMarket] = useState(null);

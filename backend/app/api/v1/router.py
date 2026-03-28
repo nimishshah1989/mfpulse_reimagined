@@ -15,6 +15,7 @@ from app.api.v1.overrides import router as overrides_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.jobs import router as jobs_router
 from app.api.v1.fetch import router as fetch_router
+from app.api.v1.backfill import router as backfill_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(system_router)
@@ -30,3 +31,4 @@ api_v1_router.include_router(strategies_router)
 api_v1_router.include_router(overrides_router)
 api_v1_router.include_router(audit_router)
 api_v1_router.include_router(jobs_router)
+api_v1_router.include_router(backfill_router)

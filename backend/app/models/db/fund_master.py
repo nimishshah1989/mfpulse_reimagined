@@ -19,13 +19,13 @@ class FundMaster(Base, UUIDPrimaryKey, TimestampMixin):
     isin: Mapped[Optional[str]] = mapped_column(String(12))
     amfi_code: Mapped[Optional[str]] = mapped_column(String(10))
 
-    # Names
-    legal_name: Mapped[str] = mapped_column(String(300), nullable=False)
+    # Names — nullable because multiple APIs contribute fields independently
+    legal_name: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
     fund_name: Mapped[Optional[str]] = mapped_column(String(200))
     amc_name: Mapped[Optional[str]] = mapped_column(String(300))
 
-    # Classification
-    category_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    # Classification — nullable because category comes from a separate API call
+    category_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     broad_category: Mapped[Optional[str]] = mapped_column(String(200))
 
     # Dates

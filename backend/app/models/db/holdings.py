@@ -44,7 +44,7 @@ class FundHoldingsSnapshot(Base, UUIDPrimaryKey):
 
     # Other
     prospective_div_yield: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
-    turnover_ratio: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
+    turnover_ratio: Mapped[None] = mapped_column(Numeric(12, 4), nullable=True)
     est_fund_net_flow: Mapped[None] = mapped_column(Numeric(16, 2), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(

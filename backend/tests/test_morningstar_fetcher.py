@@ -10,6 +10,9 @@ import pytest
 os.environ.setdefault("DATABASE_URL", "postgresql://fie:changeme@localhost:5432/mf_pulse")
 
 from app.core.morningstar_config import APIS, MorningstarAPI
+from app.models.db.fund_master import FundMaster
+from app.models.db.nav_daily import NavDaily
+from app.models.db.rank_monthly import RankMonthly
 from app.services.morningstar_fetcher import MorningstarFetcher, FetchResult
 
 
@@ -255,7 +258,7 @@ class TestWriteToDb:
         result = FetchResult(api.name)
         fetcher._write_to_db(api, records, result)
         call_args = fetcher.ingestion_repo.upsert_nav_daily.call_args[0][0]
-        assert call_args[0]["nav_date"] == "2026-03-25"
+        assert call_args[0]["nav_date"] == date(2026, 3, 25)
 
     def test_write_risk_stats_splits_master_fields(self, fetcher) -> None:
         """Risk API → splits master fields from risk fields correctly."""
@@ -279,13 +282,39 @@ class TestWriteToDb:
         fetcher._write_to_db(api, records, result)
         fetcher.ingestion_repo.upsert_ranks.assert_called_once()
 
-    def test_write_category_returns(self, fetcher) -> None:
-        """Write to category_returns → upsert_category_returns called."""
+    def test_write_category_returns_derives_category_code(self, fetcher) -> None:
+        """Write to category_returns → derives category_code from fund_master lookup."""
         api = APIS[7]  # Category Return Data
-        records = [{"category_code": "EAA", "cat_return_3y": "12.5"}]
+        records = [
+            {"mstar_id": "F001", "cat_return_3y": "12.5"},
+            {"mstar_id": "F002", "cat_return_3y": "10.0"},
+        ]
+        # Mock category lookup
+        fetcher._get_category_lookup = MagicMock(
+            return_value={"F001": "Large Cap", "F002": "Mid Cap"}
+        )
         result = FetchResult(api.name)
         fetcher._write_to_db(api, records, result)
         fetcher.ingestion_repo.upsert_category_returns.assert_called_once()
+        coerced = fetcher.ingestion_repo.upsert_category_returns.call_args[0][0]
+        codes = {r["category_code"] for r in coerced}
+        assert "Large Cap" in codes
+        assert "Mid Cap" in codes
+
+    def test_write_category_returns_deduplicates_by_category(self, fetcher) -> None:
+        """Multiple funds in same category → one category return record."""
+        api = APIS[7]
+        records = [
+            {"mstar_id": "F001", "cat_return_3y": "12.5"},
+            {"mstar_id": "F002", "cat_return_3y": "12.5"},  # same category
+        ]
+        fetcher._get_category_lookup = MagicMock(
+            return_value={"F001": "Large Cap", "F002": "Large Cap"}
+        )
+        result = FetchResult(api.name)
+        fetcher._write_to_db(api, records, result)
+        coerced = fetcher.ingestion_repo.upsert_category_returns.call_args[0][0]
+        assert len(coerced) == 1  # deduplicated
 
     def test_db_error_captured(self, fetcher) -> None:
         """DB write error → captured in result.errors, not raised."""
@@ -296,6 +325,76 @@ class TestWriteToDb:
         fetcher._write_to_db(api, records, result)
         assert len(result.errors) == 1
         assert "DB down" in result.errors[0]
+
+
+class TestTypeCoercion:
+    """Type coercion converts XML string values to proper DB types."""
+
+    def test_numeric_column_coerced_to_decimal(self, fetcher) -> None:
+        """Numeric columns → Decimal values."""
+        from decimal import Decimal
+        record = {"mstar_id": "F001", "nav": "1002.45", "nav_date": "2026-03-26"}
+        coerced = fetcher._coerce_record(record, NavDaily)
+        assert isinstance(coerced["nav"], Decimal)
+        assert coerced["nav"] == Decimal("1002.45")
+
+    def test_date_column_coerced(self, fetcher) -> None:
+        """Date columns → date objects."""
+        record = {"mstar_id": "F001", "inception_date": "2020-01-15", "legal_name": "Test", "category_name": "Large Cap"}
+        coerced = fetcher._coerce_record(record, FundMaster)
+        assert isinstance(coerced["inception_date"], date)
+        assert coerced["inception_date"] == date(2020, 1, 15)
+
+    def test_integer_column_coerced(self, fetcher) -> None:
+        """Integer columns → int values."""
+        record = {"mstar_id": "F001", "quartile_1y": "2", "as_of_date": "2026-03-26"}
+        coerced = fetcher._coerce_record(record, RankMonthly)
+        assert isinstance(coerced["quartile_1y"], int)
+        assert coerced["quartile_1y"] == 2
+
+    def test_boolean_column_coerced_true_values(self, fetcher) -> None:
+        """Boolean columns — '1', 'true', 'True', 'Y' → True."""
+        for val in ("1", "true", "True", "Y"):
+            record = {"mstar_id": "F001", "is_index_fund": val, "legal_name": "Test", "category_name": "LC"}
+            coerced = fetcher._coerce_record(record, FundMaster)
+            assert coerced["is_index_fund"] is True, f"Expected True for '{val}'"
+
+    def test_boolean_column_coerced_false_values(self, fetcher) -> None:
+        """Boolean columns — '0', 'false', 'False', 'N' → False."""
+        for val in ("0", "false", "False", "N"):
+            record = {"mstar_id": "F001", "is_index_fund": val, "legal_name": "Test", "category_name": "LC"}
+            coerced = fetcher._coerce_record(record, FundMaster)
+            assert coerced["is_index_fund"] is False, f"Expected False for '{val}'"
+
+    def test_string_column_unchanged(self, fetcher) -> None:
+        """String columns stay as strings."""
+        record = {"mstar_id": "F001", "legal_name": "HDFC Equity Fund", "category_name": "Large Cap"}
+        coerced = fetcher._coerce_record(record, FundMaster)
+        assert coerced["legal_name"] == "HDFC Equity Fund"
+
+    def test_invalid_numeric_skipped(self, fetcher) -> None:
+        """Invalid numeric value → key dropped, not crash."""
+        record = {"mstar_id": "F001", "nav": "not_a_number", "nav_date": "2026-03-26"}
+        coerced = fetcher._coerce_record(record, NavDaily)
+        assert "nav" not in coerced
+
+    def test_invalid_date_skipped(self, fetcher) -> None:
+        """Invalid date value → key dropped, not crash."""
+        record = {"mstar_id": "F001", "inception_date": "bad-date", "legal_name": "Test", "category_name": "LC"}
+        coerced = fetcher._coerce_record(record, FundMaster)
+        assert "inception_date" not in coerced
+
+    def test_coercion_preserves_mstar_id(self, fetcher) -> None:
+        """mstar_id always preserved."""
+        record = {"mstar_id": "F001", "nav": "100.00", "nav_date": "2026-03-26"}
+        coerced = fetcher._coerce_record(record, NavDaily)
+        assert coerced["mstar_id"] == "F001"
+
+    def test_unknown_column_dropped(self, fetcher) -> None:
+        """Column not in model → dropped during coercion."""
+        record = {"mstar_id": "F001", "nonexistent_col": "val", "legal_name": "Test", "category_name": "LC"}
+        coerced = fetcher._coerce_record(record, FundMaster)
+        assert "nonexistent_col" not in coerced
 
 
 class TestFetchOrchestration:
@@ -313,7 +412,7 @@ class TestFetchOrchestration:
         mock_client_cls.return_value = mock_client
 
         results = fetcher.fetch_all()
-        assert len(results) == 8
+        assert len(results) == 9
 
     @patch("app.services.morningstar_fetcher.httpx.Client")
     def test_fetch_nav_only_calls_2_apis(self, mock_client_cls, fetcher) -> None:
@@ -331,3 +430,110 @@ class TestFetchOrchestration:
         results = fetcher.fetch_nav_only()
         assert len(results) == 2
         assert all(r.api_name in ("Nav Data", "Return Data") for r in results)
+
+
+class TestWriteHoldings:
+    """Portfolio Data API → splits into snapshot, sector exposure, holding detail."""
+
+    def test_write_holdings_snapshot_upserted(self, fetcher) -> None:
+        """Holdings target → upsert_holdings_snapshot called with snapshot fields."""
+        api = MorningstarAPI("Portfolio Data", "s4bqvv72rjpelvwf", "holdings", "HOLDINGS_FIELD_MAP")
+        records = [{
+            "mstar_id": "F001",
+            "portfolio_date": "2026-03-15",
+            "num_holdings": "50",
+            "pe_ratio": "22.5",
+        }]
+        result = FetchResult(api.name)
+        # Mock upsert_holdings_snapshot to return a fake result with snapshot ids
+        from app.repositories.ingestion_repo import UpsertResult
+        mock_upsert_result = UpsertResult(inserted=1)
+        fetcher.ingestion_repo.upsert_holdings_snapshot.return_value = mock_upsert_result
+        fetcher._write_to_db(api, records, result)
+        fetcher.ingestion_repo.upsert_holdings_snapshot.assert_called_once()
+
+    def test_write_holdings_sector_exposure_upserted(self, fetcher) -> None:
+        """Holdings target with sector fields → upsert_sector_exposure called."""
+        api = MorningstarAPI("Portfolio Data", "s4bqvv72rjpelvwf", "holdings", "HOLDINGS_FIELD_MAP")
+        records = [{
+            "mstar_id": "F001",
+            "portfolio_date": "2026-03-15",
+            "num_holdings": "50",
+            # Sector fields (already stripped+mapped by _parse_xml via SECTOR_EXPOSURE_MAP)
+            "sector_Technology": "25.5",
+            "sector_Financial Services": "18.3",
+        }]
+        result = FetchResult(api.name)
+        from app.repositories.ingestion_repo import UpsertResult
+        fetcher.ingestion_repo.upsert_holdings_snapshot.return_value = UpsertResult(inserted=1)
+        fetcher._write_to_db(api, records, result)
+        fetcher.ingestion_repo.upsert_sector_exposure.assert_called_once()
+        sector_records = fetcher.ingestion_repo.upsert_sector_exposure.call_args[0][0]
+        sector_names = {r["sector_name"] for r in sector_records}
+        assert "Technology" in sector_names
+        assert "Financial Services" in sector_names
+
+    def test_write_holdings_detail_upserted(self, fetcher) -> None:
+        """Holdings target with detail fields → holding details inserted."""
+        api = MorningstarAPI("Portfolio Data", "s4bqvv72rjpelvwf", "holdings", "HOLDINGS_FIELD_MAP")
+        records = [{
+            "mstar_id": "F001",
+            "portfolio_date": "2026-03-15",
+            "num_holdings": "2",
+            # Holding details are stored as lists by the parser
+            "holding_details": [
+                {"holding_name": "HDFC Bank Ltd", "weighting_pct": "8.5", "isin": "INE040A01034"},
+                {"holding_name": "Infosys Ltd", "weighting_pct": "6.2", "isin": "INE009A01021"},
+            ],
+        }]
+        result = FetchResult(api.name)
+        from app.repositories.ingestion_repo import UpsertResult
+        fetcher.ingestion_repo.upsert_holdings_snapshot.return_value = UpsertResult(inserted=1)
+        # Mock the snapshot lookup query (fetchall returns list of row-like objects)
+        import uuid
+        mock_snapshot_id = uuid.uuid4()
+        mock_row = MagicMock()
+        mock_row.id = mock_snapshot_id
+        mock_row.mstar_id = "F001"
+        mock_row.portfolio_date = "2026-03-15"
+        fetcher.db.execute.return_value.fetchall.return_value = [mock_row]
+        fetcher._write_to_db(api, records, result)
+        fetcher.ingestion_repo.upsert_holding_details.assert_called_once()
+        call_args = fetcher.ingestion_repo.upsert_holding_details.call_args
+        assert call_args[0][0] == mock_snapshot_id
+        assert len(call_args[0][1]) == 2
+
+    def test_write_holdings_missing_portfolio_date_defaults_today(self, fetcher) -> None:
+        """Holdings without portfolio_date → defaults to today."""
+        api = MorningstarAPI("Portfolio Data", "s4bqvv72rjpelvwf", "holdings", "HOLDINGS_FIELD_MAP")
+        records = [{"mstar_id": "F001", "num_holdings": "50"}]
+        result = FetchResult(api.name)
+        from app.repositories.ingestion_repo import UpsertResult
+        fetcher.ingestion_repo.upsert_holdings_snapshot.return_value = UpsertResult(inserted=1)
+        fetcher._write_to_db(api, records, result)
+        call_args = fetcher.ingestion_repo.upsert_holdings_snapshot.call_args[0][0]
+        assert "portfolio_date" in call_args[0]
+
+    def test_parse_xml_holdings_maps_all_three_types(self, fetcher) -> None:
+        """Portfolio Data XML → snapshot, sector, and detail fields all mapped."""
+        xml = _build_xml([{
+            "_id": "F001",
+            "PD-PortfolioDate": "2026-03-15",
+            "PD-NumberofHolding": "50",
+            "PD-PERatioTTMLong": "22.5",
+            "PD-EquitySectorTechnologyNet": "25.5",
+            "PD-EquitySectorEnergyNet": "10.2",
+            "PD-HoldingDetail_Name": "HDFC Bank|Infosys",
+            "PD-HoldingDetail_Weighting": "8.5|6.2",
+        }])
+        api = MorningstarAPI("Portfolio Data", "s4bqvv72rjpelvwf", "holdings", "HOLDINGS_FIELD_MAP")
+        records, result = fetcher._parse_xml(xml, api)
+        assert result.fund_count == 1
+        record = records[0]
+        # Snapshot fields
+        assert record.get("portfolio_date") == "2026-03-15"
+        assert record.get("num_holdings") == "50"
+        # Sector fields (prefixed with sector_)
+        assert record.get("sector_Technology") == "25.5"
+        # Detail fields (pipe-delimited lists)
+        assert "holding_details" in record

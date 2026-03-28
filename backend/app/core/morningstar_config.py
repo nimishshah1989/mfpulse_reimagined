@@ -11,7 +11,7 @@ from dataclasses import dataclass
 class MorningstarAPI:
     name: str
     hash: str
-    db_target: str       # "fund_master" | "nav_daily" | "risk_stats_monthly" | "rank_monthly" | "category_returns"
+    db_target: str       # "fund_master" | "nav_daily" | "risk_stats_monthly" | "rank_monthly" | "category_returns" | "holdings"
     field_map_name: str  # Key into field_maps module
 
 
@@ -33,6 +33,8 @@ APIS = [
     MorningstarAPI("Rank Data",            "c6ey0lob8683mm5d", "rank_monthly",         "RANK_FIELD_MAP"),
     # Category returns
     MorningstarAPI("Category Return Data", "msncecvsohvimjkx", "category_returns",     "CATEGORY_RETURNS_FIELD_MAP"),
+    # Portfolio data (holdings, sector exposure, holding details)
+    MorningstarAPI("Portfolio Data",       "s4bqvv72rjpelvwf", "holdings",              "HOLDINGS_FIELD_MAP"),
 ]
 
 # Short name → API object mapping for single-API fetch endpoint
@@ -45,6 +47,7 @@ API_NAME_MAP: dict[str, MorningstarAPI] = {
     "risk": APIS[5],
     "ranks": APIS[6],
     "catreturns": APIS[7],
+    "holdings": APIS[8],
 }
 
 # Prefixes found in API responses — stripped during parsing
@@ -65,6 +68,7 @@ KNOWN_PREFIXES = [
     "KD",    # Key Date
     "TEI",   # (IPODate)
     "TEIV2", # (IPODate v2)
+    "PD",    # Portfolio Data (holdings, sector exposure, holding details)
 ]
 
 # Access code management

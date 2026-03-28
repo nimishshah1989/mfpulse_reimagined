@@ -13,7 +13,8 @@ class NavDaily(Base, UUIDPrimaryKey):
 
     mstar_id: Mapped[str] = mapped_column(String(20), nullable=False)
     nav_date: Mapped[date] = mapped_column(Date, nullable=False)
-    nav: Mapped[None] = mapped_column(Numeric(16, 4), nullable=False)
+    # nullable because Return Data API updates return columns without providing NAV
+    nav: Mapped[None] = mapped_column(Numeric(16, 4), nullable=True)
     nav_change: Mapped[None] = mapped_column(Numeric(12, 4), nullable=True)
 
     # Return columns
