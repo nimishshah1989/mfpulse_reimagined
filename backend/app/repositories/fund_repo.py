@@ -143,30 +143,36 @@ class FundRepository:
             return None
         return self._nav_to_dict(nav)
 
-    def get_latest_navs_batch(self, mstar_ids: list[str]) -> dict[str, dict]:
-        """Latest NAV for multiple funds in a single query (avoids N+1)."""
+    def get_latest_navs_batch(
+        self, mstar_ids: list[str], chunk_size: int = 1000,
+    ) -> dict[str, dict]:
+        """Latest NAV for multiple funds — chunked to avoid large IN clauses."""
         if not mstar_ids:
             return {}
-        # Subquery: max nav_date per mstar_id
-        latest_sub = (
-            self.db.query(
-                NavDaily.mstar_id,
-                func.max(NavDaily.nav_date).label("max_date"),
+        result: dict[str, dict] = {}
+        for i in range(0, len(mstar_ids), chunk_size):
+            chunk = mstar_ids[i : i + chunk_size]
+            latest_sub = (
+                self.db.query(
+                    NavDaily.mstar_id,
+                    func.max(NavDaily.nav_date).label("max_date"),
+                )
+                .filter(NavDaily.mstar_id.in_(chunk))
+                .group_by(NavDaily.mstar_id)
+                .subquery()
             )
-            .filter(NavDaily.mstar_id.in_(mstar_ids))
-            .group_by(NavDaily.mstar_id)
-            .subquery()
-        )
-        rows = (
-            self.db.query(NavDaily)
-            .join(
-                latest_sub,
-                (NavDaily.mstar_id == latest_sub.c.mstar_id)
-                & (NavDaily.nav_date == latest_sub.c.max_date),
+            rows = (
+                self.db.query(NavDaily)
+                .join(
+                    latest_sub,
+                    (NavDaily.mstar_id == latest_sub.c.mstar_id)
+                    & (NavDaily.nav_date == latest_sub.c.max_date),
+                )
+                .all()
             )
-            .all()
-        )
-        return {r.mstar_id: self._nav_to_dict(r) for r in rows}
+            for r in rows:
+                result[r.mstar_id] = self._nav_to_dict(r)
+        return result
 
     def get_nav_history(
         self,

@@ -32,29 +32,36 @@ class HoldingsRepository:
             return None
         return self._snapshot_to_dict(snap)
 
-    def get_latest_snapshots_batch(self, mstar_ids: list[str]) -> dict[str, dict]:
-        """Latest holdings snapshot for multiple funds in a single query (avoids N+1)."""
+    def get_latest_snapshots_batch(
+        self, mstar_ids: list[str], chunk_size: int = 1000,
+    ) -> dict[str, dict]:
+        """Latest holdings snapshot for multiple funds — chunked to avoid large IN clauses."""
         if not mstar_ids:
             return {}
-        latest_sub = (
-            self.db.query(
-                FundHoldingsSnapshot.mstar_id,
-                func.max(FundHoldingsSnapshot.portfolio_date).label("max_date"),
+        result: dict[str, dict] = {}
+        for i in range(0, len(mstar_ids), chunk_size):
+            chunk = mstar_ids[i : i + chunk_size]
+            latest_sub = (
+                self.db.query(
+                    FundHoldingsSnapshot.mstar_id,
+                    func.max(FundHoldingsSnapshot.portfolio_date).label("max_date"),
+                )
+                .filter(FundHoldingsSnapshot.mstar_id.in_(chunk))
+                .group_by(FundHoldingsSnapshot.mstar_id)
+                .subquery()
             )
-            .filter(FundHoldingsSnapshot.mstar_id.in_(mstar_ids))
-            .group_by(FundHoldingsSnapshot.mstar_id)
-            .subquery()
-        )
-        rows = (
-            self.db.query(FundHoldingsSnapshot)
-            .join(
-                latest_sub,
-                (FundHoldingsSnapshot.mstar_id == latest_sub.c.mstar_id)
-                & (FundHoldingsSnapshot.portfolio_date == latest_sub.c.max_date),
+            rows = (
+                self.db.query(FundHoldingsSnapshot)
+                .join(
+                    latest_sub,
+                    (FundHoldingsSnapshot.mstar_id == latest_sub.c.mstar_id)
+                    & (FundHoldingsSnapshot.portfolio_date == latest_sub.c.max_date),
+                )
+                .all()
             )
-            .all()
-        )
-        return {r.mstar_id: self._snapshot_to_dict(r) for r in rows}
+            for r in rows:
+                result[r.mstar_id] = self._snapshot_to_dict(r)
+        return result
 
     def get_top_holdings(self, mstar_id: str, limit: int = 10) -> list[dict]:
         """Top N holdings by weight for latest portfolio date."""

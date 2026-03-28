@@ -166,53 +166,67 @@ class LensRepository:
             result.append(d)
         return result, total
 
-    def get_all_scores_batch(self, mstar_ids: list[str]) -> dict[str, dict]:
-        """Latest lens scores for multiple funds in a single query."""
+    def get_all_scores_batch(
+        self, mstar_ids: list[str], chunk_size: int = 1000,
+    ) -> dict[str, dict]:
+        """Latest lens scores for multiple funds — chunked to avoid large IN clauses."""
         if not mstar_ids:
             return {}
-        latest_sub = (
-            self.db.query(
-                FundLensScores.mstar_id,
-                func.max(FundLensScores.computed_date).label("max_date"),
+        result: dict[str, dict] = {}
+        for i in range(0, len(mstar_ids), chunk_size):
+            chunk = mstar_ids[i : i + chunk_size]
+            latest_sub = (
+                self.db.query(
+                    FundLensScores.mstar_id,
+                    func.max(FundLensScores.computed_date).label("max_date"),
+                )
+                .filter(FundLensScores.mstar_id.in_(chunk))
+                .group_by(FundLensScores.mstar_id)
+                .subquery()
             )
-            .filter(FundLensScores.mstar_id.in_(mstar_ids))
-            .group_by(FundLensScores.mstar_id)
-            .subquery()
-        )
-        rows = (
-            self.db.query(FundLensScores)
-            .join(
-                latest_sub,
-                (FundLensScores.mstar_id == latest_sub.c.mstar_id)
-                & (FundLensScores.computed_date == latest_sub.c.max_date),
+            rows = (
+                self.db.query(FundLensScores)
+                .join(
+                    latest_sub,
+                    (FundLensScores.mstar_id == latest_sub.c.mstar_id)
+                    & (FundLensScores.computed_date == latest_sub.c.max_date),
+                )
+                .all()
             )
-            .all()
-        )
-        return {r.mstar_id: self._scores_to_dict(r) for r in rows}
+            for r in rows:
+                result[r.mstar_id] = self._scores_to_dict(r)
+        return result
 
-    def get_all_classifications_batch(self, mstar_ids: list[str]) -> dict[str, dict]:
-        """Latest classifications for multiple funds in a single query."""
+    def get_all_classifications_batch(
+        self, mstar_ids: list[str], chunk_size: int = 1000,
+    ) -> dict[str, dict]:
+        """Latest classifications for multiple funds — chunked to avoid large IN clauses."""
         if not mstar_ids:
             return {}
-        latest_sub = (
-            self.db.query(
-                FundClassification.mstar_id,
-                func.max(FundClassification.computed_date).label("max_date"),
+        result: dict[str, dict] = {}
+        for i in range(0, len(mstar_ids), chunk_size):
+            chunk = mstar_ids[i : i + chunk_size]
+            latest_sub = (
+                self.db.query(
+                    FundClassification.mstar_id,
+                    func.max(FundClassification.computed_date).label("max_date"),
+                )
+                .filter(FundClassification.mstar_id.in_(chunk))
+                .group_by(FundClassification.mstar_id)
+                .subquery()
             )
-            .filter(FundClassification.mstar_id.in_(mstar_ids))
-            .group_by(FundClassification.mstar_id)
-            .subquery()
-        )
-        rows = (
-            self.db.query(FundClassification)
-            .join(
-                latest_sub,
-                (FundClassification.mstar_id == latest_sub.c.mstar_id)
-                & (FundClassification.computed_date == latest_sub.c.max_date),
+            rows = (
+                self.db.query(FundClassification)
+                .join(
+                    latest_sub,
+                    (FundClassification.mstar_id == latest_sub.c.mstar_id)
+                    & (FundClassification.computed_date == latest_sub.c.max_date),
+                )
+                .all()
             )
-            .all()
-        )
-        return {r.mstar_id: self._classification_to_dict(r) for r in rows}
+            for r in rows:
+                result[r.mstar_id] = self._classification_to_dict(r)
+        return result
 
     def get_score_history(
         self,
