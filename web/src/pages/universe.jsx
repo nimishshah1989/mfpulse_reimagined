@@ -3,7 +3,7 @@ import dynamic from 'next/dynamic';
 import { fetchUniverseData, fetchCategories, fetchAMCs } from '../lib/api';
 import { cachedFetch } from '../lib/cache';
 import { formatCount } from '../lib/format';
-import { LENS_OPTIONS } from '../lib/lens';
+import { LENS_OPTIONS, lensLabel } from '../lib/lens';
 import Pill from '../components/shared/Pill';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
 import EmptyState from '../components/shared/EmptyState';
@@ -13,7 +13,7 @@ import HoverCard from '../components/universe/HoverCard';
 
 const BubbleScatter = dynamic(
   () => import('../components/universe/BubbleScatter'),
-  { ssr: false, loading: () => <SkeletonLoader variant="chart" className="h-[600px]" /> }
+  { ssr: false, loading: () => <SkeletonLoader variant="chart" className="flex-1 min-h-[500px]" /> }
 );
 
 const DEFAULT_FILTERS = {
@@ -38,14 +38,16 @@ export default function UniversePage() {
   const [yAxis, setYAxis] = useState('risk_score');
   const [colorLens, setColorLens] = useState('alpha_score');
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS });
+  const [selectedTier, setSelectedTier] = useState(null);
 
   // Hover state for HoverCard
   const [hoverFund, setHoverFund] = useState(null);
   const [hoverX, setHoverX] = useState(0);
   const [hoverY, setHoverY] = useState(0);
 
-  const contentRef = useRef(null);
+  const chartContainerRef = useRef(null);
   const [chartWidth, setChartWidth] = useState(800);
+  const [chartHeight, setChartHeight] = useState(600);
 
   // Load data on mount with client-side cache (single bulk endpoint)
   useEffect(() => {
@@ -71,17 +73,19 @@ export default function UniversePage() {
     loadData();
   }, []);
 
-  // Measure chart width
+  // Measure chart container dimensions
   useEffect(() => {
     function measure() {
-      if (contentRef.current) {
-        setChartWidth(Math.max(400, contentRef.current.offsetWidth - 16));
+      if (chartContainerRef.current) {
+        const rect = chartContainerRef.current.getBoundingClientRect();
+        setChartWidth(Math.max(400, Math.floor(rect.width)));
+        setChartHeight(Math.max(500, Math.floor(rect.height)));
       }
     }
     measure();
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
-  }, []);
+  }, [loading]);
 
   // Apply filters
   const filteredFunds = useMemo(() => {
@@ -98,6 +102,15 @@ export default function UniversePage() {
     });
   }, [allFunds, filters]);
 
+  // Tag each fund with its tier label for the active color lens (used by BubbleScatter for dimming)
+  const taggedFunds = useMemo(() => {
+    const activeLens = colorLens || 'return_score';
+    return filteredFunds.map((f) => ({
+      ...f,
+      _tierLabel: lensLabel(Number(f[activeLens]) || 0),
+    }));
+  }, [filteredFunds, colorLens]);
+
   const handleHover = useCallback((fund, x, y) => {
     setHoverFund(fund || null);
     setHoverX(x);
@@ -111,11 +124,12 @@ export default function UniversePage() {
   }, []);
 
   const handleTierClick = useCallback((tierLabel) => {
-    // No-op for now — could drill into a filtered view
+    setSelectedTier(tierLabel);
   }, []);
 
   const handleResetFilters = useCallback(() => {
     setFilters({ ...DEFAULT_FILTERS });
+    setSelectedTier(null);
   }, []);
 
   if (loading) {
@@ -123,7 +137,7 @@ export default function UniversePage() {
       <div className="space-y-4 p-4">
         <SkeletonLoader variant="row" className="w-full h-12" />
         <SkeletonLoader variant="row" className="w-full h-10" />
-        <SkeletonLoader variant="chart" className="flex-1 h-[600px]" />
+        <SkeletonLoader variant="chart" className="flex-1 min-h-[500px]" />
       </div>
     );
   }
@@ -141,18 +155,7 @@ export default function UniversePage() {
 
   return (
     <div className="h-full flex flex-col -m-6">
-      {/* Page subtitle */}
-      <div className="px-6 py-2.5 bg-white border-b border-slate-200 flex items-center justify-between">
-        <p className="text-sm text-slate-500">
-          Universe Explorer &mdash; explore{' '}
-          <span className="font-mono font-semibold text-slate-700">
-            {formatCount(allFunds.length)}
-          </span>{' '}
-          mutual funds across 6 intelligence lenses
-        </p>
-      </div>
-
-      {/* Filter bar */}
+      {/* Filter bar (fund count is inside FilterBar) */}
       <FilterBar
         categories={categories}
         amcs={amcs}
@@ -164,41 +167,45 @@ export default function UniversePage() {
         onXAxisChange={setXAxis}
         onYAxisChange={setYAxis}
         onColorLensChange={setColorLens}
-        filteredCount={filteredFunds.length}
+        filteredCount={taggedFunds.length}
         totalCount={allFunds.length}
       />
 
-      {/* Tier summary */}
+      {/* Tier summary cards */}
       <TierSummary
-        funds={filteredFunds}
+        funds={taggedFunds}
         colorLens={colorLens}
         onTierClick={handleTierClick}
+        selectedTier={selectedTier}
       />
 
-      {/* Visualization area */}
-      <div ref={contentRef} className="flex-1 overflow-auto p-4 min-w-0">
-        {filteredFunds.length === 0 ? (
-          <EmptyState
-            icon={'\uD83D\uDD0D'}
-            message="No funds match your current filters"
-            action="Reset Filters"
-            onAction={handleResetFilters}
-          />
+      {/* Visualization area -- flex-1 fills ALL remaining vertical space */}
+      <div ref={chartContainerRef} className="flex-1 min-h-[500px] min-w-0 relative">
+        {taggedFunds.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <EmptyState
+              icon={'\uD83D\uDD0D'}
+              message="No funds match your current filters"
+              action="Reset Filters"
+              onAction={handleResetFilters}
+            />
+          </div>
         ) : (
           <BubbleScatter
-            data={filteredFunds}
+            data={taggedFunds}
             xAxis={xAxis}
             yAxis={yAxis}
             colorLens={colorLens}
             onFundClick={handleFundClick}
             onHover={handleHover}
             width={chartWidth}
-            height={600}
+            height={chartHeight}
+            selectedTier={selectedTier}
           />
         )}
       </div>
 
-      {/* HoverCard — shown on bubble hover */}
+      {/* HoverCard -- shown on bubble hover */}
       {hoverFund && <HoverCard fund={hoverFund} x={hoverX} y={hoverY} />}
     </div>
   );

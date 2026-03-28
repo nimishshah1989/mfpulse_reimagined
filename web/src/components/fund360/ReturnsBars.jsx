@@ -1,12 +1,10 @@
-import Card from '../shared/Card';
-
 const PERIODS = [
   { key: 'return_1y', label: '1Y' },
   { key: 'return_3y', label: '3Y' },
   { key: 'return_5y', label: '5Y' },
 ];
 
-const MAX_BAR_WIDTH = 100; // percentage
+const MAX_BAR_WIDTH = 100;
 
 function calcMaxAbs(fundReturns, categoryReturns) {
   let max = 1;
@@ -27,56 +25,62 @@ function BarRow({ label, fundVal, catVal, maxAbs }) {
   const gapLabel =
     gap != null
       ? gap >= 0
-        ? `+${gap.toFixed(1)}% ahead`
-        : `${gap.toFixed(1)}% behind`
+        ? `+${gap.toFixed(1)}%`
+        : `${gap.toFixed(1)}%`
       : null;
 
   const fColor = fundVal != null && fundVal >= 0 ? '#0d9488' : '#dc2626';
   const cColor = '#94a3b8';
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-600 w-8">{label}</span>
-        {gapLabel && (
-          <span
-            className={`text-[11px] font-mono tabular-nums font-medium ${
-              gap >= 0 ? 'text-emerald-600' : 'text-red-600'
-            }`}
-          >
-            {gapLabel}
-          </span>
-        )}
+        <span className="text-xs font-semibold text-slate-700 w-8">{label}</span>
+        <div className="flex items-center gap-2">
+          {gapLabel && (
+            <span
+              className={`text-[11px] font-mono tabular-nums font-semibold px-1.5 py-0.5 rounded ${
+                gap >= 0 ? 'text-emerald-700 bg-emerald-50' : 'text-red-700 bg-red-50'
+              }`}
+            >
+              {gapLabel} {gap >= 0 ? 'ahead' : 'behind'}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Fund bar */}
       <div className="flex items-center gap-2">
         <span className="text-[10px] text-slate-400 w-10 text-right">Fund</span>
-        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+        <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
           <div
-            className="h-2 rounded-full"
+            className="h-3 rounded-full transition-all duration-500"
             style={{ width: `${fPct}%`, backgroundColor: fColor }}
           />
         </div>
-        <span className="text-[11px] font-mono tabular-nums text-slate-700 w-14 text-right">
+        <span
+          className={`text-xs font-mono tabular-nums font-semibold w-16 text-right ${
+            fundVal != null && fundVal >= 0 ? 'text-emerald-600' : 'text-red-600'
+          }`}
+        >
           {fundVal != null
-            ? `${fundVal >= 0 ? '+' : ''}${Number(fundVal).toFixed(1)}%`
-            : '—'}
+            ? `${fundVal >= 0 ? '+' : '\u2212'}${Math.abs(Number(fundVal)).toFixed(1)}%`
+            : '\u2014'}
         </span>
       </div>
 
       {/* Category avg bar */}
       {catVal != null && (
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-slate-400 w-10 text-right">Avg</span>
-          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+          <span className="text-[10px] text-slate-400 w-10 text-right">Cat</span>
+          <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
             <div
-              className="h-2 rounded-full"
+              className="h-3 rounded-full transition-all duration-500"
               style={{ width: `${cPct}%`, backgroundColor: cColor }}
             />
           </div>
-          <span className="text-[11px] font-mono tabular-nums text-slate-500 w-14 text-right">
-            {`${catVal >= 0 ? '+' : ''}${Number(catVal).toFixed(1)}%`}
+          <span className="text-xs font-mono tabular-nums text-slate-500 w-16 text-right">
+            {`${catVal >= 0 ? '+' : '\u2212'}${Math.abs(Number(catVal)).toFixed(1)}%`}
           </span>
         </div>
       )}
@@ -97,34 +101,33 @@ export default function ReturnsBars({ fundReturns, categoryReturns }) {
   const maxAbs = calcMaxAbs(fundReturns, categoryReturns);
 
   return (
-    <Card title="Returns vs Peers">
-      <div className="space-y-4">
-        <div className="flex items-center gap-4 text-[11px] text-slate-400">
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-1.5 rounded-full inline-block bg-teal-500" />
-            Fund
+    <div className="space-y-4">
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-[11px] text-slate-400">
+        <span className="flex items-center gap-1.5">
+          <span className="w-4 h-2 rounded-full inline-block bg-teal-500" />
+          Fund return
+        </span>
+        {categoryReturns && (
+          <span className="flex items-center gap-1.5">
+            <span className="w-4 h-2 rounded-full inline-block bg-slate-400" />
+            Category avg
           </span>
-          {categoryReturns && (
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-1.5 rounded-full inline-block bg-slate-400" />
-              Category avg
-            </span>
-          )}
-        </div>
-        {PERIODS.map(({ key, label }) => {
-          const fundVal = fundReturns[key] != null ? Number(fundReturns[key]) : null;
-          const catVal = categoryReturns?.[key] != null ? Number(categoryReturns[key]) : null;
-          return (
-            <BarRow
-              key={key}
-              label={label}
-              fundVal={fundVal}
-              catVal={catVal}
-              maxAbs={maxAbs}
-            />
-          );
-        })}
+        )}
       </div>
-    </Card>
+      {PERIODS.map(({ key, label }) => {
+        const fundVal = fundReturns[key] != null ? Number(fundReturns[key]) : null;
+        const catVal = categoryReturns?.[key] != null ? Number(categoryReturns[key]) : null;
+        return (
+          <BarRow
+            key={key}
+            label={label}
+            fundVal={fundVal}
+            catVal={catVal}
+            maxAbs={maxAbs}
+          />
+        );
+      })}
+    </div>
   );
 }

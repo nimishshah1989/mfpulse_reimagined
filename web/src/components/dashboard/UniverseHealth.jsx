@@ -14,10 +14,11 @@ function MiniHistogram({ buckets }) {
         return (
           <div key={idx} className="flex flex-col items-center flex-1 min-w-0">
             <div
-              className="w-full bg-teal-500 rounded-t-sm min-h-[2px]"
+              className="w-full bg-teal-500 rounded-t-sm min-h-[2px] transition-all hover:bg-teal-600"
               style={{ height: `${Math.max(heightPct, 3)}%` }}
+              title={`${bucket.min}-${bucket.max}: ${bucket.count} funds`}
             />
-            <span className="text-[9px] text-slate-400 mt-0.5 truncate w-full text-center">
+            <span className="text-[8px] text-slate-400 mt-0.5 truncate w-full text-center font-mono">
               {bucket.min}-{bucket.max}
             </span>
           </div>
@@ -42,24 +43,24 @@ export default function UniverseHealth({ lensDistribution, onNavigate }) {
   }
 
   return (
-    <div>
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+    <Card>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {LENS_KEYS.map((key) => {
-          const lens = LENS_OPTIONS.find((l) => l.value === key);
+          const lens = LENS_OPTIONS.find((l) => l.key === key);
           const dist = lensDistribution[key];
 
           return (
             <div
               key={key}
-              className="bg-white rounded-xl p-3 shadow-sm border border-slate-100"
+              className="bg-slate-50 rounded-lg p-3 border border-slate-100 hover:border-teal-200 transition-colors"
             >
-              <p className="text-xs font-semibold text-slate-700 mb-2">
+              <p className="text-[11px] font-bold text-slate-700 mb-2">
                 {lens ? lens.label : key}
               </p>
               {dist && dist.buckets ? (
                 <MiniHistogram buckets={dist.buckets} />
               ) : (
-                <p className="text-xs text-slate-400">No data</p>
+                <p className="text-xs text-slate-400 text-center py-4">No data</p>
               )}
             </div>
           );
@@ -68,12 +69,13 @@ export default function UniverseHealth({ lensDistribution, onNavigate }) {
 
       <div className="mt-4 text-center">
         <button
-          className="text-xs text-teal-600 hover:underline"
+          type="button"
+          className="text-xs text-teal-600 hover:text-teal-700 font-medium"
           onClick={() => onNavigate('/universe')}
         >
-          Click to explore in Universe Explorer
+          Explore full Universe →
         </button>
       </div>
-    </div>
+    </Card>
   );
 }

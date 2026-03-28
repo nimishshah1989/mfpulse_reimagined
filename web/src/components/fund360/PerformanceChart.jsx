@@ -6,13 +6,16 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  CartesianGrid,
 } from 'recharts';
 import { fetchNAVHistory } from '../../lib/api';
 import { formatINR } from '../../lib/format';
-import Pill from '../shared/Pill';
 
 const PERIODS = ['1m', '3m', '6m', '1y', '3y', '5y', 'since_inception'];
-const PERIOD_LABELS = { '1m': '1M', '3m': '3M', '6m': '6M', '1y': '1Y', '3y': '3Y', '5y': '5Y', since_inception: 'Since Inception' };
+const PERIOD_LABELS = {
+  '1m': '1M', '3m': '3M', '6m': '6M', '1y': '1Y',
+  '3y': '3Y', '5y': '5Y', since_inception: 'Max',
+};
 
 function formatAxisDate(dateStr) {
   if (!dateStr) return '';
@@ -24,16 +27,25 @@ function formatAxisDate(dateStr) {
 function TooltipContent({ active, payload }) {
   if (!active || !payload?.length) return null;
   const { date: nav_date, nav } = payload[0].payload;
+  const d = new Date(nav_date);
+  const formatted = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   return (
-    <div className="rounded-lg bg-white px-3 py-2 shadow-lg border border-slate-200 text-sm">
-      <p className="text-slate-500">{nav_date}</p>
-      <p className="font-mono tabular-nums font-semibold text-slate-900">
+    <div className="rounded-lg bg-white px-4 py-3 shadow-xl border border-slate-200">
+      <p className="text-xs text-slate-500 mb-1">{formatted}</p>
+      <p className="font-mono tabular-nums text-base font-bold text-slate-900">
         {formatINR(nav, 2)}
       </p>
     </div>
   );
 }
 
+/**
+ * PerformanceChart — prominent NAV chart with period selectors.
+ *
+ * Props:
+ *   mstarId     string
+ *   initialData array — initial 1Y nav data
+ */
 export default function PerformanceChart({ mstarId, initialData = [] }) {
   const [period, setPeriod] = useState('1y');
   const [data, setData] = useState(initialData);
@@ -67,33 +79,66 @@ export default function PerformanceChart({ mstarId, initialData = [] }) {
 
   const yFormatter = (v) => formatINR(v, 0);
 
+  // Compute change over period
+  const firstNav = data.length > 0 ? Number(data[0].nav) : null;
+  const lastNav = data.length > 0 ? Number(data[data.length - 1].nav) : null;
+  const periodChange = firstNav && lastNav ? ((lastNav - firstNav) / firstNav) * 100 : null;
+
   return (
     <div>
-      <div className="flex gap-2 mb-4 flex-wrap">
-        {PERIODS.map((p) => (
-          <Pill
-            key={p}
-            active={period === p}
-            onClick={() => loadPeriod(p)}
+      {/* Period pills + change indicator */}
+      <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+        <div className="flex gap-1.5">
+          {PERIODS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => loadPeriod(p)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                period === p
+                  ? 'bg-teal-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {PERIOD_LABELS[p]}
+            </button>
+          ))}
+        </div>
+        {periodChange != null && (
+          <span
+            className={`text-sm font-mono tabular-nums font-semibold ${
+              periodChange >= 0 ? 'text-emerald-600' : 'text-red-600'
+            }`}
           >
-            {PERIOD_LABELS[p]}
-          </Pill>
-        ))}
+            {periodChange >= 0 ? '+' : '\u2212'}{Math.abs(periodChange).toFixed(1)}%
+            <span className="text-xs text-slate-400 font-normal ml-1">({PERIOD_LABELS[period]})</span>
+          </span>
+        )}
       </div>
 
+      {/* Chart */}
       {loading ? (
-        <div className="flex items-center justify-center h-[300px] text-slate-400 text-sm">
-          Loading...
+        <div className="flex items-center justify-center h-[320px] text-slate-400 text-sm">
+          <svg className="animate-spin w-5 h-5 mr-2 text-teal-500" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          Loading chart data...
+        </div>
+      ) : data.length === 0 ? (
+        <div className="flex items-center justify-center h-[320px] text-slate-400 text-sm">
+          No NAV data available for this period
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={320}>
           <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
             <defs>
-              <linearGradient id="navGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#14b8a6" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="#14b8a6" stopOpacity={0} />
+              <linearGradient id="navGradient360" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#0d9488" stopOpacity={0.25} />
+                <stop offset="100%" stopColor="#0d9488" stopOpacity={0.02} />
               </linearGradient>
             </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
             <XAxis
               dataKey="date"
               tickFormatter={formatAxisDate}
@@ -107,7 +152,7 @@ export default function PerformanceChart({ mstarId, initialData = [] }) {
               tick={{ fontSize: 11, fill: '#94a3b8', fontFamily: 'monospace' }}
               axisLine={false}
               tickLine={false}
-              width={60}
+              width={65}
               domain={['auto', 'auto']}
             />
             <Tooltip content={<TooltipContent />} />
@@ -116,9 +161,9 @@ export default function PerformanceChart({ mstarId, initialData = [] }) {
               dataKey="nav"
               stroke="#0d9488"
               strokeWidth={2}
-              fill="url(#navGradient)"
+              fill="url(#navGradient360)"
               dot={false}
-              activeDot={{ r: 4, fill: '#0d9488', stroke: '#fff', strokeWidth: 2 }}
+              activeDot={{ r: 5, fill: '#0d9488', stroke: '#fff', strokeWidth: 2 }}
             />
           </ComposedChart>
         </ResponsiveContainer>

@@ -9,11 +9,14 @@ import {
 } from '../lib/api';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
 import EmptyState from '../components/shared/EmptyState';
+import Pill from '../components/shared/Pill';
 import dynamic from 'next/dynamic';
 const CompassChart = dynamic(() => import('../components/sectors/CompassChart'), { ssr: false });
 import MarketContextPanel from '../components/sectors/MarketContextPanel';
 import FundDrillDown from '../components/sectors/FundDrillDown';
 import RotationHeatmap from '../components/sectors/RotationHeatmap';
+
+const PERIODS = ['1M', '3M', '6M', '1Y'];
 
 export default function SectorsPage() {
   // MarketPulse data
@@ -110,7 +113,7 @@ export default function SectorsPage() {
     setSelectedSector(null);
   }, []);
 
-  // Sector click → lazy load exposures + scroll drill-down into view
+  // Sector click from compass or heatmap
   const handleSectorClick = useCallback(async (sector) => {
     setSelectedSector(sector);
 
@@ -133,7 +136,6 @@ export default function SectorsPage() {
         setExposureAvailable(hasData);
 
         if (hasData) {
-          // Cache the probed results
           const newExposures = { ...sectorExposures };
           results.forEach((r, i) => {
             if (r.status === 'fulfilled' && r.value.data) {
@@ -152,12 +154,23 @@ export default function SectorsPage() {
     }
   }, [exposureAvailable, funds, sectorExposures]);
 
+  // Heatmap sector click — find the sector object by name
+  const handleHeatmapSectorClick = useCallback((sectorName) => {
+    const found = sectorData.find((s) => s.sector_name === sectorName);
+    if (found) {
+      handleSectorClick(found);
+    }
+  }, [sectorData, handleSectorClick]);
+
   if (mpLoading && fundsLoading) {
     return (
       <div className="space-y-4">
-        <div className="flex gap-6">
-          <SkeletonLoader variant="chart" className="flex-1 h-[420px]" />
-          <SkeletonLoader variant="card" className="w-[260px] h-[420px]" />
+        <SkeletonLoader variant="chart" className="h-[480px]" />
+        <div className="grid grid-cols-4 gap-4">
+          <SkeletonLoader variant="card" className="h-32" />
+          <SkeletonLoader variant="card" className="h-32" />
+          <SkeletonLoader variant="card" className="h-32" />
+          <SkeletonLoader variant="card" className="h-32" />
         </div>
         <SkeletonLoader variant="card" className="h-64" />
       </div>
@@ -166,11 +179,18 @@ export default function SectorsPage() {
 
   return (
     <div className="space-y-6 -m-6">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3">
+      {/* Header with period pills */}
+      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
         <p className="text-sm text-slate-500">
           Which sectors are winning and which funds capture them
         </p>
+        <div className="flex gap-1.5">
+          {PERIODS.map((p) => (
+            <Pill key={p} active={period === p} onClick={() => handlePeriodChange(p)}>
+              {p}
+            </Pill>
+          ))}
+        </div>
       </div>
 
       {/* MarketPulse offline banner */}
@@ -189,44 +209,55 @@ export default function SectorsPage() {
       )}
 
       <div className="px-6 space-y-6">
-        {/* Compass + Market Context Panel */}
-        <div className="flex gap-6">
-          <div ref={compassRef} className="flex-1 min-w-0">
-            {!mpOnline ? (
-              <EmptyState
-                icon={'\uD83D\uDCE1'}
-                message="MarketPulse offline — sector data unavailable"
-                action="Retry"
-                onAction={() => loadMarketPulse(period)}
-              />
-            ) : (
-              <div className="bg-white rounded-xl border border-slate-200 p-5">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">Sector Compass</h3>
-                <CompassChart
-                  sectors={sectorData}
-                  selectedSector={selectedSector}
-                  onSectorClick={handleSectorClick}
-                  width={compassWidth - 42}
-                  height={420}
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="w-[260px] flex-shrink-0">
-            <MarketContextPanel
-              regime={regimeData}
-              sentiment={sentimentData}
-              breadth={breadthData}
-              sectorData={sectorData}
-              online={mpOnline}
-              period={period}
-              onPeriodChange={handlePeriodChange}
+        {/* Compass chart — FULL WIDTH */}
+        <div ref={compassRef} className="w-full">
+          {!mpOnline ? (
+            <EmptyState
+              icon={'\uD83D\uDCE1'}
+              message="MarketPulse offline — sector data unavailable"
+              action="Retry"
+              onAction={() => loadMarketPulse(period)}
             />
-          </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-slate-700">Sector Compass</h3>
+                {selectedSector && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">Selected:</span>
+                    <span className="text-xs font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
+                      {selectedSector.sector_name}
+                    </span>
+                    <button
+                      onClick={() => setSelectedSector(null)}
+                      className="text-xs text-slate-400 hover:text-slate-600"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </div>
+              <CompassChart
+                sectors={sectorData}
+                selectedSector={selectedSector}
+                onSectorClick={handleSectorClick}
+                width={compassWidth - 42}
+                height={480}
+              />
+            </div>
+          )}
         </div>
 
-        {/* Fund Drill-Down — inline expansion on sector click */}
+        {/* Market Context Panel — horizontal row below compass */}
+        <MarketContextPanel
+          regime={regimeData}
+          sentiment={sentimentData}
+          breadth={breadthData}
+          sectorData={sectorData}
+          online={mpOnline}
+        />
+
+        {/* Fund Drill-Down */}
         <div ref={drillDownRef}>
           <FundDrillDown
             sector={selectedSector}
@@ -245,6 +276,7 @@ export default function SectorsPage() {
         <RotationHeatmap
           sectorData={sectorData}
           online={mpOnline}
+          onSectorClick={handleHeatmapSectorClick}
         />
       </div>
     </div>

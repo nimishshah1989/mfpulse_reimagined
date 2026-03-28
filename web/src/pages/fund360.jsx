@@ -33,37 +33,6 @@ import PeerPositioning from '../components/fund360/PeerPositioning';
 
 const BROAD_CATEGORIES = ['All', 'Equity', 'Fixed Income', 'Allocation', 'Alternative Strategies'];
 
-function ChevronIcon({ open }) {
-  return (
-    <svg
-      className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
-  );
-}
-
-function CollapsibleSection({ title, children, defaultOpen = false }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-5 py-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-      >
-        {title}
-        <ChevronIcon open={open} />
-      </button>
-      {open && <div className="px-5 pb-5">{children}</div>}
-    </div>
-  );
-}
-
 function FundSearch({ onSelect }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -133,7 +102,7 @@ function FundSearch({ onSelect }) {
   return (
     <div className="space-y-6 -m-6">
       <div className="bg-white border-b border-slate-200 px-6 py-5">
-        <h2 className="text-xl font-semibold text-slate-800">Fund 360°</h2>
+        <h2 className="text-xl font-semibold text-slate-800">Fund 360\u00B0</h2>
         <p className="text-sm text-slate-500 mt-1">
           Search, filter, and explore any mutual fund in depth
         </p>
@@ -244,7 +213,7 @@ function FundSearch({ onSelect }) {
                     {f.fund_name || f.legal_name}
                   </div>
                   <div className="text-xs text-slate-500 mt-0.5">
-                    {f.amc_name} · {f.category_name}
+                    {f.amc_name} \u00B7 {f.category_name}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
@@ -281,6 +250,23 @@ function inceptionAge(inceptionDate) {
   const years = Math.floor((now - start) / (1000 * 60 * 60 * 24 * 365));
   if (years < 1) return '< 1 yr';
   return `${years} yr${years !== 1 ? 's' : ''} old`;
+}
+
+/**
+ * Section wrapper — always expanded, with title and optional icon.
+ */
+function Section({ title, icon, children }) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100">
+        <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+          {icon && <span className="text-base">{icon}</span>}
+          {title}
+        </h3>
+      </div>
+      <div className="px-5 py-5">{children}</div>
+    </div>
+  );
 }
 
 export default function Fund360Page() {
@@ -380,7 +366,6 @@ export default function Fund360Page() {
     [router]
   );
 
-  // Build sector quadrant map from sectors array
   const sectorQuadrants = sectors.reduce((acc, s) => {
     if (s.sector_name && s.quadrant) {
       acc[s.sector_name] = s.quadrant;
@@ -420,62 +405,82 @@ export default function Fund360Page() {
 
   const fundName = fundDetail.fund_name || fundDetail.legal_name;
   const age = inceptionAge(fundDetail.inception_date);
-
-  // Merge lens scores into fundDetail for Verdict
   const fundWithScores = lensScores ? { ...fundDetail, ...lensScores } : fundDetail;
 
   return (
     <div className="space-y-6 -m-6">
-      {/* 1. Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
+      {/* ===== HERO HEADER ===== */}
+      <div className="bg-white border-b border-slate-200 px-6 py-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
+            {/* Breadcrumb */}
             <button
               type="button"
               onClick={() => router.push('/')}
-              className="text-xs text-teal-600 hover:underline mb-1 inline-block"
+              className="text-xs text-teal-600 hover:underline mb-2 inline-flex items-center gap-1"
             >
-              {'\u2190'} Back to Universe
+              <span>\u2190</span> Back to Universe
             </button>
-            <h2 className="text-lg font-semibold text-slate-800 truncate">{fundName}</h2>
-            <p className="text-sm text-slate-500">{fundDetail.amc_name}</p>
 
-            {/* Meta row */}
-            <div className="flex flex-wrap items-center gap-2 mt-2">
+            {/* Fund name */}
+            <h1 className="text-xl font-bold text-slate-900 leading-tight">{fundName}</h1>
+            <p className="text-sm text-slate-500 mt-0.5">{fundDetail.amc_name}</p>
+
+            {/* Headline tag */}
+            {lensScores?.headline_tag && (
+              <p className="text-sm italic text-slate-600 mt-2 leading-relaxed">
+                {'\u201C'}{lensScores.headline_tag}{'\u201D'}
+              </p>
+            )}
+
+            {/* Stat row: AUM, TER, Age, Benchmark */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3">
               <Badge variant="category">{fundDetail.category_name}</Badge>
               {fundDetail.aum != null && (
-                <span className="text-xs font-mono text-slate-500">
-                  AUM: {formatAUM(fundDetail.aum)}
-                </span>
-              )}
-              {age && (
-                <span className="text-xs text-slate-400">{age}</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-slate-400 uppercase">AUM</span>
+                  <span className="text-xs font-mono tabular-nums font-semibold text-slate-700">
+                    {formatAUM(fundDetail.aum)}
+                  </span>
+                </div>
               )}
               {fundDetail.expense_ratio != null && (
-                <span className="text-xs text-slate-500 font-mono">
-                  TER: {Number(fundDetail.expense_ratio).toFixed(2)}%
-                </span>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-slate-400 uppercase">TER</span>
+                  <span className="text-xs font-mono tabular-nums font-semibold text-slate-700">
+                    {Number(fundDetail.expense_ratio).toFixed(2)}%
+                  </span>
+                </div>
+              )}
+              {age && (
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-slate-400 uppercase">Age</span>
+                  <span className="text-xs font-medium text-slate-600">{age}</span>
+                </div>
               )}
               {fundDetail.primary_benchmark && (
-                <span className="text-xs text-slate-400 truncate max-w-[200px]">
-                  vs {fundDetail.primary_benchmark}
-                </span>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-slate-400 uppercase">BM</span>
+                  <span className="text-xs text-slate-500 truncate max-w-[200px]">
+                    {fundDetail.primary_benchmark}
+                  </span>
+                </div>
               )}
             </div>
 
-            {/* Tier tags */}
+            {/* Color-coded tier tags */}
             {lensScores && (
-              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              <div className="flex flex-wrap items-center gap-1.5 mt-3">
                 {LENS_OPTIONS.map((lens) => {
                   const classKey = LENS_CLASS_KEYS[lens.key];
                   const tier = lensScores[classKey];
-                  return tier ? <TierBadge key={lens.key} tier={tier} /> : null;
+                  const score = lensScores[lens.key];
+                  return tier ? (
+                    <Badge key={lens.key} variant="tier">
+                      {tier}
+                    </Badge>
+                  ) : null;
                 })}
-                {lensScores.headline_tag && (
-                  <p className="text-xs italic text-slate-600 mt-0.5 w-full">
-                    {'\u201C'}{lensScores.headline_tag}{'\u201D'}
-                  </p>
-                )}
               </div>
             )}
           </div>
@@ -485,21 +490,21 @@ export default function Fund360Page() {
             <button
               type="button"
               onClick={() => router.push(`/strategies?fund=${mstarId}`)}
-              className="px-3 py-1.5 text-xs font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 whitespace-nowrap"
+              className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors whitespace-nowrap shadow-sm"
             >
-              Simulate {'\u2192'}
+              Simulate \u2192
             </button>
             <button
               type="button"
               onClick={() => setCompareOpen(true)}
-              className="px-3 py-1.5 text-xs font-medium text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-50 whitespace-nowrap"
+              className="px-4 py-2 text-xs font-semibold text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-50 transition-colors whitespace-nowrap"
             >
               Compare
             </button>
             <button
               type="button"
               onClick={() => router.push('/')}
-              className="px-3 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 whitespace-nowrap"
+              className="px-4 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap"
             >
               Back to Universe
             </button>
@@ -508,33 +513,49 @@ export default function Fund360Page() {
       </div>
 
       <div className="px-6 space-y-6">
-        {/* 2. Verdict */}
+        {/* ===== VERDICT ===== */}
         <Verdict fund={fundWithScores} />
 
-        {/* 3. Six-Lens Profile */}
-        {lensScores && (
-          <div>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">Six-Lens Profile</h3>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-              {LENS_OPTIONS.map((lens) => (
-                <LensCard
-                  key={lens.key}
-                  name={lens.label}
-                  score={lensScores[lens.key]}
-                  categoryName={fundDetail.category_name}
-                />
-              ))}
-            </div>
+        {/* ===== TWO-COLUMN: NAV Chart + Returns || Six-Lens Profile ===== */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left column: NAV Chart + Returns */}
+          <div className="space-y-6">
+            <Section title="NAV Performance" icon={'\uD83D\uDCC8'}>
+              <PerformanceChart mstarId={mstarId} initialData={navData} />
+            </Section>
+            <Section title="Returns vs Peers" icon={'\uD83D\uDCCA'}>
+              <ReturnsBars
+                fundReturns={fundDetail.returns || fundDetail}
+                categoryReturns={fundDetail.category_returns || null}
+              />
+            </Section>
           </div>
-        )}
 
-        {/* 4. Returns vs Peers */}
-        <ReturnsBars
-          fundReturns={fundDetail.returns || fundDetail}
-          categoryReturns={fundDetail.category_returns || null}
-        />
+          {/* Right column: Six-Lens Profile */}
+          {lensScores && (
+            <div>
+              <Section title="Six-Lens Profile" icon={'\uD83D\uDD2C'}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {LENS_OPTIONS.map((lens) => {
+                    const classKey = LENS_CLASS_KEYS[lens.key];
+                    return (
+                      <LensCard
+                        key={lens.key}
+                        name={lens.label}
+                        lensKey={lens.key}
+                        score={lensScores[lens.key]}
+                        tier={lensScores[classKey]}
+                        categoryName={fundDetail.category_name}
+                      />
+                    );
+                  })}
+                </div>
+              </Section>
+            </div>
+          )}
+        </div>
 
-        {/* 5. Smart Alternatives */}
+        {/* ===== SMART ALTERNATIVES ===== */}
         {peers && peers.length > 0 && (
           <SmartAlternatives
             peers={peers}
@@ -543,29 +564,27 @@ export default function Fund360Page() {
           />
         )}
 
-        {/* 6. Collapsible sections */}
-        <CollapsibleSection title="Sector Allocation">
-          <SectorAllocation sectors={sectors} />
-        </CollapsibleSection>
+        {/* ===== FULL-WIDTH SECTIONS (always expanded) ===== */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Section title="Sector Allocation" icon={'\uD83C\uDFE2'}>
+            <SectorAllocation sectors={sectors} />
+          </Section>
 
-        <CollapsibleSection title="Top 10 Holdings">
-          <HoldingsTable holdings={holdings} sectorQuadrants={sectorQuadrants} />
-        </CollapsibleSection>
+          <Section title="Top 10 Holdings" icon={'\uD83D\uDCBC'}>
+            <HoldingsTable holdings={holdings} sectorQuadrants={sectorQuadrants} />
+          </Section>
+        </div>
 
-        <CollapsibleSection title="Risk Profile">
+        <Section title="Risk Profile" icon={'\u26A1'}>
           <RiskProfile
             riskStats={riskStats || fundDetail.risk_stats || null}
             peerAvg={null}
           />
-        </CollapsibleSection>
+        </Section>
 
-        <CollapsibleSection title="Peer Positioning">
+        <Section title="Peer Positioning" icon={'\uD83C\uDFC6'}>
           <PeerPositioning scores={lensScores} />
-        </CollapsibleSection>
-
-        <CollapsibleSection title="NAV Chart">
-          <PerformanceChart mstarId={mstarId} initialData={navData} />
-        </CollapsibleSection>
+        </Section>
       </div>
 
       {/* Compare Mode Panel */}

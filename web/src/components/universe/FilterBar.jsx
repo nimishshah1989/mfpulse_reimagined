@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import Pill from '../shared/Pill';
 import { LENS_OPTIONS } from '../../lib/lens';
 import { formatCount } from '../../lib/format';
@@ -5,11 +6,11 @@ import { formatCount } from '../../lib/format';
 const PURCHASE_MODES = ['Regular', 'Direct', 'Both'];
 const DIVIDEND_TYPES = ['Growth', 'IDCW', 'Both'];
 const PERIODS = ['6M', '1Y', '3Y', '5Y', '7Y', '10Y'];
-const BROAD_CATEGORIES = ['', 'Equity', 'Debt', 'Hybrid', 'Other'];
+const BROAD_CATEGORIES = ['', 'Equity', 'Debt', 'Hybrid', 'Solution Oriented', 'Other'];
 
 /**
  * Horizontal filter bar for Universe Explorer.
- * Renders toggles, dropdowns, axis selectors, and fund count summary.
+ * Grouped controls: Fund Type, Filters (with active count badge), Period, Axes.
  */
 export default function FilterBar({
   categories = [],
@@ -38,42 +39,76 @@ export default function FilterBar({
     onFiltersChange({ ...filters, ...patch });
   }
 
-  return (
-    <div className="bg-white border-b border-slate-200 px-4 py-2.5 flex flex-wrap items-center gap-3">
-      {/* Purchase mode toggle */}
-      <div className="flex items-center gap-1">
-        <span className="text-xs text-slate-400 mr-1">Plan:</span>
-        {PURCHASE_MODES.map((mode) => (
-          <Pill
-            key={mode}
-            active={purchaseMode === mode}
-            onClick={() => update({ purchaseMode: mode })}
-          >
-            {mode}
-          </Pill>
-        ))}
-      </div>
+  // Count active filters (excluding defaults)
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (category) count += 1;
+    if (broadCategory) count += 1;
+    if (amc) count += 1;
+    if (purchaseMode !== 'Regular') count += 1;
+    if (dividendType !== 'Growth') count += 1;
+    return count;
+  }, [category, broadCategory, amc, purchaseMode, dividendType]);
 
-      {/* Dividend type toggle */}
-      <div className="flex items-center gap-1">
-        <span className="text-xs text-slate-400 mr-1">Type:</span>
-        {DIVIDEND_TYPES.map((type) => (
-          <Pill
-            key={type}
-            active={dividendType === type}
-            onClick={() => update({ dividendType: type })}
-          >
-            {type}
-          </Pill>
-        ))}
+  return (
+    <div className="bg-white border-b border-slate-200 px-4 py-2 flex flex-wrap items-center gap-3">
+      {/* Fund Type group */}
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Fund Type</span>
+        <div className="flex items-center gap-1">
+          {PURCHASE_MODES.map((mode) => (
+            <Pill
+              key={mode}
+              active={purchaseMode === mode}
+              onClick={() => update({ purchaseMode: mode })}
+            >
+              {mode}
+            </Pill>
+          ))}
+        </div>
+        <div className="h-4 border-l border-slate-200 mx-0.5" />
+        <div className="flex items-center gap-1">
+          {DIVIDEND_TYPES.map((type) => (
+            <Pill
+              key={type}
+              active={dividendType === type}
+              onClick={() => update({ dividendType: type })}
+            >
+              {type}
+            </Pill>
+          ))}
+        </div>
       </div>
 
       {/* Divider */}
       <div className="h-6 border-l border-slate-200" />
 
-      {/* Category dropdown */}
-      <div className="flex items-center gap-1.5">
-        <label className="text-xs text-slate-400">Category:</label>
+      {/* Filters group with badge */}
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider relative">
+          Filters
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-1.5 -right-4 bg-teal-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+              {activeFilterCount}
+            </span>
+          )}
+        </span>
+
+        {/* Broad Category / Sector */}
+        <select
+          value={broadCategory}
+          onChange={(e) => update({ broadCategory: e.target.value })}
+          className="text-xs border border-slate-200 rounded-md px-2 py-1 bg-white text-slate-700"
+        >
+          <option value="">All Sectors</option>
+          {BROAD_CATEGORIES.filter(Boolean).map((bc) => (
+            <option key={bc} value={bc}>
+              {bc}
+            </option>
+          ))}
+        </select>
+
+        {/* Category dropdown */}
         <select
           value={category}
           onChange={(e) => update({ category: e.target.value })}
@@ -89,28 +124,8 @@ export default function FilterBar({
             );
           })}
         </select>
-      </div>
 
-      {/* Fund type / broad category dropdown */}
-      <div className="flex items-center gap-1.5">
-        <label className="text-xs text-slate-400">Type:</label>
-        <select
-          value={broadCategory}
-          onChange={(e) => update({ broadCategory: e.target.value })}
-          className="text-xs border border-slate-200 rounded-md px-2 py-1 bg-white text-slate-700"
-        >
-          <option value="">All Types</option>
-          {BROAD_CATEGORIES.filter(Boolean).map((bc) => (
-            <option key={bc} value={bc}>
-              {bc}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* AMC dropdown */}
-      <div className="flex items-center gap-1.5">
-        <label className="text-xs text-slate-400">AMC:</label>
+        {/* AMC dropdown */}
         <select
           value={amc}
           onChange={(e) => update({ amc: e.target.value })}

@@ -1,13 +1,14 @@
-import Card from '../shared/Card';
-import Pill from '../shared/Pill';
-
 const REGIME_STYLES = {
-  'Risk-On': 'bg-emerald-100 text-emerald-700',
-  'Risk-Off': 'bg-red-100 text-red-700',
-  Neutral: 'bg-amber-100 text-amber-700',
+  'Risk-On': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  'Risk-Off': 'bg-red-100 text-red-700 border-red-200',
+  Neutral: 'bg-amber-100 text-amber-700 border-amber-200',
 };
 
-const PERIODS = ['3M', '6M', '1Y'];
+const REGIME_ICONS = {
+  'Risk-On': '\u2191',
+  'Risk-Off': '\u2193',
+  Neutral: '\u2194',
+};
 
 function sentimentLabel(score) {
   if (score >= 70) return 'Greedy';
@@ -15,13 +16,19 @@ function sentimentLabel(score) {
   return 'Fearful';
 }
 
+function sentimentColor(score) {
+  if (score >= 70) return '#059669';
+  if (score >= 40) return '#d97706';
+  return '#dc2626';
+}
+
 function SentimentGauge({ score }) {
   const clamp = Math.max(0, Math.min(100, score));
-  const arc = (clamp / 100) * 157; // half circumference of r=50
-  const color = clamp >= 70 ? '#059669' : clamp >= 40 ? '#d97706' : '#dc2626';
+  const arc = (clamp / 100) * 157;
+  const color = sentimentColor(clamp);
 
   return (
-    <svg viewBox="0 0 120 70" className="w-full max-w-[160px] mx-auto">
+    <svg viewBox="0 0 120 68" className="w-24 mx-auto">
       <circle
         cx="60"
         cy="60"
@@ -46,10 +53,11 @@ function SentimentGauge({ score }) {
       />
       <text
         x="60"
-        y="58"
+        y="55"
         textAnchor="middle"
-        fontSize="18"
-        fontWeight="600"
+        fontSize="20"
+        fontWeight="700"
+        fontFamily="ui-monospace, monospace"
         fill="#1e293b"
       >
         {clamp}
@@ -58,12 +66,12 @@ function SentimentGauge({ score }) {
   );
 }
 
-function ProgressBar({ value, max = 100 }) {
+function ProgressBar({ value, max = 100, color = 'bg-teal-500' }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
   return (
     <div className="h-2 w-full rounded bg-slate-100">
       <div
-        className="h-2 rounded bg-teal-500 transition-all duration-300"
+        className={`h-2 rounded ${color} transition-all duration-300`}
         style={{ width: `${pct}%` }}
       />
     </div>
@@ -76,13 +84,10 @@ export default function MarketContextPanel({
   breadth,
   sectorData,
   online,
-  period,
-  onPeriodChange,
 }) {
   const leadingCount = sectorData?.filter((s) => s.quadrant === 'Leading').length ?? 0;
   const totalSectors = sectorData?.length ?? 0;
 
-  // Find the strongest improving sector (highest positive momentum not already Leading)
   const improvingSectors = sectorData
     ? [...sectorData]
         .filter((s) => s.quadrant === 'Improving')
@@ -90,7 +95,6 @@ export default function MarketContextPanel({
     : [];
   const topImproving = improvingSectors[0] ?? null;
 
-  // Breadth trend label: compare pct_above_50ma if available, else pct_above_21ema
   const breadthPct = breadth?.pct_above_50ma ?? breadth?.pct_above_21ema ?? null;
   const breadthTrend = breadth?.pct_above_50ma_prev
     ? breadthPct >= breadth.pct_above_50ma_prev
@@ -101,138 +105,136 @@ export default function MarketContextPanel({
   const sentimentScore = sentiment?.composite_score ?? null;
   const sentimentText = sentimentScore != null ? sentimentLabel(sentimentScore) : null;
 
-  return (
-    <div className="flex flex-col gap-4">
-      {!online && (
-        <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
-          MarketPulse offline — showing cached data
-        </div>
-      )}
+  const advDecline = breadth?.advance_decline_ratio ?? null;
 
-      {/* Period selector */}
-      <div className="flex gap-1.5">
-        {PERIODS.map((p) => (
-          <Pill key={p} active={period === p} onClick={() => onPeriodChange(p)}>
-            {p}
-          </Pill>
-        ))}
+  if (!online) {
+    return (
+      <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-700">
+        MarketPulse offline — showing cached data
       </div>
+    );
+  }
 
-      {/* Regime card */}
-      <Card>
-        <p className="text-xs font-medium text-slate-500 mb-1.5">Market Regime</p>
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Market Regime card */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <p className="text-xs font-medium text-slate-500 mb-2">Market Regime</p>
         {regime ? (
-          <>
-            <div className="flex items-center gap-2 mb-1">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
               <span
-                className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold border ${
                   REGIME_STYLES[regime.regime_label] || REGIME_STYLES.Neutral
                 }`}
               >
+                <span className="text-base">{REGIME_ICONS[regime.regime_label] || REGIME_ICONS.Neutral}</span>
                 {regime.regime_label}
               </span>
-              <span className="font-mono tabular-nums text-sm text-slate-600">
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold font-mono tabular-nums text-slate-800">
                 {regime.score}
               </span>
+              <span className="text-xs text-slate-400">/100</span>
             </div>
             <p className="text-[11px] text-slate-500 leading-snug">
-              Broad market favoring equities.{' '}
-              {leadingCount} of {totalSectors} sectors leading.
+              {leadingCount} of {totalSectors} sectors leading
             </p>
-          </>
+          </div>
         ) : (
           <span className="text-xs text-slate-400">No data</span>
         )}
-      </Card>
+      </div>
 
-      {/* Breadth card */}
-      <Card>
+      {/* Sentiment Score card */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <p className="text-xs font-medium text-slate-500 mb-2">Sentiment</p>
+        {sentimentScore != null ? (
+          <div className="space-y-1">
+            <SentimentGauge score={sentimentScore} />
+            <p className="text-center text-xs font-semibold" style={{ color: sentimentColor(sentimentScore) }}>
+              {sentiment.label || sentimentText}
+            </p>
+            <p className="text-[11px] text-slate-500 text-center leading-snug">
+              {sentimentText === 'Fearful' ? 'Good for SIP accumulation' : sentimentText === 'Greedy' ? 'Caution advised' : 'Neutral zone'}
+            </p>
+          </div>
+        ) : (
+          <span className="text-xs text-slate-400">No data</span>
+        )}
+      </div>
+
+      {/* Breadth Indicator card */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4">
         <p className="text-xs font-medium text-slate-500 mb-2">Market Breadth</p>
         {breadth ? (
-          <>
-            <div className="space-y-2.5 mb-2">
-              {breadth.pct_above_50ma != null && (
-                <div>
-                  <div className="flex justify-between text-xs text-slate-600 mb-1">
-                    <span>Above 50d avg</span>
-                    <span className="font-mono tabular-nums">{breadth.pct_above_50ma}%</span>
-                  </div>
-                  <ProgressBar value={breadth.pct_above_50ma} />
+          <div className="space-y-2">
+            {advDecline != null && (
+              <div>
+                <div className="flex justify-between text-xs text-slate-600 mb-0.5">
+                  <span>A/D Ratio</span>
+                  <span className="font-mono tabular-nums font-semibold">
+                    {Number(advDecline).toFixed(2)}
+                  </span>
                 </div>
-              )}
-              {breadth.pct_above_21ema != null && (
-                <div>
-                  <div className="flex justify-between text-xs text-slate-600 mb-1">
-                    <span>Above 21 EMA</span>
-                    <span className="font-mono tabular-nums">{breadth.pct_above_21ema}%</span>
-                  </div>
-                  <ProgressBar value={breadth.pct_above_21ema} />
+              </div>
+            )}
+            {breadth.pct_above_50ma != null && (
+              <div>
+                <div className="flex justify-between text-xs text-slate-600 mb-0.5">
+                  <span>Above 50d</span>
+                  <span className="font-mono tabular-nums">{breadth.pct_above_50ma}%</span>
                 </div>
-              )}
-              {breadth.pct_above_200ma != null && (
-                <div>
-                  <div className="flex justify-between text-xs text-slate-600 mb-1">
-                    <span>Above 200 MA</span>
-                    <span className="font-mono tabular-nums">{breadth.pct_above_200ma}%</span>
-                  </div>
-                  <ProgressBar value={breadth.pct_above_200ma} />
+                <ProgressBar value={breadth.pct_above_50ma} />
+              </div>
+            )}
+            {breadth.pct_above_200ma != null && (
+              <div>
+                <div className="flex justify-between text-xs text-slate-600 mb-0.5">
+                  <span>Above 200d</span>
+                  <span className="font-mono tabular-nums">{breadth.pct_above_200ma}%</span>
                 </div>
-              )}
-            </div>
-            {breadthPct != null && (
-              <p className="text-[11px] text-slate-500 leading-snug">
-                {breadthPct}% of Nifty 500 above 50d avg.
-                {breadthTrend ? ` ${breadthTrend} from last week.` : ''}
+                <ProgressBar value={breadth.pct_above_200ma} />
+              </div>
+            )}
+            {breadthTrend && (
+              <p className="text-[11px] text-slate-500">
+                Trend: <span className={breadthTrend === 'Rising' ? 'text-emerald-600 font-medium' : 'text-red-600 font-medium'}>{breadthTrend}</span>
               </p>
             )}
-          </>
+          </div>
         ) : (
           <span className="text-xs text-slate-400">No data</span>
         )}
-      </Card>
+      </div>
 
-      {/* Sentiment card */}
-      <Card>
-        <p className="text-xs font-medium text-slate-500 mb-1">Sentiment</p>
-        {sentimentScore != null ? (
-          <>
-            <SentimentGauge score={sentimentScore} />
-            <p className="text-center text-xs text-slate-500 mt-1">{sentiment.label || sentimentText}</p>
-            <p className="text-[11px] text-slate-500 text-center mt-1 leading-snug">
-              {sentimentText}. Good for SIP continuation.
-            </p>
-          </>
-        ) : (
-          <span className="text-xs text-slate-400">No data</span>
-        )}
-      </Card>
-
-      {/* Rotation signal card */}
-      <Card>
-        <p className="text-xs font-medium text-slate-500 mb-1">Rotation Signal</p>
+      {/* Rotation Signal card */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <p className="text-xs font-medium text-slate-500 mb-2">Rotation Signal</p>
         {topImproving ? (
-          <>
+          <div className="space-y-1">
             <p className="text-sm font-semibold text-teal-700 truncate">{topImproving.sector_name}</p>
-            <p className="font-mono tabular-nums text-xs text-slate-600 mb-1">
-              Momentum: {topImproving.rs_momentum > 0 ? '+' : ''}{topImproving.rs_momentum?.toFixed(1)}
+            <p className="font-mono tabular-nums text-lg font-bold text-slate-800">
+              {topImproving.rs_momentum > 0 ? '+' : ''}{topImproving.rs_momentum?.toFixed(1)}
             </p>
             <p className="text-[11px] text-slate-500 leading-snug">
-              Strongest improving sector by RS momentum.
+              Strongest improving sector
             </p>
-          </>
+          </div>
         ) : leadingCount > 0 ? (
-          <>
-            <p className="text-2xl font-semibold font-mono tabular-nums text-teal-600">
+          <div className="space-y-1">
+            <p className="text-2xl font-bold font-mono tabular-nums text-teal-600">
               {leadingCount}
             </p>
-            <p className="text-[11px] text-slate-400">
-              of {totalSectors} in top-right quadrant
+            <p className="text-[11px] text-slate-500">
+              of {totalSectors} in Leading quadrant
             </p>
-          </>
+          </div>
         ) : (
           <span className="text-xs text-slate-400">No rotation signals</span>
         )}
-      </Card>
+      </div>
     </div>
   );
 }
