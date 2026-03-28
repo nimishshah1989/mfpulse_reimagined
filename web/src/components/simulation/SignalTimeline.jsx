@@ -1,5 +1,7 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
-import * as d3 from 'd3'
+import { scaleTime, scaleLinear } from 'd3-scale'
+import { extent, max, bisector } from 'd3-array'
+import { timeFormat } from 'd3-time-format'
 import { formatINR } from '../../lib/format'
 import { getSignalColor, computeStartDate } from '../../lib/simulation'
 import Card from '../shared/Card'
@@ -51,16 +53,16 @@ function SignalTimeline({ navHistory, cashflowEvents, period = '5Y', width = 800
   const capPanelBottom = navPanelBottom + capPanelH
 
   const xScale = useMemo(() =>
-    d3.scaleTime()
-      .domain(d3.extent(visibleNav, d => d.date))
+    scaleTime()
+      .domain(extent(visibleNav, d => d.date))
       .range([MARGIN.left, width - MARGIN.right]),
     [visibleNav, width]
   )
 
   const navScale = useMemo(() => {
-    const [min, max] = d3.extent(visibleNav, d => d.nav)
+    const [min, max] = extent(visibleNav, d => d.nav)
     const pad = (max - min) * 0.05
-    return d3.scaleLinear()
+    return scaleLinear()
       .domain([min - pad, max + pad])
       .range([navPanelBottom, MARGIN.top])
   }, [visibleNav, navPanelBottom])
@@ -76,8 +78,8 @@ function SignalTimeline({ navHistory, cashflowEvents, period = '5Y', width = 800
 
   const capitalScale = useMemo(() => {
     if (!capitalData.length) return null
-    const max = d3.max(capitalData, d => d.capital) || 1
-    return d3.scaleLinear()
+    const max = max(capitalData, d => d.capital) || 1
+    return scaleLinear()
       .domain([0, max * 1.1])
       .range([capPanelBottom, navPanelBottom + 4])
   }, [capitalData, capPanelBottom, navPanelBottom])
@@ -107,7 +109,7 @@ function SignalTimeline({ navHistory, cashflowEvents, period = '5Y', width = 800
       ctx.moveTo(x, MARGIN.top)
       ctx.lineTo(x, capPanelBottom)
       ctx.stroke()
-      ctx.fillText(d3.timeFormat('%b %Y')(t), x, capPanelBottom + 16)
+      ctx.fillText(timeFormat('%b %Y')(t), x, capPanelBottom + 16)
     })
 
     // Y-axis ticks (NAV)
@@ -138,7 +140,7 @@ function SignalTimeline({ navHistory, cashflowEvents, period = '5Y', width = 800
     ctx.stroke()
 
     // Signal markers
-    const bisector = d3.bisector(d => d.date).left
+    const bisector = bisector(d => d.date).left
     visibleEvents.forEach(evt => {
       const x = xScale(evt.date)
       const idx = bisector(visibleNav, evt.date)
@@ -190,7 +192,7 @@ function SignalTimeline({ navHistory, cashflowEvents, period = '5Y', width = 800
 
   useEffect(() => { draw() }, [draw])
 
-  const bisector = useMemo(() => d3.bisector(d => d.date).left, [])
+  const bisector = useMemo(() => bisector(d => d.date).left, [])
 
   const handleMouseMove = useCallback((e) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -228,7 +230,7 @@ function SignalTimeline({ navHistory, cashflowEvents, period = '5Y', width = 800
             className="absolute z-10 bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 text-xs pointer-events-none"
             style={{ left: tooltip.x + 12, top: tooltip.y - 10 }}
           >
-            <p className="text-slate-500">{d3.timeFormat('%d %b %Y')(tooltip.date)}</p>
+            <p className="text-slate-500">{timeFormat('%d %b %Y')(tooltip.date)}</p>
             <p className="font-mono tabular-nums font-semibold text-slate-800">
               NAV: {formatINR(tooltip.nav, 2)}
             </p>

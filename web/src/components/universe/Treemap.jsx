@@ -1,10 +1,11 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
-import * as d3 from 'd3';
+import { scaleLinear } from 'd3-scale';
+import { hierarchy as d3Hierarchy, treemap as d3Treemap } from 'd3-hierarchy';
+import { select } from 'd3-selection';
 import { formatScore, formatAUM } from '../../lib/format';
 import { LENS_LABELS } from '../../lib/lens';
 
-const colorScale = d3
-  .scaleLinear()
+const colorScale = scaleLinear()
   .domain([0, 40, 80, 100])
   .range(['#f1f5f9', '#ccfbf1', '#0d9488', '#059669'])
   .clamp(true);
@@ -49,8 +50,7 @@ export default function Treemap({
       })),
     }));
 
-    return d3
-      .hierarchy({ name: 'root', children })
+    return d3Hierarchy({ name: 'root', children })
       .sum((d) => d.value || 0)
       .sort((a, b) => (b.value || 0) - (a.value || 0));
   }, [data, colorLens, zoomedCategory]);
@@ -58,18 +58,17 @@ export default function Treemap({
   useEffect(() => {
     if (!svgRef.current) return;
 
-    const svg = d3.select(svgRef.current);
+    const svg = select(svgRef.current);
     svg.selectAll('*').remove();
 
-    const treemap = d3
-      .treemap()
+    const layout = d3Treemap()
       .size([width, height])
       .paddingOuter(3)
       .paddingTop(20)
       .paddingInner(1)
       .round(true);
 
-    treemap(hierarchy);
+    layout(hierarchy);
 
     const leaves = hierarchy.leaves();
 

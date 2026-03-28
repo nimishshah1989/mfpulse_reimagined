@@ -17,7 +17,8 @@ import EmptyState from '../components/shared/EmptyState';
 import FundPicker from '../components/simulation/FundPicker';
 import SimulationConfig from '../components/simulation/SimulationConfig';
 import RuleBuilder from '../components/simulation/RuleBuilder';
-import SignalTimeline from '../components/simulation/SignalTimeline';
+import dynamic from 'next/dynamic';
+const SignalTimeline = dynamic(() => import('../components/simulation/SignalTimeline'), { ssr: false });
 import ModeComparison from '../components/simulation/ModeComparison';
 import ResultsExport from '../components/simulation/ResultsExport';
 

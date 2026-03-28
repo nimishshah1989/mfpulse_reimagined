@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import * as d3 from 'd3';
+import { select } from 'd3-selection';
 import { LENS_OPTIONS } from '../../lib/lens';
 
 const COLORS = ['#0d9488', '#f59e0b', '#7c3aed'];
@@ -35,7 +35,7 @@ export default function RadarChart({ funds = [], size = 320 }) {
 
   useEffect(() => {
     if (!svgRef.current || funds.length === 0) return;
-    const svg = d3.select(svgRef.current);
+    const svg = select(svgRef.current);
     svg.selectAll('*').remove();
 
     const chart = svg.append('g');

@@ -9,7 +9,8 @@ import {
 } from '../lib/api';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
 import EmptyState from '../components/shared/EmptyState';
-import CompassChart from '../components/sectors/CompassChart';
+import dynamic from 'next/dynamic';
+const CompassChart = dynamic(() => import('../components/sectors/CompassChart'), { ssr: false });
 import MarketContext from '../components/sectors/MarketContext';
 import FundDrillDown from '../components/sectors/FundDrillDown';
 import RotationTimeline from '../components/sectors/RotationTimeline';

@@ -1,5 +1,8 @@
 import { useRef, useEffect, useMemo, useState } from 'react';
-import * as d3 from 'd3';
+import { scaleLinear } from 'd3-scale';
+import { color } from 'd3-color';
+import { select } from 'd3-selection';
+import { hierarchy, treemap } from 'd3-hierarchy';
 
 function avgScore(f) {
   const scores = [f.return_score, f.risk_score, f.consistency_score, f.alpha_score, f.efficiency_score, f.resilience_score];
@@ -8,7 +11,7 @@ function avgScore(f) {
 }
 
 function luminance(hex) {
-  const rgb = d3.color(hex);
+  const rgb = color(hex);
   if (!rgb) return 0.5;
   return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
 }
@@ -27,7 +30,7 @@ export default function AllocationTreemap({
   const [locked, setLocked] = useState({});
 
   const colorScale = useMemo(
-    () => d3.scaleLinear().domain([20, 50, 80]).range(['#e2e8f0', '#99f6e4', '#0d9488']).clamp(true),
+    () => scaleLinear().domain([20, 50, 80]).range(['#e2e8f0', '#99f6e4', '#0d9488']).clamp(true),
     []
   );
 
@@ -44,17 +47,17 @@ export default function AllocationTreemap({
 
   useEffect(() => {
     if (!svgRef.current || !funds.length) return;
-    const svg = d3.select(svgRef.current);
+    const svg = select(svgRef.current);
     svg.selectAll('*').remove();
 
-    const root = d3.hierarchy({
+    const root = hierarchy({
       children: funds.map((f) => ({
         ...f,
         value: allocations[f.mstar_id] || 0,
       })),
     }).sum((d) => Math.max(d.value, 0.5));
 
-    d3.treemap().size([width, height]).padding(3).round(true)(root);
+    treemap().size([width, height]).padding(3).round(true)(root);
 
     const leaves = svg
       .selectAll('g')

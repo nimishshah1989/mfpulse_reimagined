@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import * as d3 from 'd3';
+import { scaleLinear } from 'd3-scale';
 import { QUADRANT_COLORS } from '../../lib/sectors';
 
 const QUADRANT_BG = {
@@ -31,11 +31,11 @@ export default function CompassChart({
   const [tooltip, setTooltip] = useState(null);
 
   const xScale = useCallback(
-    () => d3.scaleLinear().domain([0, 100]).range([MARGIN.left, width - MARGIN.right]),
+    () => scaleLinear().domain([0, 100]).range([MARGIN.left, width - MARGIN.right]),
     [width]
   );
   const yScale = useCallback(
-    () => d3.scaleLinear().domain([-20, 20]).range([height - MARGIN.bottom, MARGIN.top]),
+    () => scaleLinear().domain([-20, 20]).range([height - MARGIN.bottom, MARGIN.top]),
     [height]
   );
 
