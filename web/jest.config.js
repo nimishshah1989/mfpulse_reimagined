@@ -8,6 +8,9 @@ module.exports = {
       },
     }],
   },
+  transformIgnorePatterns: [
+    '/node_modules/(?!(d3|d3-.*|internmap|delaunator|robust-predicates|recharts|recharts-scale)/)/',
+  ],
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': '<rootDir>/src/__tests__/__mocks__/styleMock.js',
   },

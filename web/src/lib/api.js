@@ -92,3 +92,46 @@ export const compareModes = (params) =>
   });
 export const fetchDefaultRules = () =>
   apiFetch('/api/v1/simulation/rules/defaults');
+export const validateRules = (rules) =>
+  apiFetch('/api/v1/simulation/validate-rules', {
+    method: 'POST',
+    body: JSON.stringify({ rules }),
+  });
+
+// Lens history + Peers + Risk
+export const fetchLensHistory = (mstarId) =>
+  apiFetch(`/api/v1/lens/scores/${mstarId}/history`);
+export const fetchPeers = (mstarId) =>
+  apiFetch(`/api/v1/funds/${mstarId}/peers`);
+export const fetchFundRisk = (mstarId) =>
+  apiFetch(`/api/v1/funds/${mstarId}/risk`);
+
+// Strategy APIs
+export const createStrategy = (data) =>
+  apiFetch('/api/v1/strategies', { method: 'POST', body: JSON.stringify(data) });
+export const fetchStrategies = () =>
+  apiFetch('/api/v1/strategies');
+export const fetchStrategy = (id) =>
+  apiFetch(`/api/v1/strategies/${id}`);
+export const updateStrategy = (id, data) =>
+  apiFetch(`/api/v1/strategies/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const backtestStrategy = (id) =>
+  apiFetch(`/api/v1/strategies/${id}/backtest`, { method: 'POST' });
+export const fetchBacktests = (id) =>
+  apiFetch(`/api/v1/strategies/${id}/backtests`);
+
+// Override APIs
+export const createOverride = (data) =>
+  apiFetch('/api/v1/overrides', { method: 'POST', body: JSON.stringify(data) });
+export const fetchOverrides = () =>
+  apiFetch('/api/v1/overrides');
+export const deleteOverride = (id) =>
+  apiFetch(`/api/v1/overrides/${id}`, { method: 'DELETE' });
+
+// Ingestion triggers
+export const fetchDataFreshness = () =>
+  apiFetch('/api/v1/ingestion/data-freshness');
+export const triggerNAVFetch = () =>
+  apiFetch('/api/v1/ingestion/fetch/nav', { method: 'POST' });
+export const triggerLensCompute = () =>
+  apiFetch('/api/v1/lens/compute', { method: 'POST' });
