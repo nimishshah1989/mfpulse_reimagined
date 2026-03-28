@@ -4,13 +4,13 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-import os
 from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 from app.api.v1.router import api_v1_router
 from app.core.config import get_settings
@@ -118,38 +118,46 @@ def health() -> dict:
     }
 
 
-# Static frontend serving — mounted AFTER all API routes
-# Uses a sub-application so it never intercepts /api/* or /health
+# Static frontend serving via middleware.
+# Middleware intercepts BEFORE routing but we explicitly skip /api paths,
+# so API routes always work. Non-API paths get served from web/out/.
 _frontend_dir = Path("web/out")
 if _frontend_dir.is_dir():
-    # Create a separate FastAPI app for frontend so it doesn't interfere
-    _frontend_app = FastAPI()
 
-    # Serve Next.js static assets
-    _next_dir = _frontend_dir / "_next"
-    if _next_dir.is_dir():
-        _frontend_app.mount("/_next", StaticFiles(directory=str(_next_dir)), name="next_assets")
+    class FrontendMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request: Request, call_next) -> Response:
+            path = request.url.path
 
-    @_frontend_app.get("/{full_path:path}")
-    async def _serve_page(full_path: str):
-        # Exact file (favicon.ico, etc.)
-        file_path = _frontend_dir / full_path
-        if file_path.is_file():
-            return FileResponse(str(file_path))
-        # Page directory (e.g. /fund360 -> /fund360/index.html)
-        page_index = _frontend_dir / full_path / "index.html"
-        if page_index.is_file():
-            return FileResponse(str(page_index))
-        # .html extension
-        html_path = _frontend_dir / f"{full_path}.html"
-        if html_path.is_file():
-            return FileResponse(str(html_path))
-        # SPA fallback
-        root_index = _frontend_dir / "index.html"
-        if root_index.is_file():
-            return FileResponse(str(root_index))
-        return JSONResponse(status_code=404, content={"error": "Not found"})
+            # Let API, docs, and health through to FastAPI
+            if path.startswith(("/api/", "/health", "/docs", "/redoc", "/openapi")):
+                return await call_next(request)
 
-    # Mount at root — but as a sub-app, it only handles requests that
-    # don't match any route in the main app (API routes take priority)
-    app.mount("/", _frontend_app)
+            clean = path.strip("/")
+
+            # Exact file (favicon.ico, robots.txt)
+            if clean:
+                file_path = _frontend_dir / clean
+                if file_path.is_file():
+                    return FileResponse(str(file_path))
+
+            # _next assets
+            if clean.startswith("_next/"):
+                asset = _frontend_dir / clean
+                if asset.is_file():
+                    return FileResponse(str(asset))
+                return JSONResponse(status_code=404, content={"error": "Asset not found"})
+
+            # Page directory (/fund360 -> /fund360/index.html)
+            if clean:
+                page_index = _frontend_dir / clean / "index.html"
+                if page_index.is_file():
+                    return FileResponse(str(page_index))
+
+            # Root or SPA fallback
+            root_index = _frontend_dir / "index.html"
+            if root_index.is_file():
+                return FileResponse(str(root_index))
+
+            return await call_next(request)
+
+    app.add_middleware(FrontendMiddleware)
