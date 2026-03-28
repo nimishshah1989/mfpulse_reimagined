@@ -1,8 +1,11 @@
-"""Historical NAV backfill from Morningstar per-fund API.
+"""Historical NAV backfill from AMFI (mfapi.in) API.
 
 Fetches 5-10 years of daily NAV history for simulation backtesting.
+Uses the free AMFI API which has complete NAV history for all Indian MFs.
 Uses ON CONFLICT DO NOTHING so historical records never overwrite
 fresh daily data (which includes return columns).
+
+Data source: https://api.mfapi.in/mf/{amfi_code}
 """
 
 from __future__ import annotations
@@ -13,87 +16,72 @@ import time
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Optional
-from xml.etree import ElementTree as ET
 
 import httpx
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from app.core.config import get_settings
 from app.core.database import SessionLocal
-from app.core.morningstar_config import API_BASE
 from app.models.db.fund_master import FundMaster
 from app.repositories.audit_repo import AuditRepository
 from app.repositories.ingestion_repo import IngestionRepository
 
 logger = logging.getLogger(__name__)
 
-# NAV hash from morningstar_config — per-fund with date params
-NAV_HASH = "n0fys3tcvprq4375"
+MFAPI_BASE = "https://api.mfapi.in/mf"
 
 
-def _parse_historical_nav_xml(xml_content: bytes, mstar_id: str) -> list[dict]:
-    """Parse Morningstar per-fund historical NAV XML.
+def _parse_mfapi_response(
+    data: dict,
+    mstar_id: str,
+    start_date: date | None = None,
+    end_date: date | None = None,
+) -> list[dict]:
+    """Parse mfapi.in JSON response into DB-ready records.
 
-    Expected structure:
-        <serviceresponse>
-            <status><code>0</code></status>
-            <data _id="F00000VSLQ">
-                <api>
-                    <TS-DayEndNAV date="2024-01-02">152.3400</TS-DayEndNAV>
-                    ...
-                </api>
-            </data>
-        </serviceresponse>
+    mfapi.in returns:
+        {"meta": {...}, "data": [{"date": "27-03-2026", "nav": "204.038"}, ...]}
 
-    Returns list of {mstar_id, nav_date: date, nav: Decimal}.
+    Date format is DD-MM-YYYY. Returns list of {mstar_id, nav_date, nav}.
+    Filters to [start_date, end_date] range if provided.
     """
-    if not xml_content:
-        return []
-
-    try:
-        root = ET.fromstring(xml_content)
-    except ET.ParseError:
-        logger.warning("XML parse error for %s", mstar_id)
-        return []
-
-    # Check status
-    status_code = root.findtext(".//status/code")
-    if status_code != "0":
-        msg = root.findtext(".//status/message") or "Unknown error"
-        logger.warning("API error for %s: status %s — %s", mstar_id, status_code, msg)
+    nav_entries = data.get("data")
+    if not nav_entries or not isinstance(nav_entries, list):
         return []
 
     records: list[dict] = []
-    for data_elem in root.findall("data"):
-        api_elem = data_elem.find("api")
-        if api_elem is None:
+    for entry in nav_entries:
+        date_str = entry.get("date")
+        nav_str = entry.get("nav")
+
+        if not date_str or not nav_str:
             continue
 
-        for child in api_elem:
-            nav_date_str = child.get("date")
-            nav_text = child.text
+        # Parse DD-MM-YYYY
+        try:
+            parts = date_str.split("-")
+            nav_date_val = date(int(parts[2]), int(parts[1]), int(parts[0]))
+        except (ValueError, IndexError):
+            logger.debug("Bad date for %s: %s", mstar_id, date_str)
+            continue
 
-            if not nav_date_str or not nav_text:
-                continue
+        # Filter by date range
+        if start_date and nav_date_val < start_date:
+            continue
+        if end_date and nav_date_val > end_date:
+            continue
 
-            try:
-                nav_date_val = date.fromisoformat(nav_date_str)
-            except ValueError:
-                logger.debug("Bad date for %s: %s", mstar_id, nav_date_str)
-                continue
+        try:
+            nav_val = Decimal(nav_str)
+        except (InvalidOperation, ValueError):
+            logger.debug("Bad NAV for %s on %s: %s", mstar_id, date_str, nav_str)
+            continue
 
-            try:
-                nav_val = Decimal(nav_text.strip())
-            except (InvalidOperation, ValueError):
-                logger.debug("Bad NAV for %s on %s: %s", mstar_id, nav_date_str, nav_text)
-                continue
-
-            records.append({
-                "mstar_id": mstar_id,
-                "nav_date": nav_date_val,
-                "nav": nav_val,
-            })
+        records.append({
+            "mstar_id": mstar_id,
+            "nav_date": nav_date_val,
+            "nav": nav_val,
+        })
 
     return records
 
@@ -101,7 +89,7 @@ def _parse_historical_nav_xml(xml_content: bytes, mstar_id: str) -> list[dict]:
 class _RateLimiter:
     """Sliding window rate limiter. Thread-safe."""
 
-    def __init__(self, max_calls: int = 9500, period_seconds: float = 3600.0) -> None:
+    def __init__(self, max_calls: int = 50, period_seconds: float = 60.0) -> None:
         self._max_calls = max_calls
         self._period = period_seconds
         self._timestamps: list[float] = []
@@ -112,7 +100,6 @@ class _RateLimiter:
         while True:
             with self._lock:
                 now = time.monotonic()
-                # Evict expired timestamps
                 cutoff = now - self._period
                 self._timestamps = [t for t in self._timestamps if t > cutoff]
 
@@ -120,7 +107,6 @@ class _RateLimiter:
                     self._timestamps.append(now)
                     return
 
-                # Calculate wait time until oldest expires
                 wait = self._timestamps[0] - cutoff
             time.sleep(max(wait, 0.05))
 
@@ -183,39 +169,39 @@ backfill_progress = BackfillProgress()
 
 
 class NAVBackfillService:
-    """Fetches historical daily NAV from Morningstar per-fund API."""
+    """Fetches historical daily NAV from AMFI API (mfapi.in)."""
 
     def __init__(self, db: Session) -> None:
         self._db = db
         self._repo = IngestionRepository(db)
         self._audit_repo = AuditRepository(db)
-        self._settings = get_settings()
-        self._access_code = self._settings.morningstar_access_code
-        self._rate_limiter = _RateLimiter()
+        # Conservative: 50 req/min for the free API
+        self._rate_limiter = _RateLimiter(max_calls=50, period_seconds=60.0)
 
-    def get_backfill_candidates(self) -> list[str]:
-        """Return mstar_ids eligible for backfill.
+    def get_backfill_candidates(self) -> list[dict]:
+        """Return funds eligible for backfill as [{mstar_id, amfi_code}, ...].
 
-        Criteria: purchase_mode=1, active (or NULL), has category_name.
+        Criteria: purchase_mode=1, active (or NULL), has category_name, has amfi_code.
         """
         stmt = (
-            select(FundMaster.mstar_id)
+            select(FundMaster.mstar_id, FundMaster.amfi_code)
             .where(FundMaster.purchase_mode == 1)
             .where(
                 (FundMaster.is_active == True) | (FundMaster.is_active.is_(None))  # noqa: E712
             )
             .where(FundMaster.category_name.isnot(None))
+            .where(FundMaster.amfi_code.isnot(None))
         )
         rows = self._db.execute(stmt).fetchall()
-        candidates = [row.mstar_id for row in rows]
-        logger.info("Backfill candidates: %d funds", len(candidates))
+        candidates = [{"mstar_id": row.mstar_id, "amfi_code": row.amfi_code} for row in rows]
+        logger.info("Backfill candidates: %d funds with amfi_code", len(candidates))
         return candidates
 
     def backfill_all(
         self,
         start_date: str = "2016-01-01",
         end_date: str | None = None,
-        concurrency: int = 10,
+        concurrency: int = 5,
     ) -> dict:
         """Backfill all eligible funds using a thread pool.
 
@@ -226,14 +212,15 @@ class NAVBackfillService:
         if end_date is None:
             end_date = str(date.today())
 
+        start_dt = date.fromisoformat(start_date)
         candidates = self.get_backfill_candidates()
         earliest_dates = self._repo.get_earliest_nav_dates()
 
         # Filter out already-backfilled funds
         to_backfill = [
-            mid for mid in candidates
-            if mid not in earliest_dates
-            or earliest_dates[mid] > date.fromisoformat(start_date)
+            c for c in candidates
+            if c["mstar_id"] not in earliest_dates
+            or earliest_dates[c["mstar_id"]] > start_dt
         ]
 
         logger.info(
@@ -246,14 +233,16 @@ class NAVBackfillService:
         total_navs = 0
         failed = 0
 
-        def _worker(mstar_id: str) -> int:
+        def _worker(fund: dict) -> int:
             """Worker function — uses its own DB session."""
-            return self._backfill_single(mstar_id, start_date, end_date)
+            return self._backfill_single(
+                fund["mstar_id"], fund["amfi_code"], start_date, end_date
+            )
 
         with ThreadPoolExecutor(max_workers=concurrency) as pool:
-            futures = {pool.submit(_worker, mid): mid for mid in to_backfill}
+            futures = {pool.submit(_worker, f): f for f in to_backfill}
             for future in as_completed(futures):
-                mid = futures[future]
+                fund = futures[future]
                 try:
                     count = future.result()
                     total_navs += count
@@ -261,7 +250,7 @@ class NAVBackfillService:
                 except Exception as e:
                     failed += 1
                     backfill_progress.mark_failed()
-                    logger.error("Backfill failed for %s: %s", mid, e)
+                    logger.error("Backfill failed for %s: %s", fund["mstar_id"], e)
 
         backfill_progress.finish()
 
@@ -286,60 +275,77 @@ class NAVBackfillService:
         logger.info("Backfill complete: %s", summary)
         return summary
 
-    def _backfill_single(self, mstar_id: str, start_date: str, end_date: str) -> int:
-        """Backfill a single fund. Uses its own DB session for thread safety."""
+    def _backfill_single(
+        self, mstar_id: str, amfi_code: str, start_date: str, end_date: str,
+    ) -> int:
+        """Backfill a single fund via AMFI API. Uses its own DB session for thread safety."""
         db = SessionLocal()
         try:
             repo = IngestionRepository(db)
             self._rate_limiter.acquire()
-
             backfill_progress.set_current(mstar_id)
 
-            url = (
-                f"{API_BASE}/{NAV_HASH}/mstarid/{mstar_id}"
-                f"?accesscode={self._access_code}"
-                f"&startdate={start_date}&enddate={end_date}&frequency=D"
-            )
-
-            with httpx.Client(timeout=120) as client:
+            url = f"{MFAPI_BASE}/{amfi_code}"
+            with httpx.Client(timeout=30) as client:
                 response = client.get(url)
                 response.raise_for_status()
 
-            records = _parse_historical_nav_xml(response.content, mstar_id)
+            data = response.json()
+            records = _parse_mfapi_response(
+                data, mstar_id,
+                start_date=date.fromisoformat(start_date),
+                end_date=date.fromisoformat(end_date),
+            )
 
             if records:
                 result = repo.insert_nav_daily_backfill(records)
-                logger.info(
-                    "Backfilled %s: %d NAVs inserted",
-                    mstar_id, result.inserted,
-                )
+                logger.info("Backfilled %s (AMFI %s): %d NAVs", mstar_id, amfi_code, result.inserted)
                 return result.inserted
 
             return 0
         except Exception:
-            logger.exception("Error backfilling %s", mstar_id)
+            logger.exception("Error backfilling %s (AMFI %s)", mstar_id, amfi_code)
             raise
         finally:
             db.close()
 
-    def backfill_fund(self, mstar_id: str, start_date: str, end_date: str | None = None) -> int:
-        """Backfill a single fund synchronously (for testing / API endpoint)."""
+    def backfill_fund(
+        self,
+        mstar_id: str,
+        start_date: str,
+        end_date: str | None = None,
+        amfi_code: str | None = None,
+    ) -> int:
+        """Backfill a single fund synchronously (for testing / API endpoint).
+
+        If amfi_code not provided, looks it up from fund_master.
+        """
         if end_date is None:
             end_date = str(date.today())
 
+        if amfi_code is None:
+            row = self._db.execute(
+                select(FundMaster.amfi_code)
+                .where(FundMaster.mstar_id == mstar_id)
+            ).first()
+            if not row or not row.amfi_code:
+                logger.error("No amfi_code found for %s", mstar_id)
+                return 0
+            amfi_code = row.amfi_code
+
         self._rate_limiter.acquire()
 
-        url = (
-            f"{API_BASE}/{NAV_HASH}/mstarid/{mstar_id}"
-            f"?accesscode={self._access_code}"
-            f"&startdate={start_date}&enddate={end_date}&frequency=D"
-        )
-
-        with httpx.Client(timeout=120) as client:
+        url = f"{MFAPI_BASE}/{amfi_code}"
+        with httpx.Client(timeout=30) as client:
             response = client.get(url)
             response.raise_for_status()
 
-        records = _parse_historical_nav_xml(response.content, mstar_id)
+        data = response.json()
+        records = _parse_mfapi_response(
+            data, mstar_id,
+            start_date=date.fromisoformat(start_date),
+            end_date=date.fromisoformat(end_date),
+        )
 
         if records:
             result = self._repo.insert_nav_daily_backfill(records)
