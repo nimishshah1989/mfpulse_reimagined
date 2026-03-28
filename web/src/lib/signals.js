@@ -22,7 +22,7 @@ export function deriveActionCards({
         funds: (topFundsByLens?.return_score || []).slice(0, 3),
         actions: [
           { label: 'Explore in Universe', route: '/universe' },
-          { label: 'Simulate', route: '/simulation' },
+          { label: 'Simulate', route: '/strategies' },
         ],
       });
     } else if (breadthPct < 40) {
@@ -62,7 +62,7 @@ export function deriveActionCards({
         title: 'Market fear — contrarian SIP opportunity',
         description: `Sentiment at ${Math.round(sentimentScore)}/100. Historically, starting SIPs during fear periods yields higher long-term returns.`,
         funds: (topFundsByLens?.consistency_score || []).slice(0, 3),
-        actions: [{ label: 'Simulate SIP', route: '/simulation' }],
+        actions: [{ label: 'Simulate SIP', route: '/strategies' }],
       });
     } else if (sentimentScore > 75) {
       cards.push({

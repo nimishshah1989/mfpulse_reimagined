@@ -1,60 +1,51 @@
 import Card from '../shared/Card';
+import LensCircle from '../shared/LensCircle';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import { formatScore } from '../../lib/format';
-import { LENS_OPTIONS } from '../../lib/lens';
+import { lensColor } from '../../lib/lens';
 
-function scoreColor(score) {
-  if (score >= 75) return 'text-emerald-600';
-  if (score >= 50) return 'text-teal-600';
-  if (score >= 25) return 'text-amber-600';
-  return 'text-red-600';
-}
+const SHOWCASE_LENSES = [
+  { key: 'return_score', label: 'Return Leaders', icon: '📈' },
+  { key: 'alpha_score', label: 'Alpha Generators', icon: '🎯' },
+  { key: 'resilience_score', label: 'Fortress Resilience', icon: '🛡️' },
+];
 
-export default function TopFundsByLens({ fundsByLens, onFundClick }) {
-  if (!fundsByLens) {
+export default function TopFundsByLens({ fundsByLens, onFundClick, loading }) {
+  if (loading || !fundsByLens) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <SkeletonLoader key={i} className="h-36 rounded-xl" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[0, 1, 2].map((i) => (
+          <SkeletonLoader key={i} className="h-40 rounded-xl" />
         ))}
       </div>
     );
   }
 
-  const lensKeys = [
-    'return_score',
-    'risk_score',
-    'consistency_score',
-    'alpha_score',
-    'efficiency_score',
-    'resilience_score',
-  ];
-
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-      {lensKeys.map((key) => {
-        const lens = LENS_OPTIONS.find((l) => l.value === key);
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {SHOWCASE_LENSES.map(({ key, label, icon }) => {
         const funds = fundsByLens[key] || [];
-
         return (
-          <Card key={key} title={lens ? lens.label : key}>
-            <div className="space-y-2 mt-2">
+          <Card key={key} title={label} emoji={icon}>
+            <div className="space-y-2 mt-1">
               {funds.slice(0, 3).map((fund, idx) => (
                 <div key={fund.mstar_id} className="flex items-center gap-2">
-                  <span className="text-xs text-slate-400 w-4 font-mono">
+                  <span className="text-xs text-slate-400 w-4 font-mono tabular-nums">
                     {idx + 1}
                   </span>
+                  <LensCircle scoreKey={key} score={fund.score || fund[key]} size="sm" />
                   <span
-                    className="text-xs font-medium truncate max-w-[160px] cursor-pointer text-teal-600 hover:underline"
+                    className="text-xs font-medium truncate max-w-[140px] cursor-pointer text-teal-600 hover:underline"
                     onClick={() => onFundClick(fund.mstar_id)}
                     title={fund.fund_name}
                   >
                     {fund.fund_name}
                   </span>
                   <span
-                    className={`ml-auto font-mono text-xs ${scoreColor(fund.score)}`}
+                    className="ml-auto font-mono text-xs tabular-nums font-medium"
+                    style={{ color: lensColor(fund.score || fund[key] || 0) }}
                   >
-                    {formatScore(fund.score)}
+                    {formatScore(fund.score || fund[key])}
                   </span>
                 </div>
               ))}

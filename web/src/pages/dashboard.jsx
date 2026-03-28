@@ -10,20 +10,14 @@ import {
   triggerNAVFetch,
   triggerLensCompute,
 } from '../lib/api';
-import { deriveActionCards, getMarketSummary } from '../lib/signals';
-import SignalActionCards from '../components/dashboard/SignalActionCards';
+import { getMarketSummary } from '../lib/signals';
+import MarketPosture from '../components/dashboard/MarketPosture';
+import MetricCards from '../components/dashboard/MetricCards';
+import SectorMoves from '../components/dashboard/SectorMoves';
+import StrategyAlerts from '../components/dashboard/StrategyAlerts';
 import TopFundsByLens from '../components/dashboard/TopFundsByLens';
-import UniverseHealth from '../components/dashboard/UniverseHealth';
 import DataStatus from '../components/dashboard/DataStatus';
-import StatCard from '../components/shared/StatCard';
-import Badge from '../components/shared/Badge';
-
-const REGIME_COLORS = {
-  Bullish: 'emerald',
-  Neutral: 'slate',
-  Bearish: 'red',
-  Cautious: 'amber',
-};
+import UniverseHealth from '../components/dashboard/UniverseHealth';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -80,18 +74,12 @@ export default function DashboardPage() {
     });
   }, []);
 
-  const marketSummary = useMemo(
-    () => getMarketSummary(regime, breadth, sentiment),
-    [regime, breadth, sentiment]
-  );
-
-  const actionCards = useMemo(
-    () => deriveActionCards({ regime, breadth, sentiment, sectors, topFundsByLens: null }),
-    [regime, breadth, sentiment, sectors]
-  );
-
   const handleNavigate = useCallback((route) => {
     router.push(route);
+  }, [router]);
+
+  const handleFundClick = useCallback((mstarId) => {
+    router.push(`/fund360?fund=${mstarId}`);
   }, [router]);
 
   const handleRefreshNav = useCallback(async () => {
@@ -124,69 +112,80 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const isLoading = mpStatus === 'loading';
+  const isOffline = mpStatus === 'offline';
+
   return (
-    <div className="space-y-6 -m-6">
-      {/* Header KPI row */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500">Regime:</span>
-            <Badge variant={REGIME_COLORS[marketSummary.regimeLabel] || 'slate'}>
-              {marketSummary.regimeLabel}
-            </Badge>
-          </div>
-          {marketSummary.breadthPct != null && (
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-slate-500">Breadth:</span>
-              <span className={`text-sm font-mono tabular-nums font-medium ${
-                marketSummary.breadthPct > 55 ? 'text-emerald-600' : marketSummary.breadthPct < 40 ? 'text-red-600' : 'text-slate-900'
-              }`}>
-                {Math.round(marketSummary.breadthPct)}%
-              </span>
-            </div>
-          )}
-          {marketSummary.sentimentScore != null && (
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-slate-500">Sentiment:</span>
-              <span className={`text-sm font-mono tabular-nums font-medium ${
-                marketSummary.sentimentScore < 30 ? 'text-red-600' : marketSummary.sentimentScore > 75 ? 'text-amber-600' : 'text-slate-900'
-              }`}>
-                {Math.round(marketSummary.sentimentScore)}/100
-              </span>
-            </div>
-          )}
+    <div className="space-y-6">
+      {/* MarketPulse offline banner */}
+      {isOffline && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <p className="text-xs text-amber-700">
+            MarketPulse is offline. Dashboard shows cached data where available.
+            Market signals, sector moves, and strategy alerts may be limited.
+          </p>
+        </div>
+      )}
+
+      {/* Morning briefing: Market Posture */}
+      <MarketPosture
+        regime={regime}
+        breadth={breadth}
+        sentiment={sentiment}
+        loading={isLoading}
+      />
+
+      {/* Key metric cards */}
+      <MetricCards
+        breadth={breadth}
+        sentiment={sentiment}
+        sectors={sectors}
+        loading={isLoading}
+      />
+
+      {/* 2-col: Sector Moves + Strategy Alerts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-700 mb-3">Sector Moves</h2>
+          <SectorMoves
+            sectors={sectors}
+            onNavigate={handleNavigate}
+            loading={isLoading}
+          />
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold text-slate-700 mb-3">Strategy Alerts</h2>
+          <StrategyAlerts breadth={breadth} sentiment={sentiment} />
         </div>
       </div>
 
-      <div className="px-6 space-y-6">
-        {/* Signal action cards + Data status */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-700 mb-3">Action Signals</h2>
-            <SignalActionCards
-              status={mpStatus}
-              actionCards={actionCards}
-              onNavigate={handleNavigate}
-            />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold text-slate-700 mb-3">Data Freshness</h2>
-            <DataStatus
-              freshness={freshness}
-              onRefreshNav={handleRefreshNav}
-              onRecomputeLens={handleRecomputeLens}
-              refreshing={refreshing}
-              recomputing={recomputing}
-            />
-          </div>
-        </div>
+      {/* Top Funds by Lens */}
+      <div>
+        <h2 className="text-sm font-semibold text-slate-700 mb-3">Top Funds</h2>
+        <TopFundsByLens
+          fundsByLens={lensDistribution?.top_funds}
+          onFundClick={handleFundClick}
+          loading={!lensDistribution}
+        />
+      </div>
 
-        {/* Universe health */}
+      {/* Universe Health + Data Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
         <div>
           <h2 className="text-sm font-semibold text-slate-700 mb-3">Universe Health — Lens Distributions</h2>
           <UniverseHealth
             lensDistribution={lensDistribution}
             onNavigate={handleNavigate}
+          />
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold text-slate-700 mb-3">Data Freshness</h2>
+          <DataStatus
+            freshness={freshness}
+            onRefreshNav={handleRefreshNav}
+            onRecomputeLens={handleRecomputeLens}
+            refreshing={refreshing}
+            recomputing={recomputing}
           />
         </div>
       </div>

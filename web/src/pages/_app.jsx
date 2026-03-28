@@ -8,8 +8,7 @@ const PATH_TO_TAB = {
   '/universe': 'universe',
   '/fund360': 'fund360',
   '/sectors': 'sectors',
-  '/simulation': 'simulation',
-  '/strategy': 'strategy',
+  '/strategies': 'strategies',
   '/dashboard': 'dashboard',
 };
 

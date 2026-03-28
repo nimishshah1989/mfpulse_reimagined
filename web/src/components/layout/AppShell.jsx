@@ -6,8 +6,7 @@ const NAV_ITEMS = [
   { key: 'universe', emoji: '\uD83C\uDF10', label: 'Universe Explorer' },
   { key: 'fund360', emoji: '\uD83D\uDD0D', label: 'Fund 360\u00B0' },
   { key: 'sectors', emoji: '\uD83E\uDDED', label: 'Sector Intelligence' },
-  { key: 'simulation', emoji: '\u26A1', label: 'Simulation Lab' },
-  { key: 'strategy', emoji: '\uD83D\uDCD0', label: 'Strategy Builder' },
+  { key: 'strategies', emoji: '\uD83D\uDCD0', label: 'Strategies' },
   { key: 'dashboard', emoji: '\uD83D\uDCCA', label: 'Pulse Dashboard' },
 ];
 
