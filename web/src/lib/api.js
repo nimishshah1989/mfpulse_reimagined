@@ -71,13 +71,13 @@ export const fetchOverlap = (mstarIds) =>
 
 // MarketPulse APIs
 export const fetchMarketRegime = () =>
-  apiFetch('/api/v1/marketpulse/regime');
+  apiFetch('/api/v1/market/regime');
 export const fetchSectors = (period) =>
-  apiFetch(`/api/v1/marketpulse/sectors?period=${period || '3M'}`);
+  apiFetch(`/api/v1/market/sectors?period=${period || '3M'}`);
 export const fetchBreadth = (lookback) =>
-  apiFetch(`/api/v1/marketpulse/breadth?lookback=${lookback || '1y'}`);
+  apiFetch(`/api/v1/market/breadth?lookback=${lookback || '1y'}`);
 export const fetchSentiment = () =>
-  apiFetch('/api/v1/marketpulse/sentiment');
+  apiFetch('/api/v1/market/sentiment');
 
 // Simulation APIs
 export const runSimulation = (params) =>
