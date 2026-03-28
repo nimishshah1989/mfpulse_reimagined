@@ -83,6 +83,7 @@ class IngestionRepository:
         records: list[dict],
         conflict_cols: list[str],
         exclude_from_update: list[str] | None = None,
+        do_nothing_on_conflict: bool = False,
     ) -> UpsertResult:
         """Generic batch upsert using PostgreSQL ON CONFLICT.
 
@@ -121,24 +122,29 @@ class IngestionRepository:
                 try:
                     stmt = pg_insert(table).values(batch)
 
-                    # ON CONFLICT UPDATE only columns this group provides
-                    update_cols = {
-                        col.name: stmt.excluded[col.name]
-                        for col in table.columns
-                        if col.name not in exclude_set
-                        and col.name not in conflict_cols
-                        and col.name in key_sig
-                    }
-
-                    if update_cols:
-                        stmt = stmt.on_conflict_do_update(
-                            index_elements=conflict_cols,
-                            set_=update_cols,
-                        )
-                    else:
+                    if do_nothing_on_conflict:
                         stmt = stmt.on_conflict_do_nothing(
                             index_elements=conflict_cols,
                         )
+                    else:
+                        # ON CONFLICT UPDATE only columns this group provides
+                        update_cols = {
+                            col.name: stmt.excluded[col.name]
+                            for col in table.columns
+                            if col.name not in exclude_set
+                            and col.name not in conflict_cols
+                            and col.name in key_sig
+                        }
+
+                        if update_cols:
+                            stmt = stmt.on_conflict_do_update(
+                                index_elements=conflict_cols,
+                                set_=update_cols,
+                            )
+                        else:
+                            stmt = stmt.on_conflict_do_nothing(
+                                index_elements=conflict_cols,
+                            )
 
                     self.db.execute(stmt)
                     self.db.commit()
@@ -248,6 +254,28 @@ class IngestionRepository:
             records,
             conflict_cols=["category_code", "as_of_date"],
         )
+
+    def insert_nav_daily_backfill(self, records: list[dict]) -> UpsertResult:
+        """Insert historical NAV. ON CONFLICT DO NOTHING — never overwrite fresh daily data."""
+        return self._batch_upsert(
+            NavDaily,
+            records,
+            conflict_cols=["mstar_id", "nav_date"],
+            do_nothing_on_conflict=True,
+        )
+
+    def get_earliest_nav_dates(self) -> dict[str, datetime]:
+        """Return {mstar_id: earliest_nav_date} for skip-if-backfilled logic."""
+        from sqlalchemy import func, select
+        stmt = (
+            select(
+                NavDaily.mstar_id,
+                func.min(NavDaily.nav_date).label("earliest"),
+            )
+            .group_by(NavDaily.mstar_id)
+        )
+        rows = self.db.execute(stmt).fetchall()
+        return {row.mstar_id: row.earliest for row in rows}
 
     def create_ingestion_log(
         self,

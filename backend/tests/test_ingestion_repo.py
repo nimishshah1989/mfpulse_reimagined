@@ -402,6 +402,66 @@ class TestBatchUpsertErrorHandling:
         db.rollback.assert_called()
 
 
+class TestBatchUpsertDoNothingOnConflict:
+    """When do_nothing_on_conflict=True, existing rows should NOT be overwritten."""
+
+    def test_do_nothing_generates_correct_sql(self) -> None:
+        db = MagicMock()
+        repo = IngestionRepository(db)
+
+        from app.models.db.nav_daily import NavDaily
+
+        records = [
+            {"mstar_id": "F001", "nav_date": date(2024, 1, 2), "nav": Decimal("152.34")},
+        ]
+        result = repo._batch_upsert(
+            NavDaily, records, conflict_cols=["mstar_id", "nav_date"],
+            do_nothing_on_conflict=True,
+        )
+
+        assert db.execute.called
+        stmt = db.execute.call_args[0][0]
+        compiled = stmt.compile()
+        sql_str = str(compiled)
+        # Should use DO NOTHING, not DO UPDATE
+        assert "DO NOTHING" in sql_str.upper() or "ON CONFLICT" in sql_str.upper()
+        # Should NOT have a SET clause
+        assert "SET" not in sql_str.upper().split("ON CONFLICT")[1] if "ON CONFLICT" in sql_str.upper() else True
+
+    def test_insert_nav_daily_backfill_uses_do_nothing(self) -> None:
+        db = MagicMock()
+        repo = IngestionRepository(db)
+        repo._batch_upsert = MagicMock(return_value=UpsertResult(inserted=3))
+
+        records = [
+            {"mstar_id": "F001", "nav_date": date(2024, 1, 2), "nav": Decimal("152.34")},
+            {"mstar_id": "F001", "nav_date": date(2024, 1, 3), "nav": Decimal("153.12")},
+            {"mstar_id": "F001", "nav_date": date(2024, 1, 4), "nav": Decimal("151.98")},
+        ]
+        result = repo.insert_nav_daily_backfill(records)
+        assert result.inserted == 3
+        call_kwargs = repo._batch_upsert.call_args
+        assert call_kwargs[1].get("do_nothing_on_conflict") is True or \
+               (len(call_kwargs[0]) > 3 and call_kwargs[0][3] is True)
+
+
+class TestGetEarliestNavDates:
+    def test_returns_dict(self) -> None:
+        db = MagicMock()
+        repo = IngestionRepository(db)
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = [
+            MagicMock(mstar_id="F001", earliest=date(2020, 1, 1)),
+            MagicMock(mstar_id="F002", earliest=date(2018, 6, 15)),
+        ]
+        db.execute.return_value = mock_result
+
+        result = repo.get_earliest_nav_dates()
+        assert isinstance(result, dict)
+        assert result["F001"] == date(2020, 1, 1)
+        assert result["F002"] == date(2018, 6, 15)
+
+
 class TestFreshnessRepository:
     def test_get_latest_dates_returns_dict(self) -> None:
         db = MagicMock()
