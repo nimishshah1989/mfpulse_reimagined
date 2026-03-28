@@ -81,19 +81,19 @@ export const fetchSentiment = () =>
 
 // Simulation APIs
 export const runSimulation = (params) =>
-  apiFetch('/api/v1/simulation', {
+  apiFetch('/api/v1/simulate', {
     method: 'POST',
     body: JSON.stringify(params),
   });
 export const compareModes = (params) =>
-  apiFetch('/api/v1/simulation/compare', {
+  apiFetch('/api/v1/simulate/compare', {
     method: 'POST',
     body: JSON.stringify(params),
   });
 export const fetchDefaultRules = () =>
-  apiFetch('/api/v1/simulation/rules/defaults');
+  apiFetch('/api/v1/simulate/rules/defaults');
 export const validateRules = (rules) =>
-  apiFetch('/api/v1/simulation/validate-rules', {
+  apiFetch('/api/v1/simulate/validate-rules', {
     method: 'POST',
     body: JSON.stringify({ rules }),
   });
