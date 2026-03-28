@@ -385,5 +385,9 @@ class HoldingsRepository:
             "market_value": h.market_value,
             "global_sector": h.global_sector,
             "country": h.country,
+            "currency": h.currency,
+            "coupon": h.coupon,
+            "maturity_date": h.maturity_date,
             "credit_quality": h.credit_quality,
+            "share_change": h.share_change,
         }

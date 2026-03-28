@@ -371,7 +371,7 @@ export default function StrategyDetail({ strategyId, onBack, onEdit }) {
                 return (
                   <tr key={f.mstar_id || i} className="border-b border-slate-50 hover:bg-slate-50/50">
                     <td className="py-3 px-3">
-                      <a href={`/fund360?id=${f.mstar_id}`} className="text-teal-600 font-semibold hover:underline">
+                      <a href={`/fund360?fund=${f.mstar_id}`} className="text-teal-600 font-semibold hover:underline">
                         {f.fund_name?.replace(/ Fund$/, '').replace(/ Direct.*$/, '') || f.mstar_id}
                       </a>
                     </td>

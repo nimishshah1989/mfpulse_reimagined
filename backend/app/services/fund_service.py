@@ -101,12 +101,17 @@ class FundService:
             exclude_mstar_id=mstar_id,
         )
 
+        # Look up category average returns (category_code == category_name)
+        cat_returns = self.fund_repo.get_category_returns(fund.category_name)
+
         return {
             "fund": self._to_fund_summary(fund, latest_nav),
             "indian_risk_level": fund.indian_risk_level,
             "primary_benchmark": fund.primary_benchmark,
             "investment_strategy": fund.investment_strategy,
+            "investment_philosophy": fund.investment_philosophy,
             "managers": fund.managers,
+            "turnover_ratio": fund.turnover_ratio,
             "returns": returns,
             "risk_stats": risk_stats,
             "ranks": ranks,
@@ -115,7 +120,7 @@ class FundService:
             "sector_exposure": sector_exposure,
             "asset_allocation": asset_allocation,
             "credit_quality": credit_quality,
-            "category_avg_returns": None,
+            "category_avg_returns": cat_returns,
             "category_fund_count": len(peers),
         }
 
@@ -184,6 +189,10 @@ class FundService:
                 if p.get("return_1y") is not None
             ]
             if peer_returns:
+                category_avg_1y = str(
+                    (sum(Decimal(str(r)) for r in peer_returns) / len(peer_returns))
+                    .quantize(Decimal("0.00001"), rounding=ROUND_HALF_UP)
+                )
                 all_returns = peer_returns + [fund_return_1y]
                 all_returns_sorted = sorted(all_returns)
                 rank = all_returns_sorted.index(fund_return_1y) + 1
@@ -248,19 +257,32 @@ class FundService:
             result.append({
                 "mstar_id": mid,
                 "fund_name": fund.fund_name,
+                "legal_name": fund.legal_name,
                 "amc_name": fund.amc_name,
                 "category_name": fund.category_name,
                 "broad_category": getattr(fund, "broad_category", None),
+                "inception_date": getattr(fund, "inception_date", None),
                 "purchase_mode": PURCHASE_MODE_MAP.get(raw_mode, "Unknown"),
                 "dividend_type": derive_dividend_type(fund_name),
+                "net_expense_ratio": getattr(fund, "net_expense_ratio", None),
+                "indian_risk_level": getattr(fund, "indian_risk_level", None),
+                "latest_nav": nav.get("nav"),
+                "nav_52wk_high": nav.get("nav_52wk_high"),
+                "nav_52wk_low": nav.get("nav_52wk_low"),
+                "return_1d": nav.get("return_1d"),
+                "return_1m": nav.get("return_1m"),
+                "return_3m": nav.get("return_3m"),
+                "return_6m": nav.get("return_6m"),
+                "return_ytd": nav.get("return_ytd"),
                 "return_1y": nav.get("return_1y"),
                 "return_3y": nav.get("return_3y"),
                 "return_5y": nav.get("return_5y"),
-                "net_expense_ratio": getattr(fund, "net_expense_ratio", None),
-                "latest_nav": nav.get("nav"),
+                "return_since_inception": nav.get("return_since_inception"),
                 "aum": snap.get("aum"),
                 "equity_style_box": snap.get("equity_style_box"),
                 "avg_market_cap": snap.get("avg_market_cap"),
+                "pe_ratio": snap.get("pe_ratio"),
+                "pb_ratio": snap.get("pb_ratio"),
                 "return_score": scores.get("return_score"),
                 "risk_score": scores.get("risk_score"),
                 "consistency_score": scores.get("consistency_score"),
@@ -308,10 +330,8 @@ class FundService:
         return summaries, total
 
     def get_category_returns(self, category_name: str) -> Optional[dict]:
-        """Category average returns — look up by category name in returns table."""
-        # Category returns are keyed by category_code, not name
-        # This is a best-effort lookup — may need category_code mapping
-        return None
+        """Category average returns — category_code == category_name in our data."""
+        return self.fund_repo.get_category_returns(category_name)
 
     # --- Private helpers ---
 
@@ -350,9 +370,19 @@ class FundService:
             "purchase_mode": PURCHASE_MODE_MAP.get(raw_mode, "Unknown"),
             "dividend_type": derive_dividend_type(fund_name),
             "net_expense_ratio": getattr(fund, "net_expense_ratio", None),
+            "indian_risk_level": getattr(fund, "indian_risk_level", None),
             "latest_nav": latest_nav.get("nav") if latest_nav else None,
             "latest_nav_date": latest_nav.get("nav_date") if latest_nav else None,
+            "nav_52wk_high": latest_nav.get("nav_52wk_high") if latest_nav else None,
+            "nav_52wk_low": latest_nav.get("nav_52wk_low") if latest_nav else None,
+            "return_1d": latest_nav.get("return_1d") if latest_nav else None,
+            "return_1w": latest_nav.get("return_1w") if latest_nav else None,
+            "return_1m": latest_nav.get("return_1m") if latest_nav else None,
+            "return_3m": latest_nav.get("return_3m") if latest_nav else None,
+            "return_6m": latest_nav.get("return_6m") if latest_nav else None,
+            "return_ytd": latest_nav.get("return_ytd") if latest_nav else None,
             "return_1y": latest_nav.get("return_1y") if latest_nav else None,
             "return_3y": latest_nav.get("return_3y") if latest_nav else None,
             "return_5y": latest_nav.get("return_5y") if latest_nav else None,
+            "return_since_inception": latest_nav.get("return_since_inception") if latest_nav else None,
         }

@@ -58,6 +58,21 @@ export default function FundDrillDown({
     [sector, filteredByMode, sectorExposures, sort, categoryFilter]
   );
 
+  // Stable scatter data — memoized so Math.random is never called during re-renders.
+  // Uses 50 as a stable fallback for missing risk_score instead of a random value.
+  const scatterData = useMemo(
+    () =>
+      rankedFunds.map((f) => ({
+        x: Number(f.risk_score) || 50,
+        y: Number(f.return_1y) || 0,
+        z: sectorExposures?.[f.mstar_id]?.[sector?.sector_name] || 10,
+        name: f.fund_name,
+        category: f.category_name,
+        mstar_id: f.mstar_id,
+      })),
+    [rankedFunds, sectorExposures, sector]
+  );
+
   if (!sector) return null;
 
   const quadrantColors = QUADRANT_COLORS[sector.quadrant];
@@ -71,16 +86,6 @@ export default function FundDrillDown({
       </div>
     );
   }
-
-  // Build scatter data from ranked funds
-  const scatterData = rankedFunds.map((f) => ({
-    x: Number(f.risk_score) || Math.random() * 30 + 10,
-    y: Number(f.return_1y) || 0,
-    z: sectorExposures?.[f.mstar_id]?.[sector.sector_name] || 10,
-    name: f.fund_name,
-    category: f.category_name,
-    mstar_id: f.mstar_id,
-  }));
 
   // RS trend sparkline data
   const trendData = buildTrendData(sector);
@@ -228,12 +233,13 @@ export default function FundDrillDown({
             const returnVal = Number(fund.return_1y) || 0;
 
             return (
-              <a
+              <button
                 key={fund.mstar_id}
+                type="button"
                 onClick={() =>
                   router.push(`/fund360?fund=${fund.mstar_id}`)
                 }
-                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-100 cursor-pointer hover:border-teal-300 transition-colors"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-100 cursor-pointer hover:border-teal-300 transition-colors text-left w-full"
               >
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border-2"
@@ -269,7 +275,7 @@ export default function FundDrillDown({
                   </p>
                   <p className="text-[9px] text-slate-400">1Y</p>
                 </div>
-              </a>
+              </button>
             );
           })}
         </div>

@@ -135,26 +135,41 @@ class FundRepository:
     # --- NAV & Returns ---
 
     def get_latest_nav(self, mstar_id: str) -> Optional[dict]:
-        """Latest NAV row for a fund."""
-        nav = (
+        """Latest NAV row for a fund.
+
+        Two Morningstar APIs write to nav_daily:
+        - NAV API: writes nav, nav_52wk_high/low (date D)
+        - Returns API: writes return_* fields (date D+1, nav=NULL)
+
+        We merge the two most recent rows so the result has both
+        the actual NAV value and the latest trailing returns.
+        """
+        rows = (
             self.db.query(NavDaily)
             .filter(NavDaily.mstar_id == mstar_id)
             .order_by(NavDaily.nav_date.desc())
-            .first()
+            .limit(5)
+            .all()
         )
-        if nav is None:
+        if not rows:
             return None
-        return self._nav_to_dict(nav)
+        return self._merge_nav_rows(rows)
 
     def get_latest_navs_batch(
         self, mstar_ids: list[str], chunk_size: int = 1000,
     ) -> dict[str, dict]:
-        """Latest NAV for multiple funds — chunked to avoid large IN clauses."""
+        """Latest NAV for multiple funds — merges NAV + Returns rows.
+
+        For each fund, fetches the 2 most recent rows and merges them so
+        the result has both the actual NAV value and trailing returns.
+        Chunked to avoid large IN clauses.
+        """
         if not mstar_ids:
             return {}
         result: dict[str, dict] = {}
         for i in range(0, len(mstar_ids), chunk_size):
             chunk = mstar_ids[i : i + chunk_size]
+            # Get the 2 most recent dates per fund
             latest_sub = (
                 self.db.query(
                     NavDaily.mstar_id,
@@ -164,7 +179,8 @@ class FundRepository:
                 .group_by(NavDaily.mstar_id)
                 .subquery()
             )
-            rows = (
+            # Get rows at max_date
+            top_rows = (
                 self.db.query(NavDaily)
                 .join(
                     latest_sub,
@@ -173,8 +189,47 @@ class FundRepository:
                 )
                 .all()
             )
-            for r in rows:
-                result[r.mstar_id] = self._nav_to_dict(r)
+            # For funds where top row has nav=NULL, also get the row with nav
+            needs_nav: list[str] = []
+            top_map: dict[str, NavDaily] = {}
+            for r in top_rows:
+                top_map[r.mstar_id] = r
+                if r.nav is None:
+                    needs_nav.append(r.mstar_id)
+
+            nav_map: dict[str, NavDaily] = {}
+            if needs_nav:
+                # Get the latest row with non-null NAV for each fund
+                nav_sub = (
+                    self.db.query(
+                        NavDaily.mstar_id,
+                        func.max(NavDaily.nav_date).label("max_date"),
+                    )
+                    .filter(
+                        NavDaily.mstar_id.in_(needs_nav),
+                        NavDaily.nav.isnot(None),
+                    )
+                    .group_by(NavDaily.mstar_id)
+                    .subquery()
+                )
+                nav_rows = (
+                    self.db.query(NavDaily)
+                    .join(
+                        nav_sub,
+                        (NavDaily.mstar_id == nav_sub.c.mstar_id)
+                        & (NavDaily.nav_date == nav_sub.c.max_date),
+                    )
+                    .all()
+                )
+                for r in nav_rows:
+                    nav_map[r.mstar_id] = r
+
+            for mid, top in top_map.items():
+                nav_row = nav_map.get(mid)
+                if nav_row and top.nav is None:
+                    result[mid] = self._merge_two_nav_rows(top, nav_row)
+                else:
+                    result[mid] = self._nav_to_dict(top)
         return result
 
     def get_nav_history(
@@ -200,16 +255,20 @@ class FundRepository:
         return [self._nav_to_dict(r) for r in rows]
 
     def get_trailing_returns(self, mstar_id: str) -> Optional[dict]:
-        """Latest trailing returns across all periods."""
-        nav = (
+        """Latest trailing returns across all periods.
+
+        Merges the most recent rows to combine NAV + Returns API data.
+        """
+        rows = (
             self.db.query(NavDaily)
             .filter(NavDaily.mstar_id == mstar_id)
             .order_by(NavDaily.nav_date.desc())
-            .first()
+            .limit(5)
+            .all()
         )
-        if nav is None:
+        if not rows:
             return None
-        return self._nav_to_dict(nav)
+        return self._merge_nav_rows(rows)
 
     # --- Risk Stats ---
 
@@ -345,9 +404,14 @@ class FundRepository:
                 "purchase_mode": _PURCHASE_MODE_MAP.get(f.purchase_mode, "Unknown"),
                 "dividend_type": "IDCW" if _IDCW_PATTERN.search(f.fund_name or "") else "Growth",
                 "return_1y": nav.get("return_1y"),
+                "return_3y": nav.get("return_3y"),
+                "return_5y": nav.get("return_5y"),
                 "return_score": lens.return_score if lens else None,
                 "risk_score": lens.risk_score if lens else None,
+                "consistency_score": lens.consistency_score if lens else None,
                 "alpha_score": lens.alpha_score if lens else None,
+                "efficiency_score": lens.efficiency_score if lens else None,
+                "resilience_score": lens.resilience_score if lens else None,
             })
         return result
 
@@ -375,49 +439,157 @@ class FundRepository:
             "return_15y": nav.return_15y,
             "return_20y": nav.return_20y,
             "return_since_inception": nav.return_since_inception,
+            # Cumulative returns
+            "cumulative_return_3y": nav.cumulative_return_3y,
+            "cumulative_return_5y": nav.cumulative_return_5y,
+            "cumulative_return_10y": nav.cumulative_return_10y,
+            # 52-week range
+            "nav_52wk_high": nav.nav_52wk_high,
+            "nav_52wk_low": nav.nav_52wk_low,
         }
+
+    @staticmethod
+    def _merge_two_nav_rows(returns_row: NavDaily, nav_row: NavDaily) -> dict:
+        """Merge a Returns-API row (has returns, nav=NULL) with a NAV-API row (has nav)."""
+        d = FundRepository._nav_to_dict(returns_row)
+        # Fill in NAV-specific fields from the nav row
+        d["nav"] = nav_row.nav
+        d["nav_change"] = nav_row.nav_change or d.get("nav_change")
+        d["nav_52wk_high"] = nav_row.nav_52wk_high or d.get("nav_52wk_high")
+        d["nav_52wk_low"] = nav_row.nav_52wk_low or d.get("nav_52wk_low")
+        # Use the returns row's date as the primary date
+        return d
+
+    @classmethod
+    def _merge_nav_rows(cls, rows: list[NavDaily]) -> dict:
+        """Merge up to 5 most recent nav_daily rows to get both NAV + Returns.
+
+        Returns-API rows have return_* but nav=NULL.
+        NAV-API rows have nav + nav_52wk_* but return_*=NULL.
+        We pick the newest row as base and fill in missing fields from older rows.
+        """
+        base = cls._nav_to_dict(rows[0])
+        for row in rows[1:]:
+            if base["nav"] is not None and base["return_1y"] is not None:
+                break  # already have both NAV and returns
+            d = cls._nav_to_dict(row)
+            for key, val in d.items():
+                if key == "nav_date":
+                    continue  # keep the newest date
+                if base.get(key) is None and val is not None:
+                    base[key] = val
+        return base
 
     @staticmethod
     def _risk_stats_to_dict(rs: RiskStatsMonthly) -> dict:
         return {
             "as_of_date": rs.as_of_date,
+            # Sharpe
             "sharpe_1y": rs.sharpe_1y,
             "sharpe_3y": rs.sharpe_3y,
             "sharpe_5y": rs.sharpe_5y,
+            # Alpha
             "alpha_3y": rs.alpha_3y,
             "alpha_5y": rs.alpha_5y,
             "alpha_10y": rs.alpha_10y,
+            # Beta
             "beta_3y": rs.beta_3y,
             "beta_5y": rs.beta_5y,
             "beta_10y": rs.beta_10y,
+            # Standard Deviation
             "std_dev_1y": rs.std_dev_1y,
             "std_dev_3y": rs.std_dev_3y,
             "std_dev_5y": rs.std_dev_5y,
+            # Sortino
             "sortino_1y": rs.sortino_1y,
             "sortino_3y": rs.sortino_3y,
             "sortino_5y": rs.sortino_5y,
+            # Max Drawdown
             "max_drawdown_1y": rs.max_drawdown_1y,
             "max_drawdown_3y": rs.max_drawdown_3y,
             "max_drawdown_5y": rs.max_drawdown_5y,
+            # Treynor
+            "treynor_1y": rs.treynor_1y,
+            "treynor_3y": rs.treynor_3y,
+            "treynor_5y": rs.treynor_5y,
+            "treynor_10y": rs.treynor_10y,
+            # Information Ratio
+            "info_ratio_1y": rs.info_ratio_1y,
+            "info_ratio_3y": rs.info_ratio_3y,
+            "info_ratio_5y": rs.info_ratio_5y,
+            "info_ratio_10y": rs.info_ratio_10y,
+            # Tracking Error
+            "tracking_error_1y": rs.tracking_error_1y,
+            "tracking_error_3y": rs.tracking_error_3y,
+            "tracking_error_5y": rs.tracking_error_5y,
+            "tracking_error_10y": rs.tracking_error_10y,
+            # Capture Ratios
             "capture_up_1y": rs.capture_up_1y,
             "capture_up_3y": rs.capture_up_3y,
             "capture_up_5y": rs.capture_up_5y,
+            "capture_up_10y": rs.capture_up_10y,
             "capture_down_1y": rs.capture_down_1y,
             "capture_down_3y": rs.capture_down_3y,
             "capture_down_5y": rs.capture_down_5y,
+            # Correlation
+            "correlation_1y": rs.correlation_1y,
+            "correlation_3y": rs.correlation_3y,
+            "correlation_5y": rs.correlation_5y,
+            # R-Squared
+            "r_squared_1y": rs.r_squared_1y,
+            "r_squared_3y": rs.r_squared_3y,
+            "r_squared_5y": rs.r_squared_5y,
+            # Kurtosis
+            "kurtosis_1y": rs.kurtosis_1y,
+            "kurtosis_3y": rs.kurtosis_3y,
+            "kurtosis_5y": rs.kurtosis_5y,
+            # Skewness
+            "skewness_1y": rs.skewness_1y,
+            "skewness_3y": rs.skewness_3y,
+            "skewness_5y": rs.skewness_5y,
+            # Mean
+            "mean_1y": rs.mean_1y,
+            "mean_3y": rs.mean_3y,
+            "mean_5y": rs.mean_5y,
         }
 
     @staticmethod
     def _rank_to_dict(rank: RankMonthly) -> dict:
         return {
             "as_of_date": rank.as_of_date,
+            # Quartile ranks (all periods)
             "quartile_1m": rank.quartile_1m,
             "quartile_3m": rank.quartile_3m,
             "quartile_6m": rank.quartile_6m,
             "quartile_1y": rank.quartile_1y,
+            "quartile_2y": rank.quartile_2y,
             "quartile_3y": rank.quartile_3y,
+            "quartile_4y": rank.quartile_4y,
             "quartile_5y": rank.quartile_5y,
+            "quartile_7y": rank.quartile_7y,
+            "quartile_10y": rank.quartile_10y,
+            # Absolute ranks (all periods)
+            "abs_rank_1m": rank.abs_rank_1m,
+            "abs_rank_3m": rank.abs_rank_3m,
+            "abs_rank_6m": rank.abs_rank_6m,
+            "abs_rank_ytd": rank.abs_rank_ytd,
             "abs_rank_1y": rank.abs_rank_1y,
+            "abs_rank_2y": rank.abs_rank_2y,
             "abs_rank_3y": rank.abs_rank_3y,
+            "abs_rank_4y": rank.abs_rank_4y,
             "abs_rank_5y": rank.abs_rank_5y,
+            "abs_rank_7y": rank.abs_rank_7y,
+            "abs_rank_10y": rank.abs_rank_10y,
+            # Calendar year percentiles
+            "cal_year_pctile_ytd": rank.cal_year_pctile_ytd,
+            "cal_year_pctile_1y": rank.cal_year_pctile_1y,
+            "cal_year_pctile_2y": rank.cal_year_pctile_2y,
+            "cal_year_pctile_3y": rank.cal_year_pctile_3y,
+            "cal_year_pctile_4y": rank.cal_year_pctile_4y,
+            "cal_year_pctile_5y": rank.cal_year_pctile_5y,
+            "cal_year_pctile_6y": rank.cal_year_pctile_6y,
+            "cal_year_pctile_7y": rank.cal_year_pctile_7y,
+            "cal_year_pctile_8y": rank.cal_year_pctile_8y,
+            "cal_year_pctile_9y": rank.cal_year_pctile_9y,
+            "cal_year_pctile_10y": rank.cal_year_pctile_10y,
         }
