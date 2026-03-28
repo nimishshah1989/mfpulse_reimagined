@@ -5,9 +5,11 @@ import Badge from '../shared/Badge';
 import Pill from '../shared/Pill';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import EmptyState from '../shared/EmptyState';
-import MiniRadar from './MiniRadar';
+import LensCircle from '../shared/LensCircle';
+import TierBadge from '../shared/TierBadge';
+import { lensLabel } from '../../lib/lens';
 import { deriveDrillDownFunds, SORT_OPTIONS, QUADRANT_COLORS } from '../../lib/sectors';
-import { formatPct, formatScore } from '../../lib/format';
+import { formatPct } from '../../lib/format';
 
 const CATEGORY_OPTIONS = [
   'all',
@@ -17,6 +19,27 @@ const CATEGORY_OPTIONS = [
   'Flexi Cap',
   'Sectoral/Thematic',
 ];
+
+const LENS_SCORE_KEYS = [
+  'return_score',
+  'risk_score',
+  'consistency_score',
+  'alpha_score',
+  'efficiency_score',
+  'resilience_score',
+];
+
+/** Returns the top 2 lens class values for display as TierBadges */
+function topTiers(fund) {
+  const tiers = [];
+  if (fund.return_class) tiers.push(fund.return_class);
+  if (fund.consistency_class) tiers.push(fund.consistency_class);
+  if (fund.alpha_class) tiers.push(fund.alpha_class);
+  if (fund.resilience_class) tiers.push(fund.resilience_class);
+  if (fund.risk_class) tiers.push(fund.risk_class);
+  if (fund.efficiency_class) tiers.push(fund.efficiency_class);
+  return tiers.slice(0, 2);
+}
 
 export default function FundDrillDown({
   sector,
@@ -47,9 +70,21 @@ export default function FundDrillDown({
     );
   }
 
+  const quadrantColors = QUADRANT_COLORS[sector.quadrant];
+  const headerLine = [
+    sector.sector_name,
+    sector.quadrant,
+    sector.rs_score != null ? `RS: ${sector.rs_score}` : null,
+    sector.rs_momentum != null
+      ? `Momentum: ${sector.rs_momentum > 0 ? '+' : ''}${Number(sector.rs_momentum).toFixed(1)}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   if (loading) {
     return (
-      <Card title={`Top Funds — ${sector.sector_name}`}>
+      <Card title={headerLine}>
         <div className="space-y-4">
           <SkeletonLoader />
           <SkeletonLoader />
@@ -60,15 +95,15 @@ export default function FundDrillDown({
   }
 
   return (
-    <Card title={`Top Funds — ${sector.sector_name}`}>
+    <Card title={headerLine}>
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           {SORT_OPTIONS.map((opt) => (
             <Pill
-              key={opt.value}
-              active={sort === opt.value}
-              onClick={() => onSortChange(opt.value)}
+              key={opt.key}
+              active={sort === opt.key}
+              onClick={() => onSortChange(opt.key)}
             >
               {opt.label}
             </Pill>
@@ -103,13 +138,12 @@ export default function FundDrillDown({
         <div className="space-y-3">
           {rankedFunds.map((fund, idx) => {
             const exposure = sectorExposures?.[fund.mstar_id]?.[sector.sector_name] ?? null;
-            const ret1y = fund.return_1y;
-            const isPositive = ret1y != null && ret1y >= 0;
+            const tiers = topTiers(fund);
 
             return (
               <div
                 key={fund.mstar_id}
-                className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-teal-200 transition-colors bg-white"
+                className="flex flex-wrap items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-teal-200 transition-colors bg-white"
               >
                 {/* Rank */}
                 <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-sm font-bold flex-shrink-0">
@@ -128,7 +162,7 @@ export default function FundDrillDown({
                       <span className="text-xs font-mono tabular-nums text-slate-600">
                         {formatPct(exposure / 100)}
                       </span>
-                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden max-w-[120px]">
                         <div
                           className="h-full bg-teal-500 rounded-full"
                           style={{ width: `${Math.min(exposure, 100)}%` }}
@@ -140,32 +174,24 @@ export default function FundDrillDown({
                   )}
                 </div>
 
-                {/* Return */}
-                <div className="text-right flex-shrink-0">
-                  <p
-                    className={`text-sm font-mono tabular-nums font-semibold ${
-                      isPositive ? 'text-emerald-600' : 'text-red-600'
-                    }`}
-                  >
-                    {ret1y != null ? formatPct(ret1y) : '—'}
-                  </p>
-                  <p className="text-xs text-slate-400">1Y Return</p>
+                {/* Six LensCircles */}
+                <div className="flex gap-1 flex-shrink-0">
+                  {LENS_SCORE_KEYS.map((key) => (
+                    <LensCircle
+                      key={key}
+                      scoreKey={key}
+                      value={fund[key]}
+                      size={32}
+                    />
+                  ))}
                 </div>
 
-                {/* Radar */}
-                <MiniRadar
-                  scores={{
-                    return_score: fund.return_score,
-                    risk_score: fund.risk_score,
-                    consistency_score: fund.consistency_score,
-                    alpha_score: fund.alpha_score,
-                    efficiency_score: fund.efficiency_score,
-                    resilience_score: fund.resilience_score,
-                  }}
-                />
-
-                {/* Return class */}
-                <Badge>{fund.return_class}</Badge>
+                {/* Top tier badges */}
+                <div className="flex flex-col gap-1 flex-shrink-0">
+                  {tiers.map((tier) => (
+                    <TierBadge key={tier} label={tier} />
+                  ))}
+                </div>
 
                 {/* Actions */}
                 <div className="flex flex-col gap-1 flex-shrink-0">
@@ -176,7 +202,7 @@ export default function FundDrillDown({
                     Deep Dive &rarr;
                   </button>
                   <button
-                    onClick={() => router.push(`/simulation?fund=${fund.mstar_id}`)}
+                    onClick={() => router.push(`/strategies?fund=${fund.mstar_id}`)}
                     className="text-xs text-teal-600 hover:text-teal-800 font-medium whitespace-nowrap"
                   >
                     Simulate &rarr;

@@ -1,24 +1,34 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 import { fetchAllFunds, fetchCategories, fetchAMCs } from '../lib/api';
 import { formatCount } from '../lib/format';
-import FilterPanel from '../components/universe/FilterPanel';
-import dynamic from 'next/dynamic';
-const BubbleScatter = dynamic(() => import('../components/universe/BubbleScatter'), { ssr: false, loading: () => <SkeletonLoader variant="chart" className="h-[600px]" /> });
-const Treemap = dynamic(() => import('../components/universe/Treemap'), { ssr: false, loading: () => <SkeletonLoader variant="chart" className="h-[500px]" /> });
-import Heatmap from '../components/universe/Heatmap';
-import FundDetailPanel from '../components/universe/FundDetailPanel';
+import { LENS_OPTIONS } from '../lib/lens';
 import Pill from '../components/shared/Pill';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
 import EmptyState from '../components/shared/EmptyState';
-import { LENS_OPTIONS } from '../lib/lens';
+import FilterBar from '../components/universe/FilterBar';
+import TierSummary from '../components/universe/TierSummary';
+import HoverCard from '../components/universe/HoverCard';
 
-const DEFAULT_THRESHOLDS = Object.fromEntries(
-  LENS_OPTIONS.map((l) => [l.key, 0])
+const BubbleScatter = dynamic(
+  () => import('../components/universe/BubbleScatter'),
+  { ssr: false, loading: () => <SkeletonLoader variant="chart" className="h-[600px]" /> }
 );
 
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+let _fundsCache = null;
+let _fundsCacheTime = 0;
+
+const DEFAULT_FILTERS = {
+  purchaseMode: 'Regular',
+  dividendType: 'Growth',
+  category: '',
+  broadCategory: '',
+  amc: '',
+  period: '1Y',
+};
+
 export default function UniversePage() {
-  const router = useRouter();
   // Raw data
   const [allFunds, setAllFunds] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -27,27 +37,36 @@ export default function UniversePage() {
   const [error, setError] = useState(null);
 
   // UI state
-  const [mode, setMode] = useState('scatter');
   const [xAxis, setXAxis] = useState('return_score');
   const [yAxis, setYAxis] = useState('risk_score');
-  const [colorLens, setColorLens] = useState('return_score');
-  const [selectedFund, setSelectedFund] = useState(null);
-  const [filters, setFilters] = useState({
-    lensThresholds: { ...DEFAULT_THRESHOLDS },
-    selectedCategories: new Set(),
-    selectedAmcs: new Set(),
-  });
+  const [colorLens, setColorLens] = useState('alpha_score');
+  const [filters, setFilters] = useState({ ...DEFAULT_FILTERS });
+
+  // Hover state for HoverCard
+  const [hoverFund, setHoverFund] = useState(null);
+  const [hoverX, setHoverX] = useState(0);
+  const [hoverY, setHoverY] = useState(0);
 
   const contentRef = useRef(null);
   const [chartWidth, setChartWidth] = useState(800);
 
-  // Load data on mount
+  // Load data on mount with client-side cache
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
-        const [funds, cats, amcList] = await Promise.all([
-          fetchAllFunds(),
+        const now = Date.now();
+
+        let funds;
+        if (_fundsCache && now - _fundsCacheTime < CACHE_TTL_MS) {
+          funds = _fundsCache;
+        } else {
+          funds = await fetchAllFunds();
+          _fundsCache = funds;
+          _fundsCacheTime = now;
+        }
+
+        const [cats, amcList] = await Promise.all([
           fetchCategories().then((r) => r.data || []),
           fetchAMCs().then((r) => r.data || []),
         ]);
@@ -55,13 +74,6 @@ export default function UniversePage() {
         setAllFunds(funds);
         setCategories(cats);
         setAmcs(amcList);
-
-        // Initialize filters with all categories and AMCs selected
-        setFilters((prev) => ({
-          ...prev,
-          selectedCategories: new Set(cats.map((c) => c.category_name)),
-          selectedAmcs: new Set(amcList.map((a) => a.amc_name)),
-        }));
       } catch (err) {
         setError(err.message);
       } finally {
@@ -75,7 +87,6 @@ export default function UniversePage() {
   useEffect(() => {
     function measure() {
       if (contentRef.current) {
-        // Full width minus filter panel (280px) minus padding
         setChartWidth(Math.max(400, contentRef.current.offsetWidth - 16));
       }
     }
@@ -87,64 +98,44 @@ export default function UniversePage() {
   // Apply filters
   const filteredFunds = useMemo(() => {
     return allFunds.filter((fund) => {
-      // Category filter
-      if (
-        filters.selectedCategories.size > 0 &&
-        !filters.selectedCategories.has(fund.category_name)
-      ) {
-        return false;
-      }
+      const { purchaseMode, dividendType, category, broadCategory, amc } = filters;
 
-      // AMC filter
-      if (
-        filters.selectedAmcs.size > 0 &&
-        fund.amc_name &&
-        !filters.selectedAmcs.has(fund.amc_name)
-      ) {
-        return false;
-      }
-
-      // Lens threshold filters
-      for (const lens of LENS_OPTIONS) {
-        const threshold = filters.lensThresholds[lens.key] || 0;
-        if (threshold > 0) {
-          const score = Number(fund[lens.key]) || 0;
-          if (score < threshold) return false;
-        }
-      }
+      if (purchaseMode !== 'Both' && fund.purchase_mode !== purchaseMode) return false;
+      if (dividendType !== 'Both' && fund.dividend_type !== dividendType) return false;
+      if (category && fund.category_name !== category) return false;
+      if (broadCategory && fund.broad_category !== broadCategory) return false;
+      if (amc && fund.amc_name !== amc) return false;
 
       return true;
     });
   }, [allFunds, filters]);
 
-  const handleFundClick = useCallback((fund) => {
-    setSelectedFund(fund);
+  const handleHover = useCallback((fund, x, y) => {
+    setHoverFund(fund || null);
+    setHoverX(x);
+    setHoverY(y);
   }, []);
 
-  const handleCellClick = useCallback(
-    (category, quintile) => {
-      // Switch to scatter mode with matching category + lens range
-      setMode('scatter');
-      setFilters((prev) => ({
-        ...prev,
-        selectedCategories: new Set([category]),
-        lensThresholds: {
-          ...DEFAULT_THRESHOLDS,
-          [colorLens]: quintile.min,
-        },
-      }));
-    },
-    [colorLens]
-  );
+  const handleFundClick = useCallback((fund) => {
+    if (fund?.mstar_id) {
+      window.location.href = `/fund360?fund=${fund.mstar_id}`;
+    }
+  }, []);
+
+  const handleTierClick = useCallback((tierLabel) => {
+    // No-op for now — could drill into a filtered view
+  }, []);
+
+  const handleResetFilters = useCallback(() => {
+    setFilters({ ...DEFAULT_FILTERS });
+  }, []);
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        <SkeletonLoader variant="row" className="w-64" />
-        <div className="flex gap-4">
-          <SkeletonLoader variant="card" className="w-[280px] h-[600px]" />
-          <SkeletonLoader variant="chart" className="flex-1" />
-        </div>
+      <div className="space-y-4 p-4">
+        <SkeletonLoader variant="row" className="w-full h-12" />
+        <SkeletonLoader variant="row" className="w-full h-10" />
+        <SkeletonLoader variant="chart" className="flex-1 h-[600px]" />
       </div>
     );
   }
@@ -163,9 +154,9 @@ export default function UniversePage() {
   return (
     <div className="h-full flex flex-col -m-6">
       {/* Page subtitle */}
-      <div className="px-6 py-3 bg-white border-b border-slate-200">
+      <div className="px-6 py-2.5 bg-white border-b border-slate-200 flex items-center justify-between">
         <p className="text-sm text-slate-500">
-          Explore{' '}
+          Universe Explorer &mdash; explore{' '}
           <span className="font-mono font-semibold text-slate-700">
             {formatCount(allFunds.length)}
           </span>{' '}
@@ -173,140 +164,54 @@ export default function UniversePage() {
         </p>
       </div>
 
-      <div className="flex flex-1 min-h-0">
-        {/* Filter panel */}
-        <FilterPanel
-          categories={categories}
-          amcs={amcs}
-          filters={filters}
-          onFiltersChange={setFilters}
-          xAxis={xAxis}
-          yAxis={yAxis}
-          onXAxisChange={setXAxis}
-          onYAxisChange={setYAxis}
-          mode={mode}
-          filteredCount={filteredFunds.length}
-          totalCount={allFunds.length}
-        />
+      {/* Filter bar */}
+      <FilterBar
+        categories={categories}
+        amcs={amcs}
+        filters={filters}
+        onFiltersChange={setFilters}
+        xAxis={xAxis}
+        yAxis={yAxis}
+        colorLens={colorLens}
+        onXAxisChange={setXAxis}
+        onYAxisChange={setYAxis}
+        onColorLensChange={setColorLens}
+        filteredCount={filteredFunds.length}
+        totalCount={allFunds.length}
+      />
 
-        {/* Visualization area */}
-        <div ref={contentRef} className="flex-1 overflow-auto p-4 min-w-0">
-          {/* Mode tabs + lens selector */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-1">
-              {[
-                { key: 'scatter', label: 'Scatter' },
-                { key: 'treemap', label: 'Treemap' },
-                { key: 'heatmap', label: 'Heatmap' },
-              ].map((m) => (
-                <Pill
-                  key={m.key}
-                  active={mode === m.key}
-                  onClick={() => setMode(m.key)}
-                >
-                  {m.label}
-                </Pill>
-              ))}
-            </div>
+      {/* Tier summary */}
+      <TierSummary
+        funds={filteredFunds}
+        colorLens={colorLens}
+        onTierClick={handleTierClick}
+      />
 
-            <div className="flex items-center gap-3">
-              {/* Color/lens selector for treemap + heatmap */}
-              {(mode === 'treemap' || mode === 'heatmap') && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500">
-                    {mode === 'treemap' ? 'Color by' : 'Analyze'}:
-                  </span>
-                  <select
-                    value={colorLens}
-                    onChange={(e) => setColorLens(e.target.value)}
-                    className="text-xs border border-slate-200 rounded-md px-2 py-1 bg-white text-slate-700"
-                  >
-                    {LENS_OPTIONS.map((l) => (
-                      <option key={l.key} value={l.key}>
-                        {l.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <span className="text-xs text-slate-500">
-                Showing{' '}
-                <span className="font-mono font-semibold text-slate-700">
-                  {formatCount(filteredFunds.length)}
-                </span>{' '}
-                of{' '}
-                <span className="font-mono text-slate-500">
-                  {formatCount(allFunds.length)}
-                </span>
-              </span>
-            </div>
-          </div>
-
-          {/* Visualization */}
-          {filteredFunds.length === 0 ? (
-            <EmptyState
-              icon={'\uD83D\uDD0D'}
-              message="No funds match your current filters"
-              action="Reset Filters"
-              onAction={() =>
-                setFilters({
-                  lensThresholds: { ...DEFAULT_THRESHOLDS },
-                  selectedCategories: new Set(
-                    categories.map((c) => c.category_name)
-                  ),
-                  selectedAmcs: new Set(amcs.map((a) => a.amc_name)),
-                })
-              }
-            />
-          ) : (
-            <>
-              {mode === 'scatter' && (
-                <BubbleScatter
-                  data={filteredFunds}
-                  xAxis={xAxis}
-                  yAxis={yAxis}
-                  onFundClick={handleFundClick}
-                  width={chartWidth}
-                  height={600}
-                />
-              )}
-
-              {mode === 'treemap' && (
-                <Treemap
-                  data={filteredFunds}
-                  colorLens={colorLens}
-                  onFundClick={handleFundClick}
-                  width={chartWidth}
-                  height={500}
-                />
-              )}
-
-              {mode === 'heatmap' && (
-                <Heatmap
-                  data={filteredFunds}
-                  colorLens={colorLens}
-                  onCellClick={handleCellClick}
-                />
-              )}
-            </>
-          )}
-        </div>
+      {/* Visualization area */}
+      <div ref={contentRef} className="flex-1 overflow-auto p-4 min-w-0">
+        {filteredFunds.length === 0 ? (
+          <EmptyState
+            icon={'\uD83D\uDD0D'}
+            message="No funds match your current filters"
+            action="Reset Filters"
+            onAction={handleResetFilters}
+          />
+        ) : (
+          <BubbleScatter
+            data={filteredFunds}
+            xAxis={xAxis}
+            yAxis={yAxis}
+            colorLens={colorLens}
+            onFundClick={handleFundClick}
+            onHover={handleHover}
+            width={chartWidth}
+            height={600}
+          />
+        )}
       </div>
 
-      {/* Fund detail panel */}
-      {selectedFund && (
-        <FundDetailPanel
-          fund={selectedFund}
-          onClose={() => setSelectedFund(null)}
-          onDeepDive={() => {
-            router.push(`/fund360?fund=${selectedFund.mstar_id}`);
-          }}
-          onSimulate={() => {
-            router.push(`/simulation?fund=${selectedFund.mstar_id}`);
-          }}
-        />
-      )}
+      {/* HoverCard — shown on bubble hover */}
+      {hoverFund && <HoverCard fund={hoverFund} x={hoverX} y={hoverY} />}
     </div>
   );
 }

@@ -3,11 +3,10 @@ import { scaleLinear } from 'd3-scale';
 import { quadtree } from 'd3-quadtree';
 import { zoom, zoomIdentity } from 'd3-zoom';
 import { select } from 'd3-selection';
-import { BROAD_COLORS, LENS_LABELS } from '../../lib/lens';
-import BubbleTooltip from './BubbleTooltip';
+import { lensColor, LENS_LABELS } from '../../lib/lens';
 
-function getColor(broadCategory) {
-  return BROAD_COLORS[broadCategory] || BROAD_COLORS.Other;
+function getBubbleColor(lensScore) {
+  return lensColor(Number(lensScore) || 0);
 }
 
 function getRadius(aum) {
@@ -15,11 +14,11 @@ function getRadius(aum) {
   return Math.max(3, Math.min(25, Math.sqrt(Math.log(Number(aum) + 1)) * 4));
 }
 
-function findClosestPoint(quadtree, mx, my, xScale, yScale, transformK) {
+function findClosestPoint(qt, mx, my, xScale, yScale, transformK) {
   let closest = null;
   let closestDist = Infinity;
 
-  quadtree.visit((node) => {
+  qt.visit((node) => {
     if (!node.length) {
       let d = node;
       do {
@@ -43,13 +42,16 @@ export default function BubbleScatter({
   data,
   xAxis,
   yAxis,
+  colorLens,
   onFundClick,
+  onHover,
   width,
   height = 600,
 }) {
   const canvasRef = useRef(null);
   const overlayRef = useRef(null);
-  const [tooltip, setTooltip] = useState(null);
+  const [hoveredFund, setHoveredFund] = useState(null);
+  const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
   const [transform, setTransform] = useState(zoomIdentity);
   const quadtreeRef = useRef(null);
   const animRef = useRef(null);
@@ -69,15 +71,16 @@ export default function BubbleScatter({
   );
 
   const positions = useMemo(() => {
+    const activeLens = colorLens || xAxis;
     return data.map((d) => ({
       id: d.mstar_id,
       x: Number(d[xAxis]) || 0,
       y: Number(d[yAxis]) || 0,
       r: getRadius(d.aum),
-      color: getColor(d.broad_category),
+      color: getBubbleColor(d[activeLens]),
       fund: d,
     }));
-  }, [data, xAxis, yAxis]);
+  }, [data, xAxis, yAxis, colorLens]);
 
   // Build quadtree for hit detection
   useEffect(() => {
@@ -104,6 +107,18 @@ export default function BubbleScatter({
       ctx.save();
       ctx.translate(currentTransform.x, currentTransform.y);
       ctx.scale(currentTransform.k, currentTransform.k);
+
+      // Quadrant zone shading
+      const x50 = xScale(50);
+      const y50 = yScale(50);
+
+      // Top-right: sweet spot — light green tint
+      ctx.fillStyle = 'rgba(5, 150, 105, 0.04)';
+      ctx.fillRect(x50, 0, innerW - x50, y50);
+
+      // Bottom-left: below average — light red tint
+      ctx.fillStyle = 'rgba(220, 38, 38, 0.04)';
+      ctx.fillRect(0, y50, x50, innerH - y50);
 
       // Grid
       ctx.strokeStyle = '#f1f5f9';
@@ -141,15 +156,16 @@ export default function BubbleScatter({
       ctx.textAlign = 'left';
       ctx.fillText('Below average', xScale(2), yScale(4));
 
-      // Bubbles
+      // Bubbles — color from lens score (string, not object)
       for (const pt of pts) {
         const r = pt.r / currentTransform.k;
         ctx.beginPath();
         ctx.arc(xScale(pt.x), yScale(pt.y), r, 0, 2 * Math.PI);
-        ctx.fillStyle = pt.color.fill;
+        ctx.fillStyle = pt.color;
         ctx.fill();
-        ctx.strokeStyle = pt.color.stroke;
-        ctx.lineWidth = 1 / currentTransform.k;
+        // Stroke: slightly darker version — derive by replacing alpha
+        ctx.strokeStyle = pt.color.replace(/[\d.]+\)$/, '1)');
+        ctx.lineWidth = 0.8 / currentTransform.k;
         ctx.stroke();
       }
       ctx.restore();
@@ -231,10 +247,10 @@ export default function BubbleScatter({
   useEffect(() => {
     const overlay = overlayRef.current;
     if (!overlay) return;
-    const zoom = zoom().scaleExtent([0.5, 10]).on('zoom', (event) => {
+    const zoomBehavior = zoom().scaleExtent([0.5, 10]).on('zoom', (event) => {
       setTransform(event.transform);
     });
-    select(overlay).call(zoom);
+    select(overlay).call(zoomBehavior);
     return () => { select(overlay).on('.zoom', null); };
   }, []);
 
@@ -260,13 +276,18 @@ export default function BubbleScatter({
       if (!quadtreeRef.current) return;
       const coords = getMouseCoords(e);
       if (!coords) return;
-      const closest = findClosestPoint(quadtreeRef.current, coords.mx, coords.my, xScale, yScale, transform.k);
+      const closest = findClosestPoint(
+        quadtreeRef.current, coords.mx, coords.my, xScale, yScale, transform.k
+      );
       if (closest) {
-        setTooltip({ fund: closest.fund, x: e.clientX, y: e.clientY });
-        canvasRef.current.style.cursor = 'pointer';
+        setHoveredFund(closest.fund);
+        setHoverPos({ x: e.clientX, y: e.clientY });
+        if (onHover) onHover(closest.fund, e.clientX, e.clientY);
+        if (canvasRef.current) canvasRef.current.style.cursor = 'pointer';
       } else {
-        setTooltip(null);
-        canvasRef.current.style.cursor = 'default';
+        setHoveredFund(null);
+        if (onHover) onHover(null, 0, 0);
+        if (canvasRef.current) canvasRef.current.style.cursor = 'default';
       }
     },
     [getMouseCoords, xScale, yScale, transform.k]
@@ -277,17 +298,13 @@ export default function BubbleScatter({
       if (!quadtreeRef.current) return;
       const coords = getMouseCoords(e);
       if (!coords) return;
-      const closest = findClosestPoint(quadtreeRef.current, coords.mx, coords.my, xScale, yScale, transform.k);
+      const closest = findClosestPoint(
+        quadtreeRef.current, coords.mx, coords.my, xScale, yScale, transform.k
+      );
       if (closest && onFundClick) onFundClick(closest.fund);
     },
     [getMouseCoords, xScale, yScale, transform.k, onFundClick]
   );
-
-  const legendCounts = useMemo(() => {
-    const counts = {};
-    data.forEach((d) => { counts[d.broad_category || 'Other'] = (counts[d.broad_category || 'Other'] || 0) + 1; });
-    return counts;
-  }, [data]);
 
   return (
     <div className="relative">
@@ -308,27 +325,17 @@ export default function BubbleScatter({
         className="absolute top-0 left-0"
         style={{ cursor: 'grab' }}
         onMouseMove={handleMouseMove}
-        onMouseLeave={() => setTooltip(null)}
+        onMouseLeave={() => { setHoveredFund(null); if (onHover) onHover(null, 0, 0); }}
         onClick={handleClick}
       >
         <rect width={width} height={height} fill="transparent" />
       </svg>
 
-      {tooltip && <BubbleTooltip tooltip={tooltip} />}
-
-      <div className="flex items-center gap-4 mt-3 px-4">
-        {Object.entries(BROAD_COLORS).map(([cat, colors]) => (
-          <div key={cat} className="flex items-center gap-1.5 text-xs">
-            <span
-              className="inline-block w-3 h-3 rounded-full border"
-              style={{ backgroundColor: colors.fill, borderColor: colors.stroke }}
-            />
-            <span className="text-slate-600">
-              {cat} <span className="font-mono text-slate-400">({legendCounts[cat] || 0})</span>
-            </span>
-          </div>
-        ))}
-      </div>
+      {/* HoverCard is rendered by the parent (universe.jsx) via selectedFund state */}
+      {/* Expose hovered fund so parent can display HoverCard */}
     </div>
   );
 }
+
+// Export hover state management hook for parent use
+export { findClosestPoint };

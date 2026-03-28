@@ -6,49 +6,78 @@ import {
   fetchNAVHistory,
   fetchHoldings,
   fetchSectorExposure,
-  fetchLensHistory,
   fetchPeers,
   fetchFundRisk,
   fetchFunds,
   fetchCategories,
   fetchAMCs,
 } from '../lib/api';
-import { formatPct, formatAUM } from '../lib/format';
-import { LENS_OPTIONS, LENS_CLASS_KEYS } from '../lib/lens';
-import Badge from '../components/shared/Badge';
+import { formatPct, formatAUM, formatINR } from '../lib/format';
+import { LENS_OPTIONS, LENS_CLASS_KEYS, lensColor, lensLabel } from '../lib/lens';
 import Pill from '../components/shared/Pill';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
 import EmptyState from '../components/shared/EmptyState';
-import dynamic from 'next/dynamic';
-const RadarChart = dynamic(() => import('../components/fund360/RadarChart'), { ssr: false });
-import PerformanceChart from '../components/fund360/PerformanceChart';
-import ReturnsTable from '../components/fund360/ReturnsTable';
-import HoldingsTable from '../components/fund360/HoldingsTable';
-import SectorDonut from '../components/fund360/SectorDonut';
-import RiskStatsGrid from '../components/fund360/RiskStatsGrid';
-import LensHistory from '../components/fund360/LensHistory';
-import PeerTable from '../components/fund360/PeerTable';
+import Badge from '../components/shared/Badge';
+import LensCircle from '../components/shared/LensCircle';
+import TierBadge from '../components/shared/TierBadge';
 import CompareMode from '../components/fund360/CompareMode';
+import PerformanceChart from '../components/fund360/PerformanceChart';
+import Verdict from '../components/fund360/Verdict';
+import LensCard from '../components/fund360/LensCard';
+import ReturnsBars from '../components/fund360/ReturnsBars';
+import SmartAlternatives from '../components/fund360/SmartAlternatives';
+import SectorAllocation from '../components/fund360/SectorAllocation';
+import HoldingsTable from '../components/fund360/HoldingsTable';
+import RiskProfile from '../components/fund360/RiskProfile';
+import PeerPositioning from '../components/fund360/PeerPositioning';
 
 const BROAD_CATEGORIES = ['All', 'Equity', 'Fixed Income', 'Allocation', 'Alternative Strategies'];
+
+function ChevronIcon({ open }) {
+  return (
+    <svg
+      className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+    </svg>
+  );
+}
+
+function CollapsibleSection({ title, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+      >
+        {title}
+        <ChevronIcon open={open} />
+      </button>
+      {open && <div className="px-5 pb-5">{children}</div>}
+    </div>
+  );
+}
 
 function FundSearch({ onSelect }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Filter state
   const [categories, setCategories] = useState([]);
   const [amcs, setAmcs] = useState([]);
   const [selectedBroad, setSelectedBroad] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedAmc, setSelectedAmc] = useState('');
 
-  // Top funds for browsing when no search query
   const [topFunds, setTopFunds] = useState([]);
   const [topLoading, setTopLoading] = useState(true);
 
-  // Load filter options + top funds on mount
   useEffect(() => {
     Promise.allSettled([fetchCategories(), fetchAMCs()]).then(([catRes, amcRes]) => {
       if (catRes.status === 'fulfilled') setCategories(catRes.value.data || []);
@@ -60,12 +89,11 @@ function FundSearch({ onSelect }) {
       .finally(() => setTopLoading(false));
   }, []);
 
-  // Filtered categories based on broad category selection
-  const filteredCategories = selectedBroad === 'All'
-    ? categories
-    : categories.filter((c) => c.broad_category === selectedBroad);
+  const filteredCategories =
+    selectedBroad === 'All'
+      ? categories
+      : categories.filter((c) => c.broad_category === selectedBroad);
 
-  // Search with filters
   useEffect(() => {
     const params = { limit: 20 };
     if (query.length >= 2) params.search = query;
@@ -73,8 +101,8 @@ function FundSearch({ onSelect }) {
     if (selectedAmc) params.amc = selectedAmc;
     if (selectedBroad !== 'All') params.broad_category = selectedBroad;
 
-    // Only search if there's a query or filter active
-    const hasFilter = query.length >= 2 || selectedCategory || selectedAmc || selectedBroad !== 'All';
+    const hasFilter =
+      query.length >= 2 || selectedCategory || selectedAmc || selectedBroad !== 'All';
     if (!hasFilter) {
       setResults([]);
       return;
@@ -85,25 +113,33 @@ function FundSearch({ onSelect }) {
       try {
         const res = await fetchFunds(params);
         setResults(res.data || []);
-      } catch { setResults([]); }
-      finally { setLoading(false); }
+      } catch {
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
     }, 200);
     return () => clearTimeout(timer);
   }, [query, selectedCategory, selectedAmc, selectedBroad]);
 
-  const displayFunds = results.length > 0 ? results : (!query && !selectedCategory && !selectedAmc && selectedBroad === 'All') ? topFunds : results;
+  const displayFunds =
+    results.length > 0
+      ? results
+      : !query && !selectedCategory && !selectedAmc && selectedBroad === 'All'
+      ? topFunds
+      : results;
   const showingTop = displayFunds === topFunds && topFunds.length > 0;
 
   return (
     <div className="space-y-6 -m-6">
-      {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-5">
         <h2 className="text-xl font-semibold text-slate-800">Fund 360°</h2>
-        <p className="text-sm text-slate-500 mt-1">Search, filter, and explore any mutual fund in depth</p>
+        <p className="text-sm text-slate-500 mt-1">
+          Search, filter, and explore any mutual fund in depth
+        </p>
       </div>
 
       <div className="px-6 space-y-4">
-        {/* Search bar */}
         <div className="relative">
           <input
             type="text"
@@ -112,18 +148,21 @@ function FundSearch({ onSelect }) {
             placeholder="Search by fund name, AMC, or ISIN..."
             className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white shadow-sm"
           />
-          {loading && <div className="absolute right-3 top-3.5 text-xs text-slate-400">Searching...</div>}
+          {loading && (
+            <div className="absolute right-3 top-3.5 text-xs text-slate-400">Searching...</div>
+          )}
         </div>
 
-        {/* Filter row */}
         <div className="flex flex-wrap gap-3">
-          {/* Broad category pills */}
           <div className="flex gap-1.5">
             {BROAD_CATEGORIES.map((bc) => (
               <button
                 key={bc}
                 type="button"
-                onClick={() => { setSelectedBroad(bc); setSelectedCategory(''); }}
+                onClick={() => {
+                  setSelectedBroad(bc);
+                  setSelectedCategory('');
+                }}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   selectedBroad === bc
                     ? 'bg-teal-600 text-white'
@@ -135,7 +174,6 @@ function FundSearch({ onSelect }) {
             ))}
           </div>
 
-          {/* Category dropdown */}
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
@@ -149,7 +187,6 @@ function FundSearch({ onSelect }) {
             ))}
           </select>
 
-          {/* AMC dropdown */}
           <select
             value={selectedAmc}
             onChange={(e) => setSelectedAmc(e.target.value)}
@@ -163,11 +200,15 @@ function FundSearch({ onSelect }) {
             ))}
           </select>
 
-          {/* Clear filters */}
           {(selectedCategory || selectedAmc || selectedBroad !== 'All' || query) && (
             <button
               type="button"
-              onClick={() => { setQuery(''); setSelectedBroad('All'); setSelectedCategory(''); setSelectedAmc(''); }}
+              onClick={() => {
+                setQuery('');
+                setSelectedBroad('All');
+                setSelectedCategory('');
+                setSelectedAmc('');
+              }}
               className="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg"
             >
               Clear filters
@@ -175,14 +216,12 @@ function FundSearch({ onSelect }) {
           )}
         </div>
 
-        {/* Results heading */}
         <div className="flex items-center justify-between">
           <p className="text-xs text-slate-500">
             {showingTop ? 'Top performers by 1Y return' : `${displayFunds.length} funds found`}
           </p>
         </div>
 
-        {/* Fund list */}
         {topLoading && displayFunds.length === 0 ? (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -201,13 +240,21 @@ function FundSearch({ onSelect }) {
                 className="w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors flex items-center justify-between gap-4"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium text-slate-800 truncate">{f.fund_name || f.legal_name}</div>
-                  <div className="text-xs text-slate-500 mt-0.5">{f.amc_name} · {f.category_name}</div>
+                  <div className="text-sm font-medium text-slate-800 truncate">
+                    {f.fund_name || f.legal_name}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    {f.amc_name} · {f.category_name}
+                  </div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                   {f.return_1y != null && (
                     <div className="text-right">
-                      <div className={`text-sm font-mono tabular-nums font-medium ${Number(f.return_1y) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      <div
+                        className={`text-sm font-mono tabular-nums font-medium ${
+                          Number(f.return_1y) >= 0 ? 'text-emerald-600' : 'text-red-600'
+                        }`}
+                      >
                         {formatPct(f.return_1y)}
                       </div>
                       <div className="text-[10px] text-slate-400">1Y</div>
@@ -227,35 +274,38 @@ function FundSearch({ onSelect }) {
   );
 }
 
+function inceptionAge(inceptionDate) {
+  if (!inceptionDate) return null;
+  const start = new Date(inceptionDate);
+  const now = new Date();
+  const years = Math.floor((now - start) / (1000 * 60 * 60 * 24 * 365));
+  if (years < 1) return '< 1 yr';
+  return `${years} yr${years !== 1 ? 's' : ''} old`;
+}
+
 export default function Fund360Page() {
   const router = useRouter();
   const [mstarId, setMstarId] = useState(null);
 
-  // Primary data
   const [fundDetail, setFundDetail] = useState(null);
   const [lensScores, setLensScores] = useState(null);
   const [navData, setNavData] = useState([]);
   const [holdings, setHoldings] = useState([]);
   const [sectors, setSectors] = useState([]);
 
-  // Secondary data
-  const [lensHistory, setLensHistory] = useState(null);
   const [peers, setPeers] = useState(null);
   const [riskStats, setRiskStats] = useState(null);
 
-  // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [compareOpen, setCompareOpen] = useState(false);
 
-  // Read fund from URL query param
   useEffect(() => {
     if (router.isReady) {
       setMstarId(router.query.fund || null);
     }
   }, [router.isReady, router.query.fund]);
 
-  // Primary data fetch
   useEffect(() => {
     if (!mstarId) return;
     let cancelled = false;
@@ -271,8 +321,6 @@ export default function Fund360Page() {
           fetchSectorExposure(mstarId).then((r) => r.data || []),
         ]);
         if (cancelled) return;
-        // API returns { fund: {...}, returns: {...}, risk_stats: {...}, ranks: {...} }
-        // Flatten into a single object for easy access by child components
         const fund = detailRaw?.fund ?? detailRaw ?? {};
         const detail = {
           ...fund,
@@ -296,41 +344,50 @@ export default function Fund360Page() {
       }
     }
     loadPrimary();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [mstarId]);
 
-  // Secondary data fetch (non-blocking)
   useEffect(() => {
     if (!mstarId) return;
     let cancelled = false;
     async function loadSecondary() {
-      const [lhRes, pRes, rRes] = await Promise.allSettled([
-        fetchLensHistory(mstarId),
+      const [pRes, rRes] = await Promise.allSettled([
         fetchPeers(mstarId),
         fetchFundRisk(mstarId),
       ]);
       if (cancelled) return;
-      if (lhRes.status === 'fulfilled') setLensHistory(lhRes.value.data || []);
       if (pRes.status === 'fulfilled') {
         const peerData = pRes.value.data;
-        // API returns { peers: [...], fund_mstar_id, ... } — extract the array
         setPeers(Array.isArray(peerData) ? peerData : peerData?.peers || []);
       }
       if (rRes.status === 'fulfilled') {
         const riskData = rRes.value.data;
-        // API may return array (history) or single object — normalize to single
         setRiskStats(Array.isArray(riskData) ? riskData[0] || null : riskData || null);
       }
     }
     loadSecondary();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [mstarId]);
 
-  const handleFundSearch = useCallback((id) => {
-    router.push(`/fund360?fund=${id}`);
-  }, [router]);
+  const handleFundSearch = useCallback(
+    (id) => {
+      router.push(`/fund360?fund=${id}`);
+    },
+    [router]
+  );
 
-  // No fund selected - show search
+  // Build sector quadrant map from sectors array
+  const sectorQuadrants = sectors.reduce((acc, s) => {
+    if (s.sector_name && s.quadrant) {
+      acc[s.sector_name] = s.quadrant;
+    }
+    return acc;
+  }, {});
+
   if (!mstarId) {
     return <FundSearch onSelect={handleFundSearch} />;
   }
@@ -361,120 +418,154 @@ export default function Fund360Page() {
 
   if (!fundDetail) return null;
 
-  const radarFunds = lensScores
-    ? [{ label: fundDetail.fund_name || fundDetail.legal_name, scores: lensScores }]
-    : [];
+  const fundName = fundDetail.fund_name || fundDetail.legal_name;
+  const age = inceptionAge(fundDetail.inception_date);
+
+  // Merge lens scores into fundDetail for Verdict
+  const fundWithScores = lensScores ? { ...fundDetail, ...lensScores } : fundDetail;
 
   return (
     <div className="space-y-6 -m-6">
-      {/* Fund Header */}
+      {/* 1. Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
             <button
               type="button"
               onClick={() => router.push('/')}
-              className="text-xs text-teal-600 hover:underline mb-1"
+              className="text-xs text-teal-600 hover:underline mb-1 inline-block"
             >
               {'\u2190'} Back to Universe
             </button>
-            <h2 className="text-lg font-semibold text-slate-800">
-              {fundDetail.fund_name || fundDetail.legal_name}
-            </h2>
+            <h2 className="text-lg font-semibold text-slate-800 truncate">{fundName}</h2>
             <p className="text-sm text-slate-500">{fundDetail.amc_name}</p>
-            <div className="flex items-center gap-2 mt-2">
+
+            {/* Meta row */}
+            <div className="flex flex-wrap items-center gap-2 mt-2">
               <Badge variant="category">{fundDetail.category_name}</Badge>
               {fundDetail.aum != null && (
-                <span className="text-xs font-mono text-slate-500">AUM: {formatAUM(fundDetail.aum)}</span>
+                <span className="text-xs font-mono text-slate-500">
+                  AUM: {formatAUM(fundDetail.aum)}
+                </span>
               )}
-              {fundDetail.inception_date && (
-                <span className="text-xs text-slate-400">Since {fundDetail.inception_date}</span>
+              {age && (
+                <span className="text-xs text-slate-400">{age}</span>
+              )}
+              {fundDetail.expense_ratio != null && (
+                <span className="text-xs text-slate-500 font-mono">
+                  TER: {Number(fundDetail.expense_ratio).toFixed(2)}%
+                </span>
+              )}
+              {fundDetail.primary_benchmark && (
+                <span className="text-xs text-slate-400 truncate max-w-[200px]">
+                  vs {fundDetail.primary_benchmark}
+                </span>
               )}
             </div>
+
+            {/* Tier tags */}
+            {lensScores && (
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                {LENS_OPTIONS.map((lens) => {
+                  const classKey = LENS_CLASS_KEYS[lens.key];
+                  const tier = lensScores[classKey];
+                  return tier ? <TierBadge key={lens.key} tier={tier} /> : null;
+                })}
+                {lensScores.headline_tag && (
+                  <p className="text-xs italic text-slate-600 mt-0.5 w-full">
+                    {'\u201C'}{lensScores.headline_tag}{'\u201D'}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
-          <div className="flex gap-2">
+
+          {/* Action buttons */}
+          <div className="flex flex-col gap-2 flex-shrink-0">
             <button
               type="button"
-              onClick={() => setCompareOpen(true)}
-              className="px-3 py-1.5 text-xs font-medium text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-50"
-            >
-              Compare
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push(`/simulation?fund=${mstarId}`)}
-              className="px-3 py-1.5 text-xs font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700"
+              onClick={() => router.push(`/strategies?fund=${mstarId}`)}
+              className="px-3 py-1.5 text-xs font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 whitespace-nowrap"
             >
               Simulate {'\u2192'}
             </button>
             <button
               type="button"
-              onClick={() => router.push(`/strategy?add=${mstarId}`)}
-              className="px-3 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+              onClick={() => setCompareOpen(true)}
+              className="px-3 py-1.5 text-xs font-medium text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-50 whitespace-nowrap"
             >
-              Add to Strategy
+              Compare
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/')}
+              className="px-3 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 whitespace-nowrap"
+            >
+              Back to Universe
             </button>
           </div>
         </div>
-
-        {/* Lens badges + headline */}
-        {lensScores && (
-          <div className="mt-3">
-            <div className="flex flex-wrap gap-1.5">
-              {LENS_OPTIONS.map((lens) => {
-                const classKey = LENS_CLASS_KEYS[lens.key];
-                const tier = lensScores[classKey];
-                return tier ? (
-                  <Badge key={lens.key} variant="tier">{tier}</Badge>
-                ) : null;
-              })}
-            </div>
-            {lensScores.headline_tag && (
-              <p className="text-xs italic text-slate-600 mt-2">
-                {'\u201C'}{lensScores.headline_tag}{'\u201D'}
-              </p>
-            )}
-          </div>
-        )}
       </div>
 
       <div className="px-6 space-y-6">
-        {/* Row 1: Radar + Performance */}
-        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6">
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">Six-Lens Radar</h3>
-            {radarFunds.length > 0 ? (
-              <RadarChart funds={radarFunds} size={300} />
-            ) : (
-              <SkeletonLoader variant="chart" className="h-72" />
-            )}
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">NAV Performance</h3>
-            <PerformanceChart mstarId={mstarId} initialData={navData} />
-          </div>
-        </div>
+        {/* 2. Verdict */}
+        <Verdict fund={fundWithScores} />
 
-        {/* Row 2: Returns */}
-        <ReturnsTable
+        {/* 3. Six-Lens Profile */}
+        {lensScores && (
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Six-Lens Profile</h3>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              {LENS_OPTIONS.map((lens) => (
+                <LensCard
+                  key={lens.key}
+                  name={lens.label}
+                  score={lensScores[lens.key]}
+                  categoryName={fundDetail.category_name}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 4. Returns vs Peers */}
+        <ReturnsBars
           fundReturns={fundDetail.returns || fundDetail}
           categoryReturns={fundDetail.category_returns || null}
         />
 
-        {/* Row 3: Holdings + Sectors */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
-          <HoldingsTable holdings={holdings} />
-          <SectorDonut sectors={sectors} />
-        </div>
+        {/* 5. Smart Alternatives */}
+        {peers && peers.length > 0 && (
+          <SmartAlternatives
+            peers={peers}
+            currentMstarId={mstarId}
+            onCompare={() => setCompareOpen(true)}
+          />
+        )}
 
-        {/* Row 4: Risk Stats */}
-        <RiskStatsGrid riskStats={riskStats || fundDetail.risk_stats || fundDetail} />
+        {/* 6. Collapsible sections */}
+        <CollapsibleSection title="Sector Allocation">
+          <SectorAllocation sectors={sectors} />
+        </CollapsibleSection>
 
-        {/* Row 5: Lens History */}
-        <LensHistory history={lensHistory} />
+        <CollapsibleSection title="Top 10 Holdings">
+          <HoldingsTable holdings={holdings} sectorQuadrants={sectorQuadrants} />
+        </CollapsibleSection>
 
-        {/* Row 6: Peers */}
-        <PeerTable peers={peers} currentMstarId={mstarId} />
+        <CollapsibleSection title="Risk Profile">
+          <RiskProfile
+            riskStats={riskStats || fundDetail.risk_stats || null}
+            peerAvg={null}
+          />
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Peer Positioning">
+          <PeerPositioning scores={lensScores} />
+        </CollapsibleSection>
+
+        <CollapsibleSection title="NAV Chart">
+          <PerformanceChart mstarId={mstarId} initialData={navData} />
+        </CollapsibleSection>
       </div>
 
       {/* Compare Mode Panel */}

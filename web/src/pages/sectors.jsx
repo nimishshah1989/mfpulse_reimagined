@@ -11,9 +11,9 @@ import SkeletonLoader from '../components/shared/SkeletonLoader';
 import EmptyState from '../components/shared/EmptyState';
 import dynamic from 'next/dynamic';
 const CompassChart = dynamic(() => import('../components/sectors/CompassChart'), { ssr: false });
-import MarketContext from '../components/sectors/MarketContext';
+import MarketContextPanel from '../components/sectors/MarketContextPanel';
 import FundDrillDown from '../components/sectors/FundDrillDown';
-import RotationTimeline from '../components/sectors/RotationTimeline';
+import RotationHeatmap from '../components/sectors/RotationHeatmap';
 
 export default function SectorsPage() {
   // MarketPulse data
@@ -33,12 +33,13 @@ export default function SectorsPage() {
   // UI state
   const [period, setPeriod] = useState('3M');
   const [selectedSector, setSelectedSector] = useState(null);
-  const [drillDownSort, setDrillDownSort] = useState('exposure');
+  const [drillDownSort, setDrillDownSort] = useState('composite');
   const [drillDownCategory, setDrillDownCategory] = useState('all');
   const [exposureLoading, setExposureLoading] = useState(false);
 
   // Compass sizing
   const compassRef = useRef(null);
+  const drillDownRef = useRef(null);
   const [compassWidth, setCompassWidth] = useState(600);
 
   useEffect(() => {
@@ -109,9 +110,14 @@ export default function SectorsPage() {
     setSelectedSector(null);
   }, []);
 
-  // Sector click → lazy load exposures
+  // Sector click → lazy load exposures + scroll drill-down into view
   const handleSectorClick = useCallback(async (sector) => {
     setSelectedSector(sector);
+
+    // Scroll drill-down into view after state update
+    setTimeout(() => {
+      drillDownRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
 
     // First time: probe if exposure data exists
     if (exposureAvailable === null && funds.length > 0) {
@@ -167,8 +173,23 @@ export default function SectorsPage() {
         </p>
       </div>
 
+      {/* MarketPulse offline banner */}
+      {!mpOnline && (
+        <div className="mx-6 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 flex items-center justify-between">
+          <p className="text-sm text-amber-700">
+            MarketPulse offline — sector compass data unavailable
+          </p>
+          <button
+            onClick={() => loadMarketPulse(period)}
+            className="text-xs font-medium text-amber-700 underline underline-offset-2 hover:text-amber-900"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       <div className="px-6 space-y-6">
-        {/* Compass + Market Context */}
+        {/* Compass + Market Context Panel */}
         <div className="flex gap-6">
           <div ref={compassRef} className="flex-1 min-w-0">
             {!mpOnline ? (
@@ -193,7 +214,7 @@ export default function SectorsPage() {
           </div>
 
           <div className="w-[260px] flex-shrink-0">
-            <MarketContext
+            <MarketContextPanel
               regime={regimeData}
               sentiment={sentimentData}
               breadth={breadthData}
@@ -205,22 +226,24 @@ export default function SectorsPage() {
           </div>
         </div>
 
-        {/* Fund Drill-Down */}
-        <FundDrillDown
-          sector={selectedSector}
-          funds={funds}
-          sectorExposures={sectorExposures}
-          exposureAvailable={exposureAvailable}
-          loading={exposureLoading || fundsLoading}
-          sort={drillDownSort}
-          onSortChange={setDrillDownSort}
-          categoryFilter={drillDownCategory}
-          onCategoryFilterChange={setDrillDownCategory}
-        />
+        {/* Fund Drill-Down — inline expansion on sector click */}
+        <div ref={drillDownRef}>
+          <FundDrillDown
+            sector={selectedSector}
+            funds={funds}
+            sectorExposures={sectorExposures}
+            exposureAvailable={exposureAvailable}
+            loading={exposureLoading || fundsLoading}
+            sort={drillDownSort}
+            onSortChange={setDrillDownSort}
+            categoryFilter={drillDownCategory}
+            onCategoryFilterChange={setDrillDownCategory}
+          />
+        </div>
 
-        {/* Rotation Timeline */}
-        <RotationTimeline
-          currentSectorData={sectorData}
+        {/* Rotation Heatmap */}
+        <RotationHeatmap
+          sectorData={sectorData}
           online={mpOnline}
         />
       </div>

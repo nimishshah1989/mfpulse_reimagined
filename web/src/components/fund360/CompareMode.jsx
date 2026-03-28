@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { fetchFunds, fetchFundDetail, fetchFundLensScores, fetchOverlap } from '../../lib/api';
 import { formatPct } from '../../lib/format';
 import Badge from '../shared/Badge';
-import RadarChart from './RadarChart';
+import { LENS_OPTIONS } from '../../lib/lens';
+import { lensColor } from '../../lib/lens';
 
 const slideIn = {
   animation: 'slideInRight 0.3s ease-out forwards',
@@ -79,8 +80,6 @@ export default function CompareMode({ primaryFund, primaryScores, onClose }) {
     ...compareFunds.map((f) => ({ label: f.detail.fund_name, detail: f.detail, scores: f.scores })),
   ];
 
-  const radarFunds = allFunds.map((f) => ({ label: f.label, scores: f.scores }));
-
   const returnPeriods = [
     { key: 'return_1y', label: '1Y' },
     { key: 'return_3y', label: '3Y' },
@@ -156,10 +155,38 @@ export default function CompareMode({ primaryFund, primaryScores, onClose }) {
             </div>
           )}
 
-          {/* Radar Chart */}
-          {radarFunds.length > 1 && (
+          {/* Lens Scores Comparison */}
+          {compareFunds.length > 0 && (
             <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <RadarChart funds={radarFunds} size={360} />
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">Lens Score Comparison</h3>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-1.5 text-slate-500 font-medium">Lens</th>
+                    {allFunds.map((f, idx) => (
+                      <th key={idx} className="text-right py-1.5 text-slate-500 font-medium truncate max-w-[80px]">
+                        {f.label?.slice(0, 12)}{f.label?.length > 12 ? '…' : ''}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {LENS_OPTIONS.map(({ key, label }) => (
+                    <tr key={key} className="border-b border-slate-100 last:border-0">
+                      <td className="py-1.5 text-slate-600">{label}</td>
+                      {allFunds.map((f, idx) => {
+                        const score = f.scores?.[key];
+                        const color = lensColor(score);
+                        return (
+                          <td key={idx} className="py-1.5 text-right font-mono tabular-nums font-semibold" style={{ color }}>
+                            {score != null ? Math.round(Number(score)) : '—'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 

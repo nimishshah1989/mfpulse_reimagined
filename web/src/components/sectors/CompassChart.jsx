@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { scaleLinear } from 'd3-scale';
 import { QUADRANT_COLORS } from '../../lib/sectors';
+import { momentumColor } from '../../lib/lens';
 
 const QUADRANT_BG = {
   Leading: 'rgba(5,150,105,0.06)',
@@ -126,12 +127,14 @@ export default function CompassChart({
       const cx = x(sector.rs_score);
       const cy = y(sector.rs_momentum);
       const r = getRadius(sector);
-      const color = QUADRANT_COLORS[sector.quadrant]?.circle || '#64748b';
+      // Use momentumColor for bubble color, NOT quadrant color
+      const color = momentumColor(sector.rs_momentum);
 
-      // Trail
+      // Trail — use quadrant color for trail lines to stay visually distinct
       if (sector.history?.length) {
+        const trailColor = QUADRANT_COLORS[sector.quadrant]?.circle || '#64748b';
         ctx.setLineDash([3, 3]);
-        ctx.strokeStyle = color;
+        ctx.strokeStyle = trailColor;
         ctx.globalAlpha = 0.5;
         ctx.lineWidth = 1;
         let prevX = cx;
@@ -145,7 +148,7 @@ export default function CompassChart({
           ctx.stroke();
           ctx.beginPath();
           ctx.arc(hx, hy, r * 0.6, 0, Math.PI * 2);
-          ctx.fillStyle = color;
+          ctx.fillStyle = trailColor;
           ctx.fill();
           prevX = hx;
           prevY = hy;
@@ -166,12 +169,26 @@ export default function CompassChart({
         ctx.stroke();
       }
 
-      // Label
-      ctx.fillStyle = '#334155';
-      ctx.font = '10px Inter, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(sector.sector_name, cx + r + 4, cy + 3);
+      // Text inside bubble: sector name + momentum value
+      const shortName =
+        sector.sector_name.length > 8
+          ? sector.sector_name.slice(0, 6) + '..'
+          : sector.sector_name;
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${Math.max(7, r * 0.6)}px Inter, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(shortName, cx, cy - 4);
+      ctx.font = `${Math.max(6, r * 0.5)}px Inter, sans-serif`;
+      ctx.fillText(
+        (sector.rs_momentum > 0 ? '+' : '') + sector.rs_momentum.toFixed(1),
+        cx,
+        cy + 6
+      );
     }
+
+    // Reset baseline for subsequent draws
+    ctx.textBaseline = 'alphabetic';
   }, [sectors, selectedSector, width, height, xScale, yScale]);
 
   useEffect(() => { draw(); }, [draw]);

@@ -12,6 +12,7 @@ export const MORNINGSTAR_SECTORS = [
 ];
 
 export const SORT_OPTIONS = [
+  { key: 'composite', label: 'Composite' },
   { key: 'exposure', label: 'Exposure %' },
   { key: 'return_1y', label: '1Y Return' },
   { key: 'return_score', label: 'Return Score' },
@@ -20,6 +21,11 @@ export const SORT_OPTIONS = [
 ];
 
 const SORT_FNS = {
+  composite: (a, b) => {
+    const avgA = ((Number(a.return_score) || 0) + (Number(a.risk_score) || 0) + (Number(a.consistency_score) || 0) + (Number(a.alpha_score) || 0) + (Number(a.efficiency_score) || 0) + (Number(a.resilience_score) || 0)) / 6;
+    const avgB = ((Number(b.return_score) || 0) + (Number(b.risk_score) || 0) + (Number(b.consistency_score) || 0) + (Number(b.alpha_score) || 0) + (Number(b.efficiency_score) || 0) + (Number(b.resilience_score) || 0)) / 6;
+    return ((b.sector_exposure ?? 0) * avgB) - ((a.sector_exposure ?? 0) * avgA);
+  },
   exposure: (a, b) => (b.sector_exposure ?? 0) - (a.sector_exposure ?? 0),
   return_1y: (a, b) => (Number(b.return_1y) || 0) - (Number(a.return_1y) || 0),
   return_score: (a, b) => (Number(b.return_score) || 0) - (Number(a.return_score) || 0),

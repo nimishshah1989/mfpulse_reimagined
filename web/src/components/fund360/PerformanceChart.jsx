@@ -11,8 +11,8 @@ import { fetchNAVHistory } from '../../lib/api';
 import { formatINR } from '../../lib/format';
 import Pill from '../shared/Pill';
 
-const PERIODS = ['1m', '3m', '6m', '1y', '3y', '5y', 'max'];
-const PERIOD_LABELS = { '1m': '1M', '3m': '3M', '6m': '6M', '1y': '1Y', '3y': '3Y', '5y': '5Y', max: 'Max' };
+const PERIODS = ['1m', '3m', '6m', '1y', '3y', '5y', 'since_inception'];
+const PERIOD_LABELS = { '1m': '1M', '3m': '3M', '6m': '6M', '1y': '1Y', '3y': '3Y', '5y': '5Y', since_inception: 'Since Inception' };
 
 function formatAxisDate(dateStr) {
   if (!dateStr) return '';
