@@ -136,8 +136,8 @@ export default function StrategyDetail({ strategyId, onBack, onEdit }) {
       }, 0);
       return {
         lens: label,
-        strategy: Math.round(wtdScore) || Math.round(40 + Math.random() * 40),
-        category: Math.round(45 + Math.random() * 15),
+        strategy: Math.round(wtdScore) || 0,
+        category: 50,
       };
     });
   }, [funds]);

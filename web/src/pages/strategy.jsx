@@ -20,7 +20,8 @@ export default function StrategyPage() {
     if (router.isReady && router.query.template) {
       try {
         const decoded = JSON.parse(atob(router.query.template));
-        if (decoded.mstar_id) {
+        const MSTAR_ID_RE = /^[A-Za-z0-9]{8,12}$/;
+        if (decoded && typeof decoded.mstar_id === 'string' && MSTAR_ID_RE.test(decoded.mstar_id)) {
           setView('builder');
         }
       } catch {

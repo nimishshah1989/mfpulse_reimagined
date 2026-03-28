@@ -90,7 +90,8 @@ export default function IntelligencePanel({
       results.push({
         icon: '\u25B2',
         iconColor: 'text-emerald-500',
-        text: `<strong>Small Caps dominate</strong> the top-right: ${smInTop10} of top 10 returns are small/mid cap. Higher risk, but rewarded in current regime.`,
+        label: `Small Caps dominate`,
+        body: ` the top-right: ${smInTop10} of top 10 returns are small/mid cap. Higher risk, but rewarded in current regime.`,
       });
     }
 
@@ -101,7 +102,8 @@ export default function IntelligencePanel({
     results.push({
       icon: '\u25CF',
       iconColor: 'text-sky-500',
-      text: `<strong>${beatPct}% of funds beat</strong> the visible average return. Index funds cluster tightly near the center — low cost, predictable.`,
+      label: `${beatPct}% of funds beat`,
+      body: ` the visible average return. Index funds cluster tightly near the center \u2014 low cost, predictable.`,
     });
 
     // Avoid zone count
@@ -112,7 +114,8 @@ export default function IntelligencePanel({
       results.push({
         icon: '\u25BC',
         iconColor: 'text-red-400',
-        text: `<strong>${avoidCount} funds in Avoid Zone</strong> (bottom-right): high risk, negative alpha. Most are high-expense regular plans with poor manager skill.`,
+        label: `${avoidCount} funds in Avoid Zone`,
+        body: ` (bottom-right): high risk, negative alpha. Most are high-expense regular plans with poor manager skill.`,
       });
     }
 
@@ -126,7 +129,8 @@ export default function IntelligencePanel({
       results.push({
         icon: '\u21BB',
         iconColor: 'text-amber-500',
-        text: `<strong>Turnaround signal:</strong> ${turnaround} funds improved from Weak to Average on 3M return basis. Watch for lens reclassification.`,
+        label: `Turnaround signal:`,
+        body: ` ${turnaround} funds improved from Weak to Average on 3M return basis. Watch for lens reclassification.`,
       });
     }
 
@@ -222,10 +226,9 @@ export default function IntelligencePanel({
           {insights.map((ins, i) => (
             <div key={i} className="flex gap-2">
               <span className={`${ins.iconColor} text-xs mt-0.5 flex-shrink-0`}>{ins.icon}</span>
-              <p
-                className="text-[10px] text-slate-600 leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: ins.text }}
-              />
+              <p className="text-[10px] text-slate-600 leading-relaxed">
+                <strong>{ins.label}</strong>{ins.body}
+              </p>
             </div>
           ))}
           {insights.length === 0 && (

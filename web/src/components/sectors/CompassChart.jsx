@@ -387,6 +387,7 @@ function buildSparkline(sector) {
   const max = Math.max(...allScores);
   const range = max - min || 1;
   const count = allScores.length;
+  if (count < 2) return '';
   allScores.forEach((score, i) => {
     const px = (i / (count - 1)) * 180;
     const py = 28 - ((score - min) / range) * 26;
