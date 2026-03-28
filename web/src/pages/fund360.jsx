@@ -311,8 +311,16 @@ export default function Fund360Page() {
       ]);
       if (cancelled) return;
       if (lhRes.status === 'fulfilled') setLensHistory(lhRes.value.data || []);
-      if (pRes.status === 'fulfilled') setPeers(pRes.value.data || []);
-      if (rRes.status === 'fulfilled') setRiskStats(rRes.value.data || null);
+      if (pRes.status === 'fulfilled') {
+        const peerData = pRes.value.data;
+        // API returns { peers: [...], fund_mstar_id, ... } — extract the array
+        setPeers(Array.isArray(peerData) ? peerData : peerData?.peers || []);
+      }
+      if (rRes.status === 'fulfilled') {
+        const riskData = rRes.value.data;
+        // API may return array (history) or single object — normalize to single
+        setRiskStats(Array.isArray(riskData) ? riskData[0] || null : riskData || null);
+      }
     }
     loadSecondary();
     return () => { cancelled = true; };
