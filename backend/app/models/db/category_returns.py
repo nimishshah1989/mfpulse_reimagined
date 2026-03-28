@@ -12,7 +12,7 @@ from app.core.database import Base, UUIDPrimaryKey
 class CategoryReturnsDaily(Base, UUIDPrimaryKey):
     __tablename__ = "category_returns_daily"
 
-    category_code: Mapped[str] = mapped_column(String(20), nullable=False)
+    category_code: Mapped[str] = mapped_column(String(100), nullable=False)
     category_name: Mapped[Optional[str]] = mapped_column(String(200))
     as_of_date: Mapped[date] = mapped_column(Date, nullable=False)
 
