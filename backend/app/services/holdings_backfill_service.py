@@ -177,11 +177,15 @@ class HoldingsBackfillService:
         self._access_code = self._settings.morningstar_access_code
         self._rate_limiter = _RateLimiter()
 
-    def get_candidates(self) -> list[str]:
+    def get_candidates(self, skip_existing: bool = True) -> list[str]:
         """Return mstar_ids eligible for holdings fetch.
 
         Criteria: purchase_mode=1 (Regular), active, has category_name.
+        If skip_existing=True, excludes funds that already have holding
+        details for today's snapshot (for resuming interrupted backfills).
         """
+        from app.models.db.holdings import FundHoldingDetail
+
         stmt = (
             select(FundMaster.mstar_id)
             .where(FundMaster.purchase_mode == 1)
@@ -190,9 +194,20 @@ class HoldingsBackfillService:
             )
             .where(FundMaster.category_name.isnot(None))
         )
+
+        if skip_existing:
+            # Subquery: mstar_ids that already have holding details today
+            already_done = (
+                select(FundHoldingsSnapshot.mstar_id)
+                .join(FundHoldingDetail, FundHoldingDetail.snapshot_id == FundHoldingsSnapshot.id)
+                .where(FundHoldingsSnapshot.portfolio_date == date.today())
+                .group_by(FundHoldingsSnapshot.mstar_id)
+            ).subquery()
+            stmt = stmt.where(FundMaster.mstar_id.notin_(select(already_done.c.mstar_id)))
+
         rows = self._db.execute(stmt).fetchall()
         candidates = [row.mstar_id for row in rows]
-        logger.info("Holdings candidates: %d Regular funds", len(candidates))
+        logger.info("Holdings candidates: %d Regular funds (skip_existing=%s)", len(candidates), skip_existing)
         return candidates
 
     def fetch_all(self, concurrency: int = 10) -> dict:
