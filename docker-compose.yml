@@ -9,6 +9,8 @@ services:
       - "8001:8000"
     env_file:
       - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./data_feeds:/app/data_feeds
       - ./data_cache:/app/data_cache
