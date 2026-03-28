@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MF Pulse — Sectors & Rotation Mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { font-family: 'Inter', system-ui, sans-serif; }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+  .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); }
+  .section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; }
+  @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  .animate-in { animation: slideUp 0.4s ease forwards; }
+
+  /* Compass bubble styles */
+  .compass-canvas { position: relative; }
+  .sector-bubble {
+    position: absolute;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .sector-bubble:hover {
+    transform: scale(1.6);
+    z-index: 20;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  }
+  .sector-bubble.active {
+    transform: scale(1.8);
+    z-index: 30;
+    box-shadow: 0 6px 30px rgba(0,0,0,0.2);
+  }
+  .sector-bubble .bubble-label {
+    font-size: 8px;
+    font-weight: 700;
+    color: white;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .sector-bubble .bubble-expand {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 8px;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+    padding: 12px 16px;
+    width: 220px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    transform: translateX(-50%) translateY(4px);
+    z-index: 50;
+  }
+  .sector-bubble:hover .bubble-expand,
+  .sector-bubble.active .bubble-expand {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .quadrant-bg { position: absolute; inset: 0; pointer-events: none; }
+  .fund-row { transition: background 0.15s; }
+  .fund-row:hover { background: #f8fafc; }
+  .slide-panel {
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  .slide-panel.open {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  .regime-pill { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
+  .heatmap-cell { transition: all 0.2s; cursor: pointer; }
+  .heatmap-cell:hover { transform: scale(1.05); z-index: 5; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+<!-- Top Nav Bar -->
+<nav class="sticky top-0 z-50 glass border-b border-slate-200/50 px-6 py-3">
+  <div class="max-w-7xl mx-auto flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center">
+        <span class="text-white font-bold text-sm">P</span>
+      </div>
+      <span class="text-sm font-semibold text-slate-700">MF Pulse</span>
+      <span class="text-slate-300 mx-2">/</span>
+      <span class="text-sm text-slate-500">Sectors & Rotation</span>
+    </div>
+    <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+      <a href="./dashboard.html" class="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">Dashboard</a>
+      <a href="./fund360.html" class="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">Fund 360</a>
+      <a href="#" class="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">Universe</a>
+      <a href="#" class="px-3 py-1.5 text-xs font-medium bg-white rounded-md shadow-sm text-teal-700">Sectors</a>
+      <a href="#" class="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">Simulate</a>
+    </div>
+    <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-xs font-medium text-emerald-600">MarketPulse Live</span>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="max-w-7xl mx-auto px-6 py-6 space-y-6">
+
+  <!-- ==================== SECTION 1: Market Context Bar ==================== -->
+  <section class="grid grid-cols-4 gap-4 animate-in">
+    <!-- Regime -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+      <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Market Regime</p>
+      <div class="flex items-center gap-2">
+        <span class="regime-pill bg-emerald-100 text-emerald-700 border border-emerald-200">
+          <span>&#8593;</span> Risk-On
+        </span>
+      </div>
+      <p class="text-[11px] text-slate-500 mt-2">Since 12 Mar &middot; 17 days</p>
+    </div>
+    <!-- Sentiment -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+      <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Sentiment</p>
+      <div class="flex items-center gap-3">
+        <span class="text-2xl font-bold tabular-nums text-amber-600">52</span>
+        <span class="text-xs font-semibold text-amber-600">Neutral</span>
+      </div>
+      <p class="text-[11px] text-slate-500 mt-1">Mixed signals — watch breadth</p>
+    </div>
+    <!-- Breadth -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+      <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Breadth (200 EMA)</p>
+      <div class="flex items-center gap-3">
+        <span class="text-2xl font-bold tabular-nums text-emerald-600">68%</span>
+        <span class="text-xs text-emerald-600 font-medium">Healthy</span>
+      </div>
+      <div class="mt-2 h-1.5 bg-slate-100 rounded-full">
+        <div class="h-1.5 bg-emerald-500 rounded-full" style="width: 68%"></div>
+      </div>
+    </div>
+    <!-- Rotation Signal -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+      <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Strongest Rotation</p>
+      <p class="text-sm font-bold text-teal-700">Financials</p>
+      <p class="text-[11px] text-slate-500">Improving &rarr; Leading</p>
+      <p class="text-xs font-semibold text-emerald-600 tabular-nums mt-1">RS Momentum: +2.1</p>
+    </div>
+  </section>
+
+  <!-- ==================== SECTION 2: Compass ↔ Fund Drill-Down ==================== -->
+  <div class="animate-in" style="animation-delay: 0.1s">
+    <div class="bg-white rounded-xl border border-slate-200 p-6">
+
+      <!-- Header bar (shared) -->
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <!-- Back button (hidden when showing compass) -->
+          <button id="backToCompass" onclick="showCompassView()" class="hidden items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">
+            <span>&larr;</span> All Sectors
+          </button>
+          <div>
+            <p class="section-title" id="chartTitle">Sector Rotation Compass</p>
+            <p class="text-[11px] text-slate-400 mt-0.5" id="chartSubtitle">Click any sector bubble to drill into fund-level view</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <!-- Sector name badge (hidden when showing compass) -->
+          <div id="sectorBadge" class="hidden items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span class="text-xs font-semibold text-emerald-700" id="sectorBadgeName">Technology</span>
+            <span class="text-[10px] text-emerald-600" id="sectorBadgeQuadrant">Leading</span>
+          </div>
+          <div class="flex gap-1 bg-slate-100 rounded-md p-0.5">
+            <button class="px-2.5 py-1 text-[10px] font-medium text-slate-500">1M</button>
+            <button class="px-2.5 py-1 text-[10px] font-semibold bg-white rounded shadow-sm text-teal-700">3M</button>
+            <button class="px-2.5 py-1 text-[10px] font-medium text-slate-500">6M</button>
+            <button class="px-2.5 py-1 text-[10px] font-medium text-slate-500">1Y</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== VIEW 1: Sector Compass (default) ====== -->
+      <div id="compassView">
+        <div class="compass-canvas relative" style="height: 520px;" id="compassArea">
+          <!-- Quadrant backgrounds -->
+          <div class="absolute inset-0 grid grid-cols-2 grid-rows-2 pointer-events-none">
+            <div class="bg-sky-50/40 rounded-tl-lg border-r border-b border-slate-100 flex items-start justify-center pt-3">
+              <span class="text-[10px] font-semibold text-sky-400 uppercase tracking-wider">Improving</span>
+            </div>
+            <div class="bg-emerald-50/40 rounded-tr-lg border-b border-slate-100 flex items-start justify-center pt-3">
+              <span class="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Leading</span>
+            </div>
+            <div class="bg-red-50/30 rounded-bl-lg border-r border-slate-100 flex items-end justify-center pb-3">
+              <span class="text-[10px] font-semibold text-red-300 uppercase tracking-wider">Lagging</span>
+            </div>
+            <div class="bg-amber-50/30 rounded-br-lg flex items-end justify-center pb-3">
+              <span class="text-[10px] font-semibold text-amber-300 uppercase tracking-wider">Weakening</span>
+            </div>
+          </div>
+
+          <!-- Axis labels -->
+          <div class="absolute left-1/2 bottom-1 -translate-x-1/2 text-[9px] text-slate-400 font-medium">RS Score &rarr;</div>
+          <div class="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 font-medium" style="writing-mode: vertical-lr; transform: rotate(180deg) translateY(50%);">RS Momentum &rarr;</div>
+
+          <!-- Sector Bubbles (positioned absolutely) -->
+          <!-- Technology — Leading -->
+          <div class="sector-bubble active" style="left: 68%; top: 18%; width: 56px; height: 56px; background: rgba(5,150,105,0.85);" onclick="showSectorPanel('Technology')" id="bubble-tech">
+            <span class="bubble-label">Tech</span>
+            <div class="bubble-expand">
+              <p class="text-xs font-bold text-slate-800 mb-1">Technology</p>
+              <div class="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <p class="text-[9px] text-slate-400">RS Score</p>
+                  <p class="text-sm font-bold text-emerald-600 tabular-nums">18.4</p>
+                </div>
+                <div>
+                  <p class="text-[9px] text-slate-400">Momentum</p>
+                  <p class="text-sm font-bold text-emerald-600 tabular-nums">+4.2</p>
+                </div>
+              </div>
+              <div class="mb-2">
+                <p class="text-[9px] text-slate-400 mb-1">RS Trend (3M)</p>
+                <svg viewBox="0 0 180 30" class="w-full h-6">
+                  <polyline points="0,25 20,22 40,20 60,18 80,15 100,12 120,10 140,8 160,5 180,3" fill="none" stroke="#059669" stroke-width="2"/>
+                </svg>
+              </div>
+              <div class="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 rounded px-2 py-1">
+                <span>&#9679;</span> Leading &middot; Overweight
+              </div>
+            </div>
+          </div>
+
+          <!-- Healthcare — Leading -->
+          <div class="sector-bubble" style="left: 63%; top: 22%; width: 48px; height: 48px; background: rgba(5,150,105,0.75);" onclick="showSectorPanel('Healthcare')">
+            <span class="bubble-label">Health</span>
+            <div class="bubble-expand">
+              <p class="text-xs font-bold text-slate-800 mb-1">Healthcare</p>
+              <div class="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <p class="text-[9px] text-slate-400">RS Score</p>
+                  <p class="text-sm font-bold text-emerald-600 tabular-nums">16.2</p>
+                </div>
+                <div>
+                  <p class="text-[9px] text-slate-400">Momentum</p>
+                  <p class="text-sm font-bold text-emerald-600 tabular-nums">+3.8</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 rounded px-2 py-1">
+                <span>&#9679;</span> Leading &middot; Overweight
+              </div>
+            </div>
+          </div>
+
+          <!-- Auto — Leading -->
+          <div class="sector-bubble" style="left: 58%; top: 28%; width: 44px; height: 44px; background: rgba(5,150,105,0.65);" onclick="showSectorPanel('Automobile')">
+            <span class="bubble-label">Auto</span>
+            <div class="bubble-expand">
+              <p class="text-xs font-bold text-slate-800 mb-1">Automobile</p>
+              <div class="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <p class="text-[9px] text-slate-400">RS Score</p>
+                  <p class="text-sm font-bold text-emerald-600 tabular-nums">14.1</p>
+                </div>
+                <div>
+                  <p class="text-[9px] text-slate-400">Momentum</p>
+                  <p class="text-sm font-bold text-emerald-600 tabular-nums">+1.9</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 rounded px-2 py-1">
+                <span>&#9679;</span> Leading &middot; Hold
+              </div>
+            </div>
+          </div>
+
+          <!-- Financials — Improving -->
+          <div class="sector-bubble" style="left: 32%; top: 25%; width: 60px; height: 60px; background: rgba(14,165,233,0.8);" onclick="showSectorPanel('Financial Services')">
+            <span class="bubble-label">Finance</span>
+            <div class="bubble-expand">
+              <p class="text-xs font-bold text-slate-800 mb-1">Financial Services</p>
+              <div class="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <p class="text-[9px] text-slate-400">RS Score</p>
+                  <p class="text-sm font-bold text-sky-600 tabular-nums">8.5</p>
+                </div>
+                <div>
+                  <p class="text-[9px] text-slate-400">Momentum</p>
+                  <p class="text-sm font-bold text-sky-600 tabular-nums">+2.1</p>
+                </div>
+              </div>
+              <div class="mb-2">
+                <p class="text-[9px] text-slate-400 mb-1">RS Trend (3M)</p>
+                <svg viewBox="0 0 180 30" class="w-full h-6">
+                  <polyline points="0,28 20,27 40,25 60,22 80,19 100,16 120,13 140,10 160,7 180,5" fill="none" stroke="#0ea5e9" stroke-width="2"/>
+                </svg>
+              </div>
+              <div class="flex items-center gap-1 text-[10px] font-semibold text-sky-600 bg-sky-50 rounded px-2 py-1">
+                <span>&#8599;</span> Improving &middot; Early Entry
+              </div>
+            </div>
+          </div>
+
+          <!-- FMCG — Leading (borderline) -->
+          <div class="sector-bubble" style="left: 53%; top: 34%; width: 38px; height: 38px; background: rgba(5,150,105,0.55);" onclick="showSectorPanel('FMCG')">
+            <span class="bubble-label" style="font-size: 7px">FMCG</span>
+            <div class="bubble-expand">
+              <p class="text-xs font-bold text-slate-800 mb-1">FMCG</p>
+              <div class="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <p class="text-[9px] text-slate-400">RS Score</p>
+                  <p class="text-sm font-bold text-teal-600 tabular-nums">12.0</p>
+                </div>
+                <div>
+                  <p class="text-[9px] text-slate-400">Momentum</p>
+                  <p class="text-sm font-bold text-teal-600 tabular-nums">+0.8</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 text-[10px] font-semibold text-teal-600 bg-teal-50 rounded px-2 py-1">
+                <span>&#9679;</span> Leading &middot; Hold
+              </div>
+            </div>
+          </div>
+
+          <!-- IT Services — Improving -->
+          <div class="sector-bubble" style="left: 25%; top: 33%; width: 46px; height: 46px; background: rgba(14,165,233,0.65);" onclick="showSectorPanel('IT Services')">
+            <span class="bubble-label" style="font-size: 7px">IT</span>
+            <div class="bubble-expand">
+              <p class="text-xs font-bold text-slate-800 mb-1">IT Services</p>
+              <div class="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <p class="text-[9px] text-slate-400">RS Score</p>
+                  <p class="text-sm font-bold text-sky-600 tabular-nums">6.2</p>
+                </div>
+                <div>
+                  <p class="text-[9px] text-slate-400">Momentum</p>
+                  <p class="text-sm font-bold text-sky-600 tabular-nums">+1.4</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 text-[10px] font-semibold text-sky-600 bg-sky-50 rounded px-2 py-1">
+                <span>&#8599;</span> Improving &middot; Watch
+              </div>
+            </div>
+          </div>
+
+          <!-- Energy — Weakening -->
+          <div class="sector-bubble" style="left: 60%; top: 58%; width: 42px; height: 42px; background: rgba(245,158,11,0.75);" onclick="showSectorPanel('Energy')">
+            <span class="bubble-label" style="font-size: 7px">Energy</span>
+            <div class="bubble-expand">
+              <p class="text-xs font-bold text-slate-800 mb-1">Energy</p>
+              <div class="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <p class="text-[9px] text-slate-400">RS Score</p>
+                  <p class="text-sm font-bold text-amber-600 tabular-nums">14.8</p>
+                </div>
+                <div>
+                  <p class="text-[9px] text-slate-400">Momentum</p>
+                  <p class="text-sm font-bold text-red-500 tabular-nums">-1.4</p>
+                </div>
+              </div>
+              <div class="mb-2">
+                <p class="text-[9px] text-slate-400 mb-1">RS Trend (3M)</p>
+                <svg viewBox="0 0 180 30" class="w-full h-6">
+                  <polyline points="0,5 20,6 40,8 60,10 80,13 100,16 120,19 140,22 160,25 180,27" fill="none" stroke="#f59e0b" stroke-width="2"/>
+                </svg>
+              </div>
+              <div class="flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 rounded px-2 py-1">
+                <span>&#8600;</span> Weakening &middot; Reduce
+              </div>
+            </div>
+          </div>
+
+          <!-- Infra — Weakening -->
+          <div class="sector-bubble" style="left: 55%; top: 55%; width: 36px; height: 36px; background: rgba(245,158,11,0.6);" onclick="showSectorPanel('Infrastructure')">
+            <span class="bubble-label" style="font-size: 7px">Infra</span>
+            <div class="bubble-expand">
+              <p class="text-xs font-bold text-slate-800 mb-1">Infrastructure</p>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <p class="text-[9px] text-slate-400">RS Score</p>
+                  <p class="text-sm font-bold text-amber-600 tabular-nums">12.5</p>
+                </div>
+                <div>
+                  <p class="text-[9px] text-slate-400">Momentum</p>
+                  <p class="text-sm font-bold text-red-500 tabular-nums">-0.9</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Metals — Lagging -->
+          <div class="sector-bubble" style="left: 30%; top: 62%; width: 40px; height: 40px; background: rgba(239,68,68,0.6);" onclick="showSectorPanel('Metals & Mining')">
+            <span class="bubble-label" style="font-size: 7px">Metal</span>
+            <div class="bubble-expand">
+              <p class="text-xs font-bold text-slate-800 mb-1">Metals & Mining</p>
+              <div class="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <p class="text-[9px] text-slate-400">RS Score</p>
+                  <p class="text-sm font-bold text-red-500 tabular-nums">7.2</p>
+                </div>
+                <div>
+                  <p class="text-[9px] text-slate-400">Momentum</p>
+                  <p class="text-sm font-bold text-red-500 tabular-nums">-2.1</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 text-[10px] font-semibold text-red-500 bg-red-50 rounded px-2 py-1">
+                <span>&#9660;</span> Lagging &middot; Avoid
+              </div>
+            </div>
+          </div>
+
+          <!-- Real Estate — Lagging -->
+          <div class="sector-bubble" style="left: 22%; top: 70%; width: 34px; height: 34px; background: rgba(239,68,68,0.7);" onclick="showSectorPanel('Real Estate')">
+            <span class="bubble-label" style="font-size: 7px">Realty</span>
+            <div class="bubble-expand">
+              <p class="text-xs font-bold text-slate-800 mb-1">Real Estate</p>
+              <div class="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <p class="text-[9px] text-slate-400">RS Score</p>
+                  <p class="text-sm font-bold text-red-500 tabular-nums">4.8</p>
+                </div>
+                <div>
+                  <p class="text-[9px] text-slate-400">Momentum</p>
+                  <p class="text-sm font-bold text-red-500 tabular-nums">-3.2</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 text-[10px] font-semibold text-red-500 bg-red-50 rounded px-2 py-1">
+                <span>&#9660;</span> Lagging &middot; Avoid
+              </div>
+            </div>
+          </div>
+
+          <!-- Pharma — Leading -->
+          <div class="sector-bubble" style="left: 62%; top: 15%; width: 40px; height: 40px; background: rgba(5,150,105,0.7);" onclick="showSectorPanel('Pharma')">
+            <span class="bubble-label" style="font-size: 7px">Pharma</span>
+            <div class="bubble-expand">
+              <p class="text-xs font-bold text-slate-800 mb-1">Pharma</p>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <p class="text-[9px] text-slate-400">RS Score</p>
+                  <p class="text-sm font-bold text-emerald-600 tabular-nums">15.8</p>
+                </div>
+                <div>
+                  <p class="text-[9px] text-slate-400">Momentum</p>
+                  <p class="text-sm font-bold text-emerald-600 tabular-nums">+3.5</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ====== VIEW 2: Fund-Level Quadrant Chart (hidden by default, shown on sector click) ====== -->
+      <div id="fundQuadrantView" class="hidden">
+        <!-- Sector stats bar -->
+        <div class="grid grid-cols-5 gap-3 mb-4">
+          <div class="bg-slate-50 rounded-lg p-3 text-center">
+            <p class="text-[9px] text-slate-400 uppercase">RS Score</p>
+            <p class="text-lg font-bold text-slate-800 tabular-nums" id="fqRS">18.4</p>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-3 text-center">
+            <p class="text-[9px] text-slate-400 uppercase">Momentum</p>
+            <p class="text-lg font-bold text-emerald-600 tabular-nums" id="fqMom">+4.2</p>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-3 text-center">
+            <p class="text-[9px] text-slate-400 uppercase">Quadrant</p>
+            <p class="text-sm font-bold text-emerald-600" id="fqQuadrant">Leading</p>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-3 text-center">
+            <p class="text-[9px] text-slate-400 uppercase">Action</p>
+            <p class="text-sm font-bold text-emerald-700" id="fqAction">Overweight</p>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-3 text-center">
+            <p class="text-[9px] text-slate-400 uppercase">Funds Exposed</p>
+            <p class="text-lg font-bold text-teal-600 tabular-nums" id="fqCount">42</p>
+          </div>
+        </div>
+
+        <!-- RS Trend sparkline -->
+        <div class="mb-4 flex items-center gap-4">
+          <div class="flex-shrink-0">
+            <p class="text-[9px] text-slate-400 uppercase tracking-wider">RS Trend (3M)</p>
+          </div>
+          <div class="flex-1" style="height: 40px;">
+            <canvas id="rsTrendMini" style="width:100%; height:100%;"></canvas>
+          </div>
+        </div>
+
+        <!-- THE MAIN EVENT: Full-width 2x2 Quadrant Fund Bubble Chart -->
+        <div class="relative rounded-xl overflow-hidden" style="height: 520px;" id="fundChartContainer">
+          <!-- Quadrant color backgrounds -->
+          <div class="absolute inset-0 grid grid-cols-2 grid-rows-2 pointer-events-none z-0">
+            <div class="bg-emerald-50/60 border-r border-b border-slate-200/50 flex items-start justify-start p-3">
+              <span class="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest">High Return &middot; Low Risk</span>
+            </div>
+            <div class="bg-amber-50/40 border-b border-slate-200/50 flex items-start justify-end p-3">
+              <span class="text-[10px] font-bold text-amber-500/50 uppercase tracking-widest">High Return &middot; High Risk</span>
+            </div>
+            <div class="bg-sky-50/40 border-r border-slate-200/50 flex items-end justify-start p-3">
+              <span class="text-[10px] font-bold text-sky-500/50 uppercase tracking-widest">Low Return &middot; Low Risk</span>
+            </div>
+            <div class="bg-red-50/40 flex items-end justify-end p-3">
+              <span class="text-[10px] font-bold text-red-400/50 uppercase tracking-widest">Low Return &middot; High Risk</span>
+            </div>
+          </div>
+          <!-- Chart.js canvas on top -->
+          <canvas id="fundQuadrantChart" class="relative z-10" style="width:100%; height:100%;"></canvas>
+        </div>
+
+        <!-- Fund list (below chart) -->
+        <div class="mt-4 grid grid-cols-2 gap-2" id="fundDrillList">
+          <a href="./fund360.html" class="fund-row flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-100 cursor-pointer hover:border-teal-300">
+            <div class="w-8 h-8 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center flex-shrink-0">
+              <span class="text-[9px] font-bold text-emerald-700">89%</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-slate-800 truncate">ICICI Pru Technology Fund</p>
+              <p class="text-[10px] text-slate-400">Sectoral &middot; StdDev 14.2</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <p class="text-xs font-bold text-emerald-600 tabular-nums">+32.4%</p>
+              <p class="text-[9px] text-slate-400">1Y</p>
+            </div>
+          </a>
+          <a href="./fund360.html" class="fund-row flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-100 cursor-pointer hover:border-teal-300">
+            <div class="w-8 h-8 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center flex-shrink-0">
+              <span class="text-[9px] font-bold text-emerald-700">85%</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-slate-800 truncate">Tata Digital India Fund</p>
+              <p class="text-[10px] text-slate-400">Sectoral &middot; StdDev 15.8</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <p class="text-xs font-bold text-emerald-600 tabular-nums">+28.9%</p>
+              <p class="text-[9px] text-slate-400">1Y</p>
+            </div>
+          </a>
+          <a href="./fund360.html" class="fund-row flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-100 cursor-pointer hover:border-teal-300">
+            <div class="w-8 h-8 rounded-full bg-emerald-500/15 border-2 border-emerald-400 flex items-center justify-center flex-shrink-0">
+              <span class="text-[9px] font-bold text-emerald-600">78%</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-slate-800 truncate">SBI Technology Opp Fund</p>
+              <p class="text-[10px] text-slate-400">Sectoral &middot; StdDev 13.1</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <p class="text-xs font-bold text-emerald-600 tabular-nums">+26.1%</p>
+              <p class="text-[9px] text-slate-400">1Y</p>
+            </div>
+          </a>
+          <a href="./fund360.html" class="fund-row flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-100 cursor-pointer hover:border-teal-300">
+            <div class="w-8 h-8 rounded-full bg-teal-500/15 border-2 border-teal-400 flex items-center justify-center flex-shrink-0">
+              <span class="text-[9px] font-bold text-teal-600">34%</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-slate-800 truncate">Quant Active Fund</p>
+              <p class="text-[10px] text-slate-400">Multi Cap &middot; StdDev 18.5</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <p class="text-xs font-bold text-emerald-600 tabular-nums">+24.5%</p>
+              <p class="text-[9px] text-slate-400">1Y</p>
+            </div>
+          </a>
+          <a href="./fund360.html" class="fund-row flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-100 cursor-pointer hover:border-teal-300">
+            <div class="w-8 h-8 rounded-full bg-teal-500/10 border-2 border-teal-300 flex items-center justify-center flex-shrink-0">
+              <span class="text-[9px] font-bold text-teal-500">28%</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-slate-800 truncate">Parag Parikh Flexi Cap</p>
+              <p class="text-[10px] text-slate-400">Flexi Cap &middot; StdDev 11.2</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <p class="text-xs font-bold text-emerald-600 tabular-nums">+18.4%</p>
+              <p class="text-[9px] text-slate-400">1Y</p>
+            </div>
+          </a>
+          <a href="./fund360.html" class="fund-row flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-100 cursor-pointer hover:border-teal-300">
+            <div class="w-8 h-8 rounded-full bg-teal-500/10 border-2 border-teal-300 flex items-center justify-center flex-shrink-0">
+              <span class="text-[9px] font-bold text-teal-500">22%</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-slate-800 truncate">HDFC Flexi Cap Fund</p>
+              <p class="text-[10px] text-slate-400">Flexi Cap &middot; StdDev 13.8</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <p class="text-xs font-bold text-emerald-600 tabular-nums">+15.2%</p>
+              <p class="text-[9px] text-slate-400">1Y</p>
+            </div>
+          </a>
+        </div>
+
+        <!-- Action CTAs -->
+        <div class="flex gap-3 mt-4">
+          <button class="flex-1 py-2.5 text-xs font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors">
+            Add Best Fund to Strategy
+          </button>
+          <button class="flex-1 py-2.5 text-xs font-medium text-teal-700 bg-teal-50 rounded-lg hover:bg-teal-100 transition-colors border border-teal-200">
+            Simulate Sector Rotation
+          </button>
+          <button class="py-2.5 px-4 text-xs font-medium text-slate-600 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200">
+            Compare Funds
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== SECTION 3: Rotation Heatmap (Time Series) ==================== -->
+  <section class="animate-in" style="animation-delay: 0.2s">
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="section-title">Sector Rotation Heatmap — Quadrant History</p>
+          <p class="text-[11px] text-slate-400 mt-0.5">Track how sectors move through quadrants over time</p>
+        </div>
+      </div>
+
+      <!-- Heatmap Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-[11px]">
+          <thead>
+            <tr class="text-[9px] text-slate-400 uppercase tracking-wider">
+              <th class="text-left pb-2 pr-4 font-medium w-32">Sector</th>
+              <th class="text-center pb-2 font-medium w-16">Oct</th>
+              <th class="text-center pb-2 font-medium w-16">Nov</th>
+              <th class="text-center pb-2 font-medium w-16">Dec</th>
+              <th class="text-center pb-2 font-medium w-16">Jan</th>
+              <th class="text-center pb-2 font-medium w-16">Feb</th>
+              <th class="text-center pb-2 font-medium w-16 border-r-2 border-teal-200">Mar</th>
+              <th class="text-left pb-2 pl-3 font-medium">Trend</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50">
+            <tr>
+              <td class="py-2 pr-4 font-medium text-slate-700">Technology</td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-sky-100 text-sky-700 leading-6 text-[10px] font-semibold">IMP</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-sky-100 text-sky-700 leading-6 text-[10px] font-semibold">IMP</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-emerald-100 text-emerald-700 leading-6 text-[10px] font-semibold">LED</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-emerald-100 text-emerald-700 leading-6 text-[10px] font-semibold">LED</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-emerald-100 text-emerald-700 leading-6 text-[10px] font-semibold">LED</span></td>
+              <td class="py-2 text-center border-r-2 border-teal-200"><span class="inline-block w-8 h-6 rounded bg-emerald-200 text-emerald-800 leading-6 text-[10px] font-bold ring-2 ring-emerald-400">LED</span></td>
+              <td class="py-2 pl-3"><span class="text-emerald-600 font-semibold">&#8593;&#8593; Strong momentum</span></td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-4 font-medium text-slate-700">Healthcare</td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-red-100 text-red-600 leading-6 text-[10px] font-semibold">LAG</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-sky-100 text-sky-700 leading-6 text-[10px] font-semibold">IMP</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-sky-100 text-sky-700 leading-6 text-[10px] font-semibold">IMP</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-emerald-100 text-emerald-700 leading-6 text-[10px] font-semibold">LED</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-emerald-100 text-emerald-700 leading-6 text-[10px] font-semibold">LED</span></td>
+              <td class="py-2 text-center border-r-2 border-teal-200"><span class="inline-block w-8 h-6 rounded bg-emerald-200 text-emerald-800 leading-6 text-[10px] font-bold ring-2 ring-emerald-400">LED</span></td>
+              <td class="py-2 pl-3"><span class="text-emerald-600 font-semibold">&#8593; Full rotation complete</span></td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-4 font-medium text-slate-700">Financials</td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-red-100 text-red-600 leading-6 text-[10px] font-semibold">LAG</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-red-100 text-red-600 leading-6 text-[10px] font-semibold">LAG</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-red-100 text-red-600 leading-6 text-[10px] font-semibold">LAG</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-sky-100 text-sky-700 leading-6 text-[10px] font-semibold">IMP</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-sky-100 text-sky-700 leading-6 text-[10px] font-semibold">IMP</span></td>
+              <td class="py-2 text-center border-r-2 border-teal-200"><span class="inline-block w-8 h-6 rounded bg-sky-200 text-sky-800 leading-6 text-[10px] font-bold ring-2 ring-sky-400">IMP</span></td>
+              <td class="py-2 pl-3"><span class="text-sky-600 font-semibold">&#8599; Breakout forming</span></td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-4 font-medium text-slate-700">Energy</td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-emerald-100 text-emerald-700 leading-6 text-[10px] font-semibold">LED</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-emerald-100 text-emerald-700 leading-6 text-[10px] font-semibold">LED</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-amber-100 text-amber-700 leading-6 text-[10px] font-semibold">WKN</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-amber-100 text-amber-700 leading-6 text-[10px] font-semibold">WKN</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-amber-100 text-amber-700 leading-6 text-[10px] font-semibold">WKN</span></td>
+              <td class="py-2 text-center border-r-2 border-teal-200"><span class="inline-block w-8 h-6 rounded bg-amber-200 text-amber-800 leading-6 text-[10px] font-bold ring-2 ring-amber-400">WKN</span></td>
+              <td class="py-2 pl-3"><span class="text-amber-600 font-semibold">&#8600; Losing momentum</span></td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-4 font-medium text-slate-700">Metals</td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-amber-100 text-amber-700 leading-6 text-[10px] font-semibold">WKN</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-red-100 text-red-600 leading-6 text-[10px] font-semibold">LAG</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-red-100 text-red-600 leading-6 text-[10px] font-semibold">LAG</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-red-100 text-red-600 leading-6 text-[10px] font-semibold">LAG</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-red-100 text-red-600 leading-6 text-[10px] font-semibold">LAG</span></td>
+              <td class="py-2 text-center border-r-2 border-teal-200"><span class="inline-block w-8 h-6 rounded bg-red-200 text-red-800 leading-6 text-[10px] font-bold ring-2 ring-red-400">LAG</span></td>
+              <td class="py-2 pl-3"><span class="text-red-500 font-semibold">&#8595; Persistent weakness</span></td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-4 font-medium text-slate-700">Real Estate</td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-emerald-100 text-emerald-700 leading-6 text-[10px] font-semibold">LED</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-amber-100 text-amber-700 leading-6 text-[10px] font-semibold">WKN</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-amber-100 text-amber-700 leading-6 text-[10px] font-semibold">WKN</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-red-100 text-red-600 leading-6 text-[10px] font-semibold">LAG</span></td>
+              <td class="py-2 text-center"><span class="inline-block w-8 h-6 rounded bg-red-100 text-red-600 leading-6 text-[10px] font-semibold">LAG</span></td>
+              <td class="py-2 text-center border-r-2 border-teal-200"><span class="inline-block w-8 h-6 rounded bg-red-200 text-red-800 leading-6 text-[10px] font-bold ring-2 ring-red-400">LAG</span></td>
+              <td class="py-2 pl-3"><span class="text-red-500 font-semibold">&#8595; Full cycle down</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Legend -->
+      <div class="flex gap-4 mt-4 pt-3 border-t border-slate-100">
+        <div class="flex items-center gap-1.5"><span class="inline-block w-7 h-4 rounded bg-emerald-100 text-[8px] text-emerald-700 text-center leading-4 font-bold">LED</span><span class="text-[10px] text-slate-500">Leading</span></div>
+        <div class="flex items-center gap-1.5"><span class="inline-block w-7 h-4 rounded bg-sky-100 text-[8px] text-sky-700 text-center leading-4 font-bold">IMP</span><span class="text-[10px] text-slate-500">Improving</span></div>
+        <div class="flex items-center gap-1.5"><span class="inline-block w-7 h-4 rounded bg-amber-100 text-[8px] text-amber-700 text-center leading-4 font-bold">WKN</span><span class="text-[10px] text-slate-500">Weakening</span></div>
+        <div class="flex items-center gap-1.5"><span class="inline-block w-7 h-4 rounded bg-red-100 text-[8px] text-red-700 text-center leading-4 font-bold">LAG</span><span class="text-[10px] text-slate-500">Lagging</span></div>
+        <span class="text-[10px] text-slate-400 ml-auto">Ideal rotation: LAG &rarr; IMP &rarr; LED &rarr; WKN (clockwise)</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== SECTION 4: Sector-Fund Exposure Matrix ==================== -->
+  <section class="animate-in" style="animation-delay: 0.3s">
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="section-title">Fund Exposure Matrix</p>
+          <p class="text-[11px] text-slate-400 mt-0.5">Which popular funds are most exposed to each sector</p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-[11px]">
+          <thead>
+            <tr class="text-[9px] text-slate-400 uppercase tracking-wider">
+              <th class="text-left pb-3 pr-4 font-medium">Fund</th>
+              <th class="text-center pb-3 font-medium px-1.5">Tech</th>
+              <th class="text-center pb-3 font-medium px-1.5">Fin</th>
+              <th class="text-center pb-3 font-medium px-1.5">Health</th>
+              <th class="text-center pb-3 font-medium px-1.5">Energy</th>
+              <th class="text-center pb-3 font-medium px-1.5">Auto</th>
+              <th class="text-center pb-3 font-medium px-1.5">FMCG</th>
+              <th class="text-center pb-3 font-medium px-1.5">Metal</th>
+              <th class="text-center pb-3 font-medium px-1.5">Realty</th>
+              <th class="text-center pb-3 font-medium px-1.5">Infra</th>
+              <th class="text-right pb-3 font-medium">1Y Ret</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50">
+            <tr class="fund-row cursor-pointer">
+              <td class="py-2.5 pr-4 font-medium text-slate-700">Parag Parikh Flexi Cap</td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.25); color: #0d9488">28%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.35); color: #0d9488">32%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.1); color: #64748b">8%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.05); color: #94a3b8">3%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.15); color: #64748b">12%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.1); color: #64748b">9%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.02); color: #cbd5e1">1%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.02); color: #cbd5e1">0%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.08); color: #94a3b8">5%</span></td>
+              <td class="py-2.5 text-right font-bold text-emerald-600 tabular-nums">+18.4%</td>
+            </tr>
+            <tr class="fund-row cursor-pointer">
+              <td class="py-2.5 pr-4 font-medium text-slate-700">HDFC Flexi Cap Fund</td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.15); color: #64748b">14%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.45); color: #0d9488">38%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.08); color: #94a3b8">5%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.15); color: #64748b">11%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.12); color: #64748b">10%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.06); color: #94a3b8">4%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.1); color: #64748b">7%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.04); color: #cbd5e1">2%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.1); color: #64748b">7%</span></td>
+              <td class="py-2.5 text-right font-bold text-emerald-600 tabular-nums">+15.2%</td>
+            </tr>
+            <tr class="fund-row cursor-pointer">
+              <td class="py-2.5 pr-4 font-medium text-slate-700">ICICI Pru Bluechip</td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.2); color: #0d9488">18%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.4); color: #0d9488">35%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.08); color: #94a3b8">6%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.12); color: #64748b">9%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.15); color: #64748b">13%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.1); color: #64748b">8%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.05); color: #94a3b8">3%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.02); color: #cbd5e1">1%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.06); color: #94a3b8">4%</span></td>
+              <td class="py-2.5 text-right font-bold text-emerald-600 tabular-nums">+14.1%</td>
+            </tr>
+            <tr class="fund-row cursor-pointer">
+              <td class="py-2.5 pr-4 font-medium text-slate-700">SBI Small Cap Fund</td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.1); color: #64748b">8%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.2); color: #0d9488">16%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.15); color: #64748b">12%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.04); color: #cbd5e1">2%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.2); color: #0d9488">18%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.12); color: #64748b">10%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.08); color: #94a3b8">5%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.12); color: #64748b">9%</span></td>
+              <td class="py-2.5 text-center"><span class="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6" style="background: rgba(13,148,136,0.2); color: #0d9488">17%</span></td>
+              <td class="py-2.5 text-right font-bold text-emerald-600 tabular-nums">+26.8%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Column indicators (rotation quadrant) -->
+      <div class="flex gap-0 mt-2 pt-2 border-t border-slate-100">
+        <div class="w-32 mr-4"></div>
+        <div class="flex-1 text-center"><span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span></div>
+        <div class="flex-1 text-center"><span class="inline-block w-2 h-2 rounded-full bg-sky-500"></span></div>
+        <div class="flex-1 text-center"><span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span></div>
+        <div class="flex-1 text-center"><span class="inline-block w-2 h-2 rounded-full bg-amber-500"></span></div>
+        <div class="flex-1 text-center"><span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span></div>
+        <div class="flex-1 text-center"><span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span></div>
+        <div class="flex-1 text-center"><span class="inline-block w-2 h-2 rounded-full bg-red-400"></span></div>
+        <div class="flex-1 text-center"><span class="inline-block w-2 h-2 rounded-full bg-red-400"></span></div>
+        <div class="flex-1 text-center"><span class="inline-block w-2 h-2 rounded-full bg-amber-500"></span></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Footer -->
+<footer class="max-w-7xl mx-auto px-6 py-6 text-center">
+  <p class="text-[10px] text-slate-400">MF Pulse &mdash; Jhaveri Securities Limited &mdash; Sectors & Rotation Mockup</p>
+</footer>
+
+<script>
+// Fund quadrant chart instance (created on first sector click)
+let fundQuadrantChart = null;
+
+// View toggle: Compass ↔ Fund Quadrant
+function showCompassView() {
+  document.getElementById('compassView').classList.remove('hidden');
+  document.getElementById('fundQuadrantView').classList.add('hidden');
+  document.getElementById('backToCompass').classList.add('hidden');
+  document.getElementById('backToCompass').classList.remove('flex');
+  document.getElementById('sectorBadge').classList.add('hidden');
+  document.getElementById('sectorBadge').classList.remove('flex');
+  document.getElementById('chartTitle').textContent = 'Sector Rotation Compass';
+  document.getElementById('chartSubtitle').textContent = 'Click any sector bubble to drill into fund-level view';
+}
+
+function showFundQuadrant(sectorName) {
+  // Hide compass, show fund chart
+  document.getElementById('compassView').classList.add('hidden');
+  document.getElementById('fundQuadrantView').classList.remove('hidden');
+  document.getElementById('backToCompass').classList.remove('hidden');
+  document.getElementById('backToCompass').classList.add('flex');
+  document.getElementById('sectorBadge').classList.remove('hidden');
+  document.getElementById('sectorBadge').classList.add('flex');
+  document.getElementById('chartTitle').textContent = sectorName + ' — Fund Explorer';
+  document.getElementById('chartSubtitle').textContent = 'Risk vs Return · Bubble size = sector exposure % · Click any fund for 360 view';
+  document.getElementById('sectorBadgeName').textContent = sectorName;
+
+  // Create / update the fund quadrant chart
+  createFundQuadrantChart(sectorName);
+
+  // Create RS trend mini sparkline
+  createRSTrendMini();
+}
+
+function createRSTrendMini() {
+  const existing = Chart.getChart('rsTrendMini');
+  if (existing) existing.destroy();
+
+  new Chart(document.getElementById('rsTrendMini').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: ['Oct','Nov','Dec','Jan','Feb','Mar'],
+      datasets: [{
+        data: [8.2, 10.5, 13.1, 15.0, 16.8, 18.4],
+        borderColor: '#059669',
+        backgroundColor: 'rgba(5,150,105,0.06)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 2,
+        pointBackgroundColor: '#059669',
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: { display: false, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function createFundQuadrantChart(sectorName) {
+  if (fundQuadrantChart) fundQuadrantChart.destroy();
+
+  // Sample fund data — in real app this comes from API based on sector exposure
+  const funds = [
+    { x: 11.2, y: 18.4, r: 12, name: 'Parag Parikh Flexi Cap', exposure: 28, category: 'Flexi Cap' },
+    { x: 13.1, y: 26.1, r: 18, name: 'SBI Technology Opp', exposure: 78, category: 'Sectoral' },
+    { x: 13.8, y: 15.2, r: 10, name: 'HDFC Flexi Cap Fund', exposure: 22, category: 'Flexi Cap' },
+    { x: 14.2, y: 32.4, r: 22, name: 'ICICI Pru Technology', exposure: 89, category: 'Sectoral' },
+    { x: 15.8, y: 28.9, r: 20, name: 'Tata Digital India', exposure: 85, category: 'Sectoral' },
+    { x: 16.5, y: 21.3, r: 8,  name: 'Kotak Flexi Cap', exposure: 18, category: 'Flexi Cap' },
+    { x: 17.2, y: 19.8, r: 7,  name: 'Nippon Flexi Cap', exposure: 15, category: 'Flexi Cap' },
+    { x: 18.5, y: 24.5, r: 13, name: 'Quant Active Fund', exposure: 34, category: 'Multi Cap' },
+    { x: 19.8, y: 30.2, r: 9,  name: 'Quant Small Cap', exposure: 18, category: 'Small Cap' },
+    { x: 20.1, y: 12.8, r: 6,  name: 'UTI Flexi Cap', exposure: 12, category: 'Flexi Cap' },
+    { x: 21.5, y: 16.5, r: 7,  name: 'Axis Flexi Cap', exposure: 14, category: 'Flexi Cap' },
+    { x: 22.8, y: 22.1, r: 8,  name: 'DSP Flexi Cap', exposure: 19, category: 'Flexi Cap' },
+    { x: 15.2, y: 8.5, r: 5,   name: 'Franklin India Tech', exposure: 45, category: 'Sectoral' },
+    { x: 24.1, y: 27.8, r: 6,  name: 'Motilal Mid Cap', exposure: 16, category: 'Mid Cap' },
+  ];
+
+  // Quadrant midpoints
+  const midX = 17;  // risk midpoint (stddev)
+  const midY = 20;  // return midpoint
+
+  const ctx = document.getElementById('fundQuadrantChart').getContext('2d');
+  fundQuadrantChart = new Chart(ctx, {
+    type: 'bubble',
+    data: {
+      datasets: [{
+        label: 'Funds',
+        data: funds,
+        backgroundColor: function(context) {
+          const d = context.raw;
+          if (!d) return 'rgba(100,100,100,0.3)';
+          const opacity = Math.min(0.85, 0.25 + (d.r / 25));
+          // Color by quadrant
+          if (d.x <= midX && d.y >= midY) return `rgba(5, 150, 105, ${opacity})`;    // top-left: green (best)
+          if (d.x > midX && d.y >= midY) return `rgba(245, 158, 11, ${opacity})`;    // top-right: amber
+          if (d.x <= midX && d.y < midY) return `rgba(14, 165, 233, ${opacity})`;    // bottom-left: blue
+          return `rgba(239, 68, 68, ${opacity})`;                                      // bottom-right: red (worst)
+        },
+        borderColor: function(context) {
+          const d = context.raw;
+          if (!d) return '#999';
+          if (d.x <= midX && d.y >= midY) return '#059669';
+          if (d.x > midX && d.y >= midY) return '#d97706';
+          if (d.x <= midX && d.y < midY) return '#0284c7';
+          return '#dc2626';
+        },
+        borderWidth: 2,
+        hoverBorderWidth: 3,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 20, right: 20, bottom: 10, left: 10 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(255,255,255,0.97)',
+          titleColor: '#1e293b',
+          bodyColor: '#475569',
+          borderColor: '#e2e8f0',
+          borderWidth: 1,
+          padding: 12,
+          cornerRadius: 10,
+          titleFont: { size: 12, weight: 'bold', family: 'Inter' },
+          bodyFont: { size: 11, family: 'Inter' },
+          callbacks: {
+            title: function(items) { return items[0].raw.name; },
+            afterTitle: function(items) { return items[0].raw.category; },
+            label: function(item) {
+              return [
+                '',
+                `1Y Return:   +${item.raw.y}%`,
+                `Std Dev:      ${item.raw.x}%`,
+                `Sector Exp:  ${item.raw.exposure}%`,
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Risk (Std Dev %) — Lower is Better  \u2192', font: { size: 11, weight: '600', family: 'Inter' }, color: '#64748b' },
+          grid: { color: function(context) { return context.tick.value === midX ? '#94a3b8' : '#f1f5f9'; }, lineWidth: function(context) { return context.tick.value === midX ? 1.5 : 0.5; } },
+          ticks: { font: { size: 10, family: 'Inter' }, color: '#94a3b8', callback: v => v + '%' },
+          min: 8, max: 28,
+        },
+        y: {
+          title: { display: true, text: '\u2191  1Y Return %', font: { size: 11, weight: '600', family: 'Inter' }, color: '#64748b' },
+          grid: { color: function(context) { return context.tick.value === midY ? '#94a3b8' : '#f1f5f9'; }, lineWidth: function(context) { return context.tick.value === midY ? 1.5 : 0.5; } },
+          ticks: { font: { size: 10, family: 'Inter' }, color: '#94a3b8', callback: v => v + '%' },
+          min: 5, max: 38,
+        }
+      },
+      onClick: function(evt, elements) {
+        if (elements.length > 0) {
+          window.location.href = './fund360.html';
+        }
+      }
+    }
+  });
+}
+
+// Sector panel switching — now triggers the full quadrant view
+function showSectorPanel(sectorName) {
+  // Remove active from all bubbles
+  document.querySelectorAll('.sector-bubble').forEach(b => b.classList.remove('active'));
+  // Show the fund quadrant view
+  showFundQuadrant(sectorName);
+}
+</script>
+
+</body>
+</html>

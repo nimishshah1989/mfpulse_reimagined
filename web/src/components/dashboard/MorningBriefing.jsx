@@ -1,122 +1,111 @@
 import { useMemo } from 'react';
 import SkeletonLoader from '../shared/SkeletonLoader';
+import { formatPct, formatCount } from '../../lib/format';
+import {
+  deriveBreadthIndicators,
+  SentimentGauge,
+  BreadthBar,
+  UniverseHeroStats,
+} from './BriefingWidgets';
 
 const REGIME_CONFIG = {
-  CORRECTION: {
-    color: '#d97706',
-    bg: 'from-amber-900/20 to-slate-900',
-    badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-    dot: 'bg-amber-400',
-    text: 'Markets in correction mode',
+  'RISK-ON': {
+    arrow: '\u2191',
+    badge: 'bg-emerald-500/15 border-emerald-500/30',
+    text: 'text-emerald-400',
+    glow: 'regime-glow',
+    label: 'Risk-On',
   },
   BULL: {
-    color: '#059669',
-    bg: 'from-emerald-900/20 to-slate-900',
-    badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-    dot: 'bg-emerald-400',
-    text: 'Bull market in progress',
+    arrow: '\u2191',
+    badge: 'bg-emerald-500/15 border-emerald-500/30',
+    text: 'text-emerald-400',
+    glow: 'regime-glow',
+    label: 'Bull',
+  },
+  CORRECTION: {
+    arrow: '\u2193',
+    badge: 'bg-amber-500/15 border-amber-500/30',
+    text: 'text-amber-400',
+    glow: '',
+    label: 'Correction',
   },
   BEAR: {
-    color: '#dc2626',
-    bg: 'from-red-900/20 to-slate-900',
-    badge: 'bg-red-500/20 text-red-300 border-red-500/30',
-    dot: 'bg-red-400',
-    text: 'Bear market conditions',
+    arrow: '\u2193',
+    badge: 'bg-red-500/15 border-red-500/30',
+    text: 'text-red-400',
+    glow: '',
+    label: 'Bear',
   },
   NEUTRAL: {
-    color: '#3b82f6',
-    bg: 'from-blue-900/20 to-slate-900',
-    badge: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-    dot: 'bg-blue-400',
-    text: 'Neutral market conditions',
+    arrow: '\u2194',
+    badge: 'bg-blue-500/15 border-blue-500/30',
+    text: 'text-blue-400',
+    glow: '',
+    label: 'Neutral',
+  },
+  'RISK-OFF': {
+    arrow: '\u2193',
+    badge: 'bg-red-500/15 border-red-500/30',
+    text: 'text-red-400',
+    glow: '',
+    label: 'Risk-Off',
   },
 };
 
-function deriveBreadthPct(breadth) {
-  if (!breadth) return null;
-  if (breadth.pct_above_ema200 != null) return breadth.pct_above_ema200;
-  if (breadth.pct_above_21ema != null) return breadth.pct_above_21ema;
-  const indicators = breadth.indicators || breadth;
-  for (const key of ['ema200', 'ema_200', 'ema21', 'ema50']) {
-    const ind = indicators[key];
-    if (ind?.current?.pct != null) return ind.current.pct;
-    if (ind?.current) {
-      const { count, total } = ind.current;
-      if (count != null && total != null && total > 0) return (count / total) * 100;
-    }
-  }
-  const rsi = indicators.rsi_daily_40;
-  if (rsi?.current) {
-    const { count, total } = rsi.current;
-    if (count != null && total != null && total > 0) return (count / total) * 100;
-  }
-  return null;
-}
-
-function deriveSentimentZone(score) {
-  if (score == null) return null;
-  if (score < 20) return 'Extreme Fear';
-  if (score < 40) return 'Fear';
-  if (score < 60) return 'Neutral';
-  if (score < 80) return 'Greed';
-  return 'Extreme Greed';
-}
-
-function sentimentZoneColor(zone) {
-  if (!zone) return 'text-slate-400';
-  if (zone.includes('Fear')) return 'text-red-400';
-  if (zone.includes('Greed')) return 'text-amber-400';
-  return 'text-blue-400';
-}
-
-function StatPill({ label, value, colorClass }) {
-  return (
-    <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
-      <span className="text-[11px] text-slate-400">{label}</span>
-      <span className={`text-xs font-bold font-mono tabular-nums ${colorClass || 'text-white'}`}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-export default function MorningBriefing({ regime, breadth, sentiment, nifty, loading }) {
+export default function MorningBriefing({ regime, breadth, sentiment, nifty, universe, loading }) {
   if (loading) {
-    return <SkeletonLoader className="h-48 rounded-2xl" />;
+    return <SkeletonLoader className="h-64 rounded-2xl" />;
   }
 
-  // No data at all — MarketPulse fully offline
+  // No data at all -- MarketPulse fully offline
   if (!regime && !nifty && !sentiment && !breadth) {
     return (
-      <div className="rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 p-6 shadow-lg">
-        <div className="relative z-10">
-          <p className="text-[11px] font-medium text-slate-400 tracking-widest uppercase mb-1">
-            Pulse Command Center
+      <section className="gradient-hero rounded-2xl overflow-hidden animate-in">
+        <div className="px-8 pt-7 pb-6">
+          <p className="text-slate-400 text-xs font-medium tracking-wide uppercase">
+            Morning Briefing
           </p>
-          <p className="text-sm text-slate-400 mt-2">
+          <p className="text-sm text-slate-400 mt-3">
             MarketPulse is offline. Market signals will appear here when the service is available.
           </p>
         </div>
-      </div>
+      </section>
     );
   }
 
   const marketRegime = regime?.market_regime || regime?.regime || 'NEUTRAL';
-  const config = REGIME_CONFIG[marketRegime] || REGIME_CONFIG.NEUTRAL;
+  const regimeKey = marketRegime.toUpperCase().replace(/\s+/g, '-');
+  const config = REGIME_CONFIG[regimeKey] || REGIME_CONFIG.NEUTRAL;
+
+  const regimeSince = regime?.regime_since || regime?.since;
+  const regimeSinceFormatted = regimeSince
+    ? new Date(regimeSince).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    : null;
+
   const rawLeading = regime?.leading_sectors || [];
-  // leading_sectors can be array of strings or objects with .sector field
-  const leadingSectors = rawLeading.map((s) => (typeof s === 'string' ? s : s.sector || s.name || ''));
+  const leadingSectors = rawLeading.map((s) =>
+    typeof s === 'string' ? s : s.sector || s.name || ''
+  );
 
-  const breadthPct = useMemo(() => deriveBreadthPct(breadth), [breadth]);
+  const breadthData = useMemo(() => deriveBreadthIndicators(breadth), [breadth]);
   const sentimentScore = sentiment?.composite_score ?? sentiment?.score;
-  const sentimentZone = sentiment?.zone || deriveSentimentZone(sentimentScore);
 
-  // Unwrap nested {index: {current_price, change_pct}, returns: {...}} structure
+  // Nifty data
   const niftyIndex = nifty?.index ?? nifty;
   const niftyPrice = niftyIndex?.current_price;
   const niftyChangePct = niftyIndex?.change_pct;
+  const niftyReturns = nifty?.returns ?? niftyIndex?.returns;
+  const nifty1m = niftyReturns?.return_1m ?? niftyReturns?.['1m'] ?? niftyReturns?.['1M'];
+  const nifty3m = niftyReturns?.return_3m ?? niftyReturns?.['3m'] ?? niftyReturns?.['3M'];
+  const nifty1y = niftyReturns?.return_1y ?? niftyReturns?.['1y'] ?? niftyReturns?.['1Y'];
 
   const today = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -128,74 +117,148 @@ export default function MorningBriefing({ regime, breadth, sentiment, nifty, loa
   };
 
   return (
-    <div className={`rounded-2xl bg-gradient-to-br ${config.bg} bg-slate-900 p-6 shadow-lg overflow-hidden relative`}>
-      {/* Subtle pattern overlay */}
-      <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_50%_50%,white_1px,transparent_1px)] bg-[length:20px_20px]" />
-
-      <div className="relative z-10">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
+    <section className="gradient-hero rounded-2xl overflow-hidden animate-in">
+      <div className="px-8 pt-7 pb-6">
+        {/* Top row: Date + Regime badge */}
+        <div className="flex items-center justify-between mb-5">
           <div>
-            <p className="text-[11px] font-medium text-slate-400 tracking-widest uppercase mb-1">
-              Pulse Command Center
+            <p className="text-slate-400 text-xs font-medium tracking-wide uppercase">
+              Morning Briefing
             </p>
-            <p className="text-xs text-slate-500">{today}</p>
+            <p className="text-white/50 text-[11px] mt-0.5">{today}</p>
           </div>
-          <div className="text-right">
-            {niftyPrice != null && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Nifty 50</span>
-                <span className="text-lg font-bold font-mono tabular-nums text-white">
-                  {formatNiftyPrice(niftyPrice)}
-                </span>
-                {niftyChangePct != null && (
-                  <span className={`text-sm font-bold font-mono tabular-nums ${niftyChangePct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {niftyChangePct >= 0 ? '\u25B2' : '\u25BC'} {Math.abs(niftyChangePct).toFixed(2)}%
-                  </span>
-                )}
+          <div className="flex items-center gap-3">
+            <div
+              className={`flex items-center gap-2 px-4 py-2 rounded-full border ${config.badge} ${config.glow}`}
+            >
+              <span className={`text-base ${config.text}`}>{config.arrow}</span>
+              <span className={`text-sm font-semibold ${config.text}`}>{config.label}</span>
+            </div>
+            {regimeSinceFormatted && (
+              <div className="px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Regime Since</p>
+                <p className="text-white text-xs font-semibold tabular-nums">
+                  {regimeSinceFormatted}
+                </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Regime badge + narrative */}
-        <div className="flex items-center gap-3 mb-3">
-          <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold border ${config.badge}`}>
-            <span className={`w-2.5 h-2.5 rounded-full ${config.dot} animate-pulse`} />
-            {marketRegime}
-          </span>
-        </div>
-        <p className="text-sm text-slate-300 mb-5">{config.text}</p>
+        {/* 4-stat hero grid */}
+        <div className="grid grid-cols-4 gap-6 stat-grid">
+          {/* Nifty 50 */}
+          <div className="pr-6">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Nifty 50</p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-white tabular-nums">
+                {formatNiftyPrice(niftyPrice)}
+              </span>
+              {niftyChangePct != null && (
+                <span
+                  className={`text-sm font-semibold tabular-nums ${
+                    niftyChangePct >= 0 ? 'text-emerald-400' : 'text-red-400'
+                  }`}
+                >
+                  {niftyChangePct >= 0 ? '+' : ''}
+                  {Number(niftyChangePct).toFixed(2)}%
+                </span>
+              )}
+            </div>
+            <div className="mt-2 flex gap-3">
+              {[
+                { label: '1M', val: nifty1m },
+                { label: '3M', val: nifty3m },
+                { label: '1Y', val: nifty1y },
+              ].map(({ label, val }) => (
+                <div key={label}>
+                  <p className="text-[10px] text-slate-500">{label}</p>
+                  <p
+                    className={`text-xs font-medium tabular-nums ${
+                      val != null
+                        ? val >= 0
+                          ? 'text-emerald-400'
+                          : 'text-red-400'
+                        : 'text-slate-500'
+                    }`}
+                  >
+                    {val != null ? formatPct(val) : '--'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
 
-        {/* Stat pills */}
-        <div className="flex flex-wrap gap-2">
-          <StatPill
-            label="Breadth"
-            value={breadthPct != null ? `${Math.round(breadthPct)}%` : '--'}
-            colorClass={
-              breadthPct != null
-                ? breadthPct > 55
-                  ? 'text-emerald-400'
-                  : breadthPct < 40
-                    ? 'text-red-400'
-                    : 'text-amber-400'
-                : 'text-slate-500'
-            }
-          />
-          <StatPill
-            label="Sentiment"
-            value={sentimentZone || '--'}
-            colorClass={sentimentZoneColor(sentimentZone)}
-          />
-          {leadingSectors.length > 0 && (
-            <StatPill
-              label="Leading"
-              value={leadingSectors.slice(0, 3).join(', ')}
-              colorClass="text-teal-400"
-            />
-          )}
+          {/* Sentiment Gauge */}
+          <div className="pr-6">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">
+              Market Sentiment
+            </p>
+            <SentimentGauge score={sentimentScore} />
+          </div>
+
+          {/* Market Breadth */}
+          <div className="pr-6">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">
+              Market Breadth
+            </p>
+            <div className="space-y-2 mt-1">
+              <BreadthBar label="Above 200 EMA" pct={breadthData.ema200} color="bg-emerald-500" />
+              <BreadthBar label="Above 50 EMA" pct={breadthData.ema50} color="bg-sky-500" />
+              {breadthData.adRatio != null && (
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-slate-400">A/D Ratio</span>
+                  <span className="text-white font-semibold tabular-nums">
+                    {Number(breadthData.adRatio).toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Universe Coverage */}
+          <UniverseHeroStats universe={universe} />
+        </div>
+
+        {/* One-liner insight */}
+        <div className="mt-5 pt-4 border-t border-white/10">
+          <p className="text-slate-300 text-sm leading-relaxed">
+            <span className={`font-semibold ${config.text}`}>{config.label} regime</span>
+            {breadthData.ema200 != null ? (
+              <>
+                {' '}
+                with{' '}
+                {breadthData.ema200 > 55
+                  ? 'improving'
+                  : breadthData.ema200 < 40
+                    ? 'narrow'
+                    : 'moderate'}{' '}
+                breadth. {Math.round(breadthData.ema200)}% of stocks above 200 EMA
+                {breadthData.ema200 > 55
+                  ? ' \u2014 SIP accumulation zone.'
+                  : breadthData.ema200 < 40
+                    ? ' \u2014 proceed with caution.'
+                    : '.'}
+              </>
+            ) : (
+              <>. Breadth data unavailable.</>
+            )}
+            {leadingSectors.length > 0 && (
+              <>
+                {' '}
+                <span className="text-sky-400">{leadingSectors[0]}</span>
+                {leadingSectors.length > 1 && (
+                  <>
+                    {' '}
+                    and <span className="text-sky-400">{leadingSectors[1]}</span>
+                  </>
+                )}
+                {' '}leading sector rotation.
+              </>
+            )}
+          </p>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

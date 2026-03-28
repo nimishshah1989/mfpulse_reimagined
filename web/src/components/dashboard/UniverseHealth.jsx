@@ -1,39 +1,42 @@
 import { useMemo } from 'react';
-import Card from '../shared/Card';
 import SkeletonLoader from '../shared/SkeletonLoader';
+import SectionTitle from '../shared/SectionTitle';
 import { LENS_OPTIONS, LENS_CLASS_KEYS } from '../../lib/lens';
 import { formatCount } from '../../lib/format';
 
-const TIER_COLORS = {
-  // Return lens
-  LEADER: { bg: '#059669', label: 'Leader' },
-  STRONG: { bg: '#0d9488', label: 'Strong' },
-  AVERAGE: { bg: '#f59e0b', label: 'Average' },
-  WEAK: { bg: '#dc2626', label: 'Weak' },
-  // Risk lens
-  LOW_RISK: { bg: '#059669', label: 'Low Risk' },
-  MODERATE: { bg: '#0d9488', label: 'Moderate' },
-  ELEVATED: { bg: '#f59e0b', label: 'Elevated' },
-  HIGH_RISK: { bg: '#dc2626', label: 'High Risk' },
-  // Consistency lens
-  ROCK_SOLID: { bg: '#059669', label: 'Rock Solid' },
-  CONSISTENT: { bg: '#0d9488', label: 'Consistent' },
-  MIXED: { bg: '#f59e0b', label: 'Mixed' },
-  ERRATIC: { bg: '#dc2626', label: 'Erratic' },
-  // Alpha lens
-  ALPHA_MACHINE: { bg: '#059669', label: 'Alpha Machine' },
-  POSITIVE: { bg: '#0d9488', label: 'Positive' },
-  NEUTRAL: { bg: '#f59e0b', label: 'Neutral' },
-  NEGATIVE: { bg: '#dc2626', label: 'Negative' },
-  // Efficiency lens
-  LEAN: { bg: '#059669', label: 'Lean' },
-  FAIR: { bg: '#0d9488', label: 'Fair' },
-  EXPENSIVE: { bg: '#f59e0b', label: 'Expensive' },
-  BLOATED: { bg: '#dc2626', label: 'Bloated' },
+// Tier order per lens -- best tier first
+const TIER_META = {
+  // Return
+  LEADER: { bg: 'bg-emerald-500', color: '#059669', label: 'Leader', order: 0 },
+  STRONG: { bg: 'bg-teal-400', color: '#2dd4bf', label: 'Strong', order: 1 },
+  AVERAGE: { bg: 'bg-amber-400', color: '#fbbf24', label: 'Average', order: 2 },
+  WEAK: { bg: 'bg-red-400', color: '#f87171', label: 'Weak', order: 3 },
+  // Risk
+  LOW_RISK: { bg: 'bg-emerald-500', color: '#059669', label: 'Low Risk', order: 0 },
+  MODERATE: { bg: 'bg-teal-400', color: '#2dd4bf', label: 'Moderate', order: 1 },
+  ELEVATED: { bg: 'bg-amber-400', color: '#fbbf24', label: 'Elevated', order: 2 },
+  HIGH_RISK: { bg: 'bg-red-400', color: '#f87171', label: 'High Risk', order: 3 },
+  // Consistency
+  ROCK_SOLID: { bg: 'bg-emerald-500', color: '#059669', label: 'Rock Solid', order: 0 },
+  CONSISTENT: { bg: 'bg-teal-400', color: '#2dd4bf', label: 'Consistent', order: 1 },
+  MIXED: { bg: 'bg-amber-400', color: '#fbbf24', label: 'Mixed', order: 2 },
+  ERRATIC: { bg: 'bg-red-400', color: '#f87171', label: 'Erratic', order: 3 },
+  // Alpha
+  ALPHA_MACHINE: { bg: 'bg-emerald-500', color: '#059669', label: 'Alpha Machine', order: 0 },
+  POSITIVE: { bg: 'bg-teal-400', color: '#2dd4bf', label: 'Positive', order: 1 },
+  NEUTRAL: { bg: 'bg-amber-400', color: '#fbbf24', label: 'Neutral', order: 2 },
+  NEGATIVE: { bg: 'bg-red-400', color: '#f87171', label: 'Negative', order: 3 },
+  // Efficiency
+  LEAN: { bg: 'bg-emerald-500', color: '#059669', label: 'Lean', order: 0 },
+  FAIR: { bg: 'bg-teal-400', color: '#2dd4bf', label: 'Fair', order: 1 },
+  EXPENSIVE: { bg: 'bg-amber-400', color: '#fbbf24', label: 'Expensive', order: 2 },
+  BLOATED: { bg: 'bg-red-400', color: '#f87171', label: 'Bloated', order: 3 },
+  // Resilience
+  FORTRESS: { bg: 'bg-emerald-500', color: '#059669', label: 'Fortress', order: 0 },
+  STURDY: { bg: 'bg-teal-400', color: '#2dd4bf', label: 'Sturdy', order: 1 },
+  FRAGILE: { bg: 'bg-amber-400', color: '#fbbf24', label: 'Fragile', order: 2 },
+  VULNERABLE: { bg: 'bg-red-400', color: '#f87171', label: 'Vulnerable', order: 3 },
 };
-
-// Lenses to display (skip resilience since all null)
-const DISPLAY_LENSES = LENS_OPTIONS.filter((l) => l.key !== 'resilience_score');
 
 function computeDistribution(universe, classKey) {
   if (!universe || universe.length === 0) return [];
@@ -51,64 +54,35 @@ function computeDistribution(universe, classKey) {
       tier,
       count,
       pct: total > 0 ? (count / total) * 100 : 0,
-      ...TIER_COLORS[tier],
+      ...(TIER_META[tier] || { bg: 'bg-slate-300', color: '#94a3b8', label: tier, order: 99 }),
     }))
-    .sort((a, b) => {
-      // Sort by tier quality: best first
-      const order = Object.keys(TIER_COLORS);
-      return order.indexOf(a.tier) - order.indexOf(b.tier);
-    });
+    .sort((a, b) => a.order - b.order);
 }
 
-function StackedBar({ segments }) {
-  if (!segments || segments.length === 0) {
-    return (
-      <div className="h-4 bg-slate-100 rounded-full" />
-    );
-  }
+function StackedBarRow({ lensLabel, segments }) {
+  // Show top 2 tiers in the right-side summary
+  const topTwo = segments.filter((s) => s.order <= 1);
 
   return (
-    <div className="h-4 bg-slate-100 rounded-full overflow-hidden flex">
-      {segments.map((seg) => (
-        <div
-          key={seg.tier}
-          className="h-full transition-all relative group"
-          style={{ width: `${seg.pct}%`, backgroundColor: seg.bg }}
-          title={`${seg.label || seg.tier}: ${seg.count} funds (${seg.pct.toFixed(1)}%)`}
-        />
-      ))}
-    </div>
-  );
-}
-
-function LensRow({ lens, universe }) {
-  const classKey = LENS_CLASS_KEYS[lens.key];
-  const segments = useMemo(
-    () => computeDistribution(universe, classKey),
-    [universe, classKey]
-  );
-  const totalScored = segments.reduce((acc, s) => acc + s.count, 0);
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-slate-700">{lens.label}</span>
-        <span className="text-[10px] text-slate-400 font-mono tabular-nums">
-          {formatCount(totalScored)} scored
-        </span>
-      </div>
-      <StackedBar segments={segments} />
-      <div className="flex gap-3 flex-wrap">
-        {segments.map((seg) => (
-          <div key={seg.tier} className="flex items-center gap-1">
-            <div
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: seg.bg }}
-            />
-            <span className="text-[10px] text-slate-500">
-              {seg.label || seg.tier}: {seg.count}
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[11px] font-medium text-slate-600 w-20">{lensLabel}</span>
+        <div className="flex gap-3 text-[10px] text-slate-400">
+          {topTwo.map((s) => (
+            <span key={s.tier} className="tabular-nums">
+              {formatCount(s.count)} {s.label}
             </span>
-          </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex h-5 rounded-md overflow-hidden">
+        {segments.map((seg) => (
+          <div
+            key={seg.tier}
+            className={`${seg.bg} health-bar`}
+            style={{ width: `${seg.pct}%` }}
+            title={`${seg.label}: ${seg.count} funds (${seg.pct.toFixed(1)}%)`}
+          />
         ))}
       </div>
     </div>
@@ -116,39 +90,71 @@ function LensRow({ lens, universe }) {
 }
 
 export default function UniverseHealth({ universe, onNavigate }) {
+  const distributions = useMemo(() => {
+    if (!universe) return {};
+    const result = {};
+    LENS_OPTIONS.forEach((lens) => {
+      const classKey = LENS_CLASS_KEYS[lens.key];
+      if (classKey) {
+        result[lens.key] = computeDistribution(universe, classKey);
+      }
+    });
+    return result;
+  }, [universe]);
+
   if (!universe) {
-    return <SkeletonLoader className="h-64 rounded-xl" />;
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <SkeletonLoader className="h-72 rounded-lg" />
+      </div>
+    );
   }
 
-  const totalFunds = universe.length;
-  const scoredFunds = universe.filter((f) => f.return_score != null).length;
-
   return (
-    <Card>
+    <div className="bg-white rounded-xl border border-slate-200 p-5">
       <div className="flex items-center justify-between mb-4">
-        <div>
-          <p className="text-xs text-slate-500">
-            <span className="font-bold text-slate-700 font-mono tabular-nums">{formatCount(scoredFunds)}</span>
-            {' '}of {formatCount(totalFunds)} funds scored
-          </p>
-        </div>
-      </div>
-
-      <div className="space-y-5">
-        {DISPLAY_LENSES.map((lens) => (
-          <LensRow key={lens.key} lens={lens} universe={universe} />
-        ))}
-      </div>
-
-      <div className="mt-4 pt-3 border-t border-slate-100 text-center">
+        <p className="section-title">Universe Health &mdash; Lens Distribution</p>
         <button
           type="button"
-          className="text-xs text-teal-600 hover:text-teal-700 font-medium"
           onClick={() => onNavigate('/universe')}
+          className="text-[10px] text-teal-600 font-medium hover:text-teal-700"
         >
-          Explore full Universe &rarr;
+          Explore Universe &rarr;
         </button>
       </div>
-    </Card>
+
+      <div className="space-y-3">
+        {LENS_OPTIONS.map((lens) => {
+          const segments = distributions[lens.key] || [];
+          return (
+            <StackedBarRow
+              key={lens.key}
+              lensLabel={lens.label}
+              segments={segments}
+            />
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="flex gap-4 mt-4 pt-3 border-t border-slate-100">
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-2 rounded-sm bg-emerald-500" />
+          <span className="text-[10px] text-slate-500">Top Tier</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-2 rounded-sm bg-teal-400" />
+          <span className="text-[10px] text-slate-500">Good</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-2 rounded-sm bg-amber-400" />
+          <span className="text-[10px] text-slate-500">Average</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-2 rounded-sm bg-red-400" />
+          <span className="text-[10px] text-slate-500">Weak</span>
+        </div>
+      </div>
+    </div>
   );
 }

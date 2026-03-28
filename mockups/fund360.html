@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MF Pulse — Fund 360 Mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { font-family: 'Inter', system-ui, sans-serif; }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+  .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); }
+  .radar-bg { background: radial-gradient(circle at 50% 50%, rgba(13,148,136,0.03) 0%, transparent 70%); }
+  .gradient-border { background: linear-gradient(135deg, #0d9488, #0ea5e9); padding: 1px; border-radius: 12px; }
+  .gradient-border > div { background: white; border-radius: 11px; }
+  .lens-bar { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+  .quartile-cell { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 11px; font-weight: 700; }
+  .q1 { background: #dcfce7; color: #166534; }
+  .q2 { background: #d5f5f6; color: #115e59; }
+  .q3 { background: #fef3c7; color: #92400e; }
+  .q4 { background: #fee2e2; color: #991b1b; }
+  .holding-bar { transition: width 0.6s ease; }
+  .scroll-shadow { box-shadow: inset -12px 0 8px -8px rgba(0,0,0,0.04); }
+  .stat-highlight { background: linear-gradient(135deg, #f0fdfa 0%, #f8fafc 100%); }
+  .peer-dot { transition: all 0.3s ease; }
+  .peer-dot:hover { transform: scale(1.5); z-index: 10; }
+  .tooltip { pointer-events: none; opacity: 0; transition: opacity 0.2s; }
+  .peer-dot:hover + .tooltip { opacity: 1; }
+  @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  .animate-in { animation: slideUp 0.4s ease forwards; }
+  .section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; }
+  .lens-row { cursor: pointer; border-radius: 10px; padding: 6px 8px; margin: -6px -8px; transition: background 0.15s; }
+  .lens-row:hover { background: #f8fafc; }
+  .lens-detail { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s; opacity: 0; }
+  .lens-detail.open { max-height: 600px; opacity: 1; }
+  .lens-chevron { transition: transform 0.3s; display: inline-block; font-size: 10px; color: #94a3b8; }
+  .lens-chevron.open { transform: rotate(90deg); }
+  .detail-stat { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #f1f5f9; }
+  .detail-stat:last-child { border-bottom: none; }
+  .pctile-bar { height: 4px; border-radius: 2px; background: #e2e8f0; position: relative; }
+  .pctile-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+<!-- Top Nav Bar (minimal) -->
+<nav class="sticky top-0 z-50 glass border-b border-slate-200/50 px-6 py-3">
+  <div class="max-w-7xl mx-auto flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center">
+        <span class="text-white font-bold text-sm">P</span>
+      </div>
+      <span class="text-sm font-semibold text-slate-700">MF Pulse</span>
+      <span class="text-slate-300 mx-2">/</span>
+      <span class="text-sm text-slate-500">Fund 360</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-[11px] font-semibold text-emerald-700">BULL</span>
+      </div>
+      <span class="text-xs text-slate-400 tabular-nums">Nifty 24,892 <span class="text-emerald-600">+0.42%</span></span>
+    </div>
+  </div>
+</nav>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+  <!-- ============================================ -->
+  <!-- SECTION 1: HERO — Fund Identity + Quick Stats -->
+  <!-- ============================================ -->
+  <div class="animate-in">
+    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <!-- Top bar with verdict -->
+      <div class="flex items-center justify-between px-6 py-3 bg-gradient-to-r from-teal-600 to-teal-500">
+        <div class="flex items-center gap-3">
+          <span class="text-white/90 text-xs font-medium">SEBI: Equity - Large Cap</span>
+          <span class="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Direct • Growth</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="bg-emerald-400/20 text-emerald-100 text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-400/30">
+            ★ LEADER on Return
+          </span>
+          <span class="bg-blue-400/20 text-blue-100 text-[10px] font-bold px-2.5 py-1 rounded-full border border-blue-400/30">
+            🛡 FORTRESS Resilience
+          </span>
+        </div>
+      </div>
+
+      <div class="p-6">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+          <!-- Left: Identity -->
+          <div class="space-y-2">
+            <div class="flex items-center gap-3">
+              <h1 class="text-2xl font-bold text-slate-900">Axis Bluechip Fund</h1>
+              <span class="text-xs text-slate-400 font-mono">F00000YXIT</span>
+            </div>
+            <p class="text-sm text-slate-500">Axis Asset Management Co Ltd</p>
+            <p class="text-xs text-slate-400 italic leading-relaxed max-w-xl">
+              "Consistent alpha generator with fortress-level resilience — top quartile in 7 of last 10 calendar years"
+            </p>
+            <div class="flex items-center gap-4 pt-1">
+              <span class="text-[11px] text-slate-400">Inception: Jan 2010</span>
+              <span class="text-[11px] text-slate-400">AUM: ₹34,218 Cr</span>
+              <span class="text-[11px] text-slate-400">Expense: 0.62%</span>
+              <span class="text-[11px] px-2 py-0.5 bg-amber-50 text-amber-700 rounded font-medium">Very High Risk</span>
+            </div>
+          </div>
+
+          <!-- Right: Price card -->
+          <div class="flex-shrink-0 text-right space-y-1">
+            <div class="flex items-baseline gap-2 justify-end">
+              <span class="text-3xl font-bold tabular-nums text-slate-900">₹52.84</span>
+              <span class="text-sm font-bold tabular-nums text-emerald-600">+0.42%</span>
+            </div>
+            <p class="text-xs text-slate-400">NAV as of 28 Mar 2026</p>
+            <div class="flex items-center gap-3 justify-end text-xs text-slate-500">
+              <span>52W High: <span class="font-semibold text-emerald-600 tabular-nums">₹55.12</span></span>
+              <span>52W Low: <span class="font-semibold text-red-600 tabular-nums">₹42.18</span></span>
+            </div>
+            <div class="mt-2 h-1.5 w-48 bg-slate-100 rounded-full relative ml-auto">
+              <div class="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-red-400 via-amber-400 to-emerald-400" style="width:100%"></div>
+              <div class="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-teal-600 rounded-full shadow" style="left:82%"></div>
+            </div>
+            <p class="text-[10px] text-slate-400">82% of 52-week range</p>
+          </div>
+        </div>
+
+        <!-- Quick Returns Strip -->
+        <div class="mt-5 pt-4 border-t border-slate-100">
+          <div class="grid grid-cols-4 sm:grid-cols-8 gap-3">
+            <div class="text-center">
+              <p class="text-[10px] text-slate-400 mb-0.5">1D</p>
+              <p class="text-sm font-bold tabular-nums text-emerald-600">+0.42%</p>
+            </div>
+            <div class="text-center">
+              <p class="text-[10px] text-slate-400 mb-0.5">1W</p>
+              <p class="text-sm font-bold tabular-nums text-red-600">-1.23%</p>
+            </div>
+            <div class="text-center">
+              <p class="text-[10px] text-slate-400 mb-0.5">1M</p>
+              <p class="text-sm font-bold tabular-nums text-red-600">-3.41%</p>
+            </div>
+            <div class="text-center">
+              <p class="text-[10px] text-slate-400 mb-0.5">3M</p>
+              <p class="text-sm font-bold tabular-nums text-emerald-600">+2.18%</p>
+            </div>
+            <div class="text-center">
+              <p class="text-[10px] text-slate-400 mb-0.5">6M</p>
+              <p class="text-sm font-bold tabular-nums text-emerald-600">+8.72%</p>
+            </div>
+            <div class="text-center bg-teal-50/50 rounded-lg py-1">
+              <p class="text-[10px] text-teal-600 mb-0.5 font-semibold">1Y</p>
+              <p class="text-sm font-bold tabular-nums text-teal-700">+18.45%</p>
+              <p class="text-[9px] text-teal-500">P85 in cat</p>
+            </div>
+            <div class="text-center">
+              <p class="text-[10px] text-slate-400 mb-0.5">3Y</p>
+              <p class="text-sm font-bold tabular-nums text-emerald-600">+15.22%</p>
+              <p class="text-[9px] text-slate-400">Cat: 12.1%</p>
+            </div>
+            <div class="text-center">
+              <p class="text-[10px] text-slate-400 mb-0.5">5Y</p>
+              <p class="text-sm font-bold tabular-nums text-emerald-600">+14.89%</p>
+              <p class="text-[9px] text-slate-400">Cat: 11.8%</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SECTION 2: SIX-LENS RADAR + LENS BREAKDOWN  -->
+  <!-- ============================================ -->
+  <div class="animate-in" style="animation-delay: 0.1s">
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <!-- Radar Chart (2 cols) -->
+      <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5 radar-bg">
+        <p class="section-title mb-3">Fund DNA — Six Lenses</p>
+        <div class="relative mx-auto" style="width:280px; height:260px;">
+          <canvas id="radarChart" width="280" height="260"></canvas>
+        </div>
+        <div class="flex items-center justify-center gap-4 mt-2">
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-teal-500/30 border border-teal-500"></span>
+            <span class="text-[10px] text-slate-500">This Fund</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-slate-300/30 border border-slate-400 border-dashed"></span>
+            <span class="text-[10px] text-slate-500">Category Median</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lens Breakdown (3 cols) — EXPANDABLE -->
+      <div class="lg:col-span-3 bg-white rounded-2xl border border-slate-200 p-5">
+        <p class="section-title mb-1">Lens Scores vs Category</p>
+        <p class="text-[10px] text-slate-400 mb-4">Click any lens to see detailed breakdown</p>
+        <div class="space-y-2">
+
+          <!-- ===== RETURN LENS ===== -->
+          <div>
+            <div class="lens-row flex items-center gap-3" onclick="toggleLens('return')">
+              <span class="lens-chevron" id="chevron-return">&#9654;</span>
+              <div class="w-24 flex-shrink-0">
+                <p class="text-xs font-semibold text-slate-700">Return</p>
+                <p class="text-[10px] text-slate-400">Makes money?</p>
+              </div>
+              <div class="flex-1">
+                <div class="h-6 bg-slate-100 rounded-full relative overflow-hidden">
+                  <div class="lens-bar h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500" style="width:85%"></div>
+                  <div class="absolute top-0 left-1/2 h-full w-px bg-slate-300 opacity-50"></div>
+                </div>
+              </div>
+              <div class="w-20 text-right flex-shrink-0">
+                <span class="text-sm font-bold tabular-nums text-emerald-600">85</span>
+                <span class="text-[10px] text-emerald-600 font-semibold block">LEADER</span>
+              </div>
+            </div>
+            <div class="lens-detail" id="detail-return">
+              <div class="mt-3 ml-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-3">Return Breakdown — Weighted 20/35/45 (1Y/3Y/5Y)</p>
+                <div class="grid grid-cols-3 gap-4 mb-3">
+                  <div class="text-center p-2 bg-white rounded-lg">
+                    <p class="text-[9px] text-slate-400">1Y Return</p>
+                    <p class="text-base font-bold text-emerald-600 tabular-nums">+18.4%</p>
+                    <p class="text-[9px] text-slate-400 mt-0.5">Cat: +14.2%</p>
+                    <div class="pctile-bar mt-1"><div class="pctile-fill bg-emerald-500" style="width:82%"></div></div>
+                    <p class="text-[8px] text-slate-400 mt-0.5">82nd percentile</p>
+                  </div>
+                  <div class="text-center p-2 bg-white rounded-lg">
+                    <p class="text-[9px] text-slate-400">3Y CAGR</p>
+                    <p class="text-base font-bold text-emerald-600 tabular-nums">+16.2%</p>
+                    <p class="text-[9px] text-slate-400 mt-0.5">Cat: +12.8%</p>
+                    <div class="pctile-bar mt-1"><div class="pctile-fill bg-emerald-500" style="width:88%"></div></div>
+                    <p class="text-[8px] text-slate-400 mt-0.5">88th percentile</p>
+                  </div>
+                  <div class="text-center p-2 bg-white rounded-lg">
+                    <p class="text-[9px] text-slate-400">5Y CAGR</p>
+                    <p class="text-base font-bold text-emerald-600 tabular-nums">+19.7%</p>
+                    <p class="text-[9px] text-slate-400 mt-0.5">Cat: +14.5%</p>
+                    <div class="pctile-bar mt-1"><div class="pctile-fill bg-emerald-500" style="width:91%"></div></div>
+                    <p class="text-[8px] text-slate-400 mt-0.5">91st percentile</p>
+                  </div>
+                </div>
+                <div class="grid grid-cols-4 gap-2 text-center">
+                  <div class="p-1.5 bg-white rounded-lg"><p class="text-[8px] text-slate-400">1M</p><p class="text-[11px] font-bold tabular-nums text-emerald-600">+3.2%</p></div>
+                  <div class="p-1.5 bg-white rounded-lg"><p class="text-[8px] text-slate-400">3M</p><p class="text-[11px] font-bold tabular-nums text-emerald-600">+6.8%</p></div>
+                  <div class="p-1.5 bg-white rounded-lg"><p class="text-[8px] text-slate-400">6M</p><p class="text-[11px] font-bold tabular-nums text-emerald-600">+9.4%</p></div>
+                  <div class="p-1.5 bg-white rounded-lg"><p class="text-[8px] text-slate-400">YTD</p><p class="text-[11px] font-bold tabular-nums text-emerald-600">+5.1%</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== RISK LENS ===== -->
+          <div>
+            <div class="lens-row flex items-center gap-3" onclick="toggleLens('risk')">
+              <span class="lens-chevron" id="chevron-risk">&#9654;</span>
+              <div class="w-24 flex-shrink-0">
+                <p class="text-xs font-semibold text-slate-700">Risk</p>
+                <p class="text-[10px] text-slate-400">How bumpy?</p>
+              </div>
+              <div class="flex-1">
+                <div class="h-6 bg-slate-100 rounded-full relative overflow-hidden">
+                  <div class="lens-bar h-full rounded-full bg-gradient-to-r from-blue-400 to-blue-500" style="width:72%"></div>
+                  <div class="absolute top-0 left-1/2 h-full w-px bg-slate-300 opacity-50"></div>
+                </div>
+              </div>
+              <div class="w-20 text-right flex-shrink-0">
+                <span class="text-sm font-bold tabular-nums text-blue-600">72</span>
+                <span class="text-[10px] text-blue-600 font-semibold block">LOW_RISK</span>
+              </div>
+            </div>
+            <div class="lens-detail" id="detail-risk">
+              <div class="mt-3 ml-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-3">Risk Profile — 3Y Metrics</p>
+                <div class="space-y-0">
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Std Dev (3Y)</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-slate-800">12.4%</span>
+                      <span class="text-[9px] text-slate-400">Cat: 14.8%</span>
+                      <span class="text-[9px] font-semibold text-emerald-600">Better</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Max Drawdown</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-red-500">-18.2%</span>
+                      <span class="text-[9px] text-slate-400">Cat: -22.5%</span>
+                      <span class="text-[9px] font-semibold text-emerald-600">Better</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Beta (3Y)</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-slate-800">0.82</span>
+                      <span class="text-[9px] text-slate-400">Cat: 0.95</span>
+                      <span class="text-[9px] font-semibold text-emerald-600">Lower</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Downside Capture</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-slate-800">74.5%</span>
+                      <span class="text-[9px] text-slate-400">Cat: 88.2%</span>
+                      <span class="text-[9px] font-semibold text-emerald-600">Better</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Upside Capture</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-slate-800">96.8%</span>
+                      <span class="text-[9px] text-slate-400">Cat: 92.1%</span>
+                      <span class="text-[9px] font-semibold text-emerald-600">Better</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">R-Squared</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-slate-800">0.89</span>
+                      <span class="text-[9px] text-slate-400">High tracking</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Skewness (3Y)</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-slate-800">-0.24</span>
+                      <span class="text-[9px] text-slate-400">Slight left tail</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Kurtosis (3Y)</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-slate-800">3.42</span>
+                      <span class="text-[9px] text-slate-400">Near normal</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="text-[10px] text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2 mt-3">
+                  Low volatility with strong downside protection. Captures 97% of upside but only 75% of downside — excellent risk-adjusted profile.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== CONSISTENCY LENS ===== -->
+          <div>
+            <div class="lens-row flex items-center gap-3" onclick="toggleLens('consistency')">
+              <span class="lens-chevron" id="chevron-consistency">&#9654;</span>
+              <div class="w-24 flex-shrink-0">
+                <p class="text-xs font-semibold text-slate-700">Consistency</p>
+                <p class="text-[10px] text-slate-400">Reliable?</p>
+              </div>
+              <div class="flex-1">
+                <div class="h-6 bg-slate-100 rounded-full relative overflow-hidden">
+                  <div class="lens-bar h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500" style="width:78%"></div>
+                  <div class="absolute top-0 left-1/2 h-full w-px bg-slate-300 opacity-50"></div>
+                </div>
+              </div>
+              <div class="w-20 text-right flex-shrink-0">
+                <span class="text-sm font-bold tabular-nums text-emerald-600">78</span>
+                <span class="text-[10px] text-emerald-600 font-semibold block">ROCK_SOLID</span>
+              </div>
+            </div>
+            <div class="lens-detail" id="detail-consistency">
+              <div class="mt-3 ml-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-3">Consistency Profile</p>
+                <div class="space-y-0">
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Q1 Frequency (11 periods)</span>
+                    <div class="flex items-center gap-2">
+                      <span class="text-[11px] font-bold tabular-nums text-emerald-600">7 / 11</span>
+                      <span class="text-[9px] text-slate-400">64% in top quartile</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Q4 Frequency</span>
+                    <div class="flex items-center gap-2">
+                      <span class="text-[11px] font-bold tabular-nums text-emerald-600">0 / 11</span>
+                      <span class="text-[9px] text-emerald-600 font-semibold">Never bottom quartile</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Sortino Ratio (3Y)</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-slate-800">1.82</span>
+                      <span class="text-[9px] text-slate-400">Cat: 1.24</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Calendar Year Wins</span>
+                    <div class="flex items-center gap-2">
+                      <span class="text-[11px] font-bold tabular-nums text-emerald-600">4 / 5 years</span>
+                      <span class="text-[9px] text-slate-400">Beat category</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Worst Year (Relative)</span>
+                    <div class="flex items-center gap-2">
+                      <span class="text-[11px] font-bold tabular-nums text-slate-800">-2.1%</span>
+                      <span class="text-[9px] text-slate-400">vs Cat: -5.8%</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="text-[10px] text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2 mt-3">
+                  Remarkably consistent — top quartile in 64% of measured periods, never in bottom quartile. Outperformed category in 4 of last 5 calendar years.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== ALPHA LENS ===== -->
+          <div>
+            <div class="lens-row flex items-center gap-3" onclick="toggleLens('alpha')">
+              <span class="lens-chevron" id="chevron-alpha">&#9654;</span>
+              <div class="w-24 flex-shrink-0">
+                <p class="text-xs font-semibold text-slate-700">Alpha</p>
+                <p class="text-[10px] text-slate-400">Manager skill?</p>
+              </div>
+              <div class="flex-1">
+                <div class="h-6 bg-slate-100 rounded-full relative overflow-hidden">
+                  <div class="lens-bar h-full rounded-full bg-gradient-to-r from-teal-400 to-teal-500" style="width:68%"></div>
+                  <div class="absolute top-0 left-1/2 h-full w-px bg-slate-300 opacity-50"></div>
+                </div>
+              </div>
+              <div class="w-20 text-right flex-shrink-0">
+                <span class="text-sm font-bold tabular-nums text-teal-600">68</span>
+                <span class="text-[10px] text-teal-600 font-semibold block">POSITIVE</span>
+              </div>
+            </div>
+            <div class="lens-detail" id="detail-alpha">
+              <div class="mt-3 ml-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-3">Alpha Generation — Manager Skill Metrics</p>
+                <div class="space-y-0">
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Alpha (3Y)</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-emerald-600">+2.84%</span>
+                      <span class="text-[9px] text-slate-400">Cat avg: +0.5%</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Alpha (5Y)</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-emerald-600">+3.12%</span>
+                      <span class="text-[9px] text-slate-400">Cat avg: +0.8%</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Information Ratio (3Y)</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-slate-800">0.62</span>
+                      <span class="text-[9px] text-slate-400">Cat: 0.18</span>
+                      <span class="text-[9px] font-semibold text-emerald-600">Top decile</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Tracking Error (3Y)</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-slate-800">4.58%</span>
+                      <span class="text-[9px] text-slate-400">Active management</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Excess vs Category (1Y)</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-emerald-600">+4.2%</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Treynor Ratio (3Y)</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-slate-800">14.8</span>
+                      <span class="text-[9px] text-slate-400">Cat: 10.2</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="text-[10px] text-teal-700 bg-teal-50 rounded-lg px-3 py-2 mt-3">
+                  Consistent alpha generation across 3Y and 5Y. Info Ratio of 0.62 is top decile — manager adds meaningful value per unit of active risk.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== EFFICIENCY LENS ===== -->
+          <div>
+            <div class="lens-row flex items-center gap-3" onclick="toggleLens('efficiency')">
+              <span class="lens-chevron" id="chevron-efficiency">&#9654;</span>
+              <div class="w-24 flex-shrink-0">
+                <p class="text-xs font-semibold text-slate-700">Efficiency</p>
+                <p class="text-[10px] text-slate-400">Worth the cost?</p>
+              </div>
+              <div class="flex-1">
+                <div class="h-6 bg-slate-100 rounded-full relative overflow-hidden">
+                  <div class="lens-bar h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500" style="width:81%"></div>
+                  <div class="absolute top-0 left-1/2 h-full w-px bg-slate-300 opacity-50"></div>
+                </div>
+              </div>
+              <div class="w-20 text-right flex-shrink-0">
+                <span class="text-sm font-bold tabular-nums text-emerald-600">81</span>
+                <span class="text-[10px] text-emerald-600 font-semibold block">LEAN</span>
+              </div>
+            </div>
+            <div class="lens-detail" id="detail-efficiency">
+              <div class="mt-3 ml-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-3">Cost Efficiency Analysis</p>
+                <div class="space-y-0">
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Expense Ratio</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-emerald-600">0.64%</span>
+                      <span class="text-[9px] text-slate-400">Cat avg: 1.02%</span>
+                      <span class="text-[9px] font-semibold text-emerald-600">37% cheaper</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Turnover Ratio</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-slate-800">28%</span>
+                      <span class="text-[9px] text-slate-400">Cat: 52%</span>
+                      <span class="text-[9px] font-semibold text-emerald-600">Low churn</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Return per Unit Cost</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-emerald-600">28.7x</span>
+                      <span class="text-[9px] text-slate-400">1Y return / expense</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Sharpe Ratio (3Y)</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-slate-800">1.14</span>
+                      <span class="text-[9px] text-slate-400">Cat: 0.78</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="text-[10px] text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2 mt-3">
+                  Exceptionally lean — 37% below category average expense ratio with low turnover. Every rupee of cost generates 28.7x in returns.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== RESILIENCE LENS ===== -->
+          <div>
+            <div class="lens-row flex items-center gap-3" onclick="toggleLens('resilience')">
+              <span class="lens-chevron" id="chevron-resilience">&#9654;</span>
+              <div class="w-24 flex-shrink-0">
+                <p class="text-xs font-semibold text-slate-700">Resilience</p>
+                <p class="text-[10px] text-slate-400">Bad market?</p>
+              </div>
+              <div class="flex-1">
+                <div class="h-6 bg-slate-100 rounded-full relative overflow-hidden">
+                  <div class="lens-bar h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500" style="width:88%"></div>
+                  <div class="absolute top-0 left-1/2 h-full w-px bg-slate-300 opacity-50"></div>
+                </div>
+              </div>
+              <div class="w-20 text-right flex-shrink-0">
+                <span class="text-sm font-bold tabular-nums text-emerald-600">88</span>
+              <span class="text-[10px] text-emerald-600 font-semibold block">FORTRESS</span>
+            </div>
+          </div>
+            <div class="lens-detail" id="detail-resilience">
+              <div class="mt-3 ml-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-3">Resilience — Drawdown & Recovery</p>
+                <div class="space-y-0">
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Max Drawdown (3Y)</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-emerald-600">-18.2%</span>
+                      <span class="text-[9px] text-slate-400">Cat: -22.5%</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Recovery Speed</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-slate-800">47 days</span>
+                      <span class="text-[9px] text-slate-400">Cat avg: 68 days</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Downside Capture (10Y)</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-emerald-600">71.2%</span>
+                      <span class="text-[9px] text-slate-400">Top quartile</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">Worst Year Return</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-red-500">-8.4%</span>
+                      <span class="text-[9px] text-slate-400">Cat: -14.2%</span>
+                    </div>
+                  </div>
+                  <div class="detail-stat">
+                    <span class="text-[11px] text-slate-600">COVID Crash Recovery</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-[11px] font-bold tabular-nums text-emerald-600">38 days</span>
+                      <span class="text-[9px] text-emerald-600 font-semibold">Fastest in category</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="text-[10px] text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2 mt-3">
+                  Fortress-level resilience. Shallower drawdowns and faster recovery than peers. Held up exceptionally during COVID crash — recovered in 38 days vs category avg of 68.
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SECTION 3: NAV CHART + DRAWDOWN              -->
+  <!-- ============================================ -->
+  <div class="animate-in" style="animation-delay:0.15s">
+    <div class="bg-white rounded-2xl border border-slate-200 p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="section-title">Performance</p>
+          <p class="text-xs text-slate-500 mt-0.5">Growth of ₹10,000 invested</p>
+        </div>
+        <div class="flex gap-1">
+          <button class="px-3 py-1 text-[11px] font-semibold rounded-full bg-slate-100 text-slate-500 hover:bg-teal-50 hover:text-teal-700">1M</button>
+          <button class="px-3 py-1 text-[11px] font-semibold rounded-full bg-slate-100 text-slate-500 hover:bg-teal-50 hover:text-teal-700">3M</button>
+          <button class="px-3 py-1 text-[11px] font-semibold rounded-full bg-slate-100 text-slate-500 hover:bg-teal-50 hover:text-teal-700">6M</button>
+          <button class="px-3 py-1 text-[11px] font-semibold rounded-full bg-teal-600 text-white">1Y</button>
+          <button class="px-3 py-1 text-[11px] font-semibold rounded-full bg-slate-100 text-slate-500 hover:bg-teal-50 hover:text-teal-700">3Y</button>
+          <button class="px-3 py-1 text-[11px] font-semibold rounded-full bg-slate-100 text-slate-500 hover:bg-teal-50 hover:text-teal-700">5Y</button>
+          <button class="px-3 py-1 text-[11px] font-semibold rounded-full bg-slate-100 text-slate-500 hover:bg-teal-50 hover:text-teal-700">MAX</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <!-- Chart (3 cols) -->
+        <div class="lg:col-span-3" style="height:280px;">
+          <canvas id="navChart"></canvas>
+        </div>
+        <!-- Stats sidebar -->
+        <div class="space-y-3">
+          <div class="stat-highlight rounded-xl p-3">
+            <p class="text-[10px] text-slate-400 mb-1">Growth of ₹10,000</p>
+            <p class="text-xl font-bold tabular-nums text-slate-900">₹11,845</p>
+            <p class="text-xs text-emerald-600 font-semibold">+18.45% in 1Y</p>
+          </div>
+          <div class="stat-highlight rounded-xl p-3">
+            <p class="text-[10px] text-slate-400 mb-1">Category Average</p>
+            <p class="text-lg font-bold tabular-nums text-slate-600">₹11,210</p>
+            <p class="text-xs text-slate-500">+12.10% in 1Y</p>
+          </div>
+          <div class="stat-highlight rounded-xl p-3">
+            <p class="text-[10px] text-slate-400 mb-1">Max Drawdown (1Y)</p>
+            <p class="text-lg font-bold tabular-nums text-red-600">-8.4%</p>
+            <p class="text-xs text-slate-500">Recovery: 2.1 months</p>
+          </div>
+          <div class="stat-highlight rounded-xl p-3">
+            <p class="text-[10px] text-slate-400 mb-1">Sharpe Ratio (1Y)</p>
+            <p class="text-lg font-bold tabular-nums text-teal-700">1.42</p>
+            <p class="text-xs text-slate-500">Cat avg: 0.89</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SECTION 4: QUARTILE CONSISTENCY RIBBON        -->
+  <!-- ============================================ -->
+  <div class="animate-in" style="animation-delay:0.2s">
+    <div class="bg-white rounded-2xl border border-slate-200 p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="section-title">Quartile Consistency</p>
+          <p class="text-xs text-slate-500 mt-0.5">Rank within Large Cap category over time — lower is better</p>
+        </div>
+        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">7 of 10 years in Q1</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-center">
+          <thead>
+            <tr>
+              <th class="text-left text-[10px] text-slate-400 font-medium pb-2 pr-4 w-20">Period</th>
+              <th class="text-[10px] text-slate-400 font-medium pb-2 px-1">1M</th>
+              <th class="text-[10px] text-slate-400 font-medium pb-2 px-1">3M</th>
+              <th class="text-[10px] text-slate-400 font-medium pb-2 px-1">6M</th>
+              <th class="text-[10px] text-slate-400 font-medium pb-2 px-1">YTD</th>
+              <th class="text-[10px] text-slate-400 font-medium pb-2 px-1">1Y</th>
+              <th class="text-[10px] text-slate-400 font-medium pb-2 px-1">2Y</th>
+              <th class="text-[10px] text-slate-400 font-medium pb-2 px-1">3Y</th>
+              <th class="text-[10px] text-slate-400 font-medium pb-2 px-1">4Y</th>
+              <th class="text-[10px] text-slate-400 font-medium pb-2 px-1">5Y</th>
+              <th class="text-[10px] text-slate-400 font-medium pb-2 px-1">7Y</th>
+              <th class="text-[10px] text-slate-400 font-medium pb-2 px-1">10Y</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left text-xs text-slate-600 font-medium pr-4 py-1">Quartile</td>
+              <td class="py-1"><span class="quartile-cell q2 mx-auto">2</span></td>
+              <td class="py-1"><span class="quartile-cell q1 mx-auto">1</span></td>
+              <td class="py-1"><span class="quartile-cell q1 mx-auto">1</span></td>
+              <td class="py-1"><span class="quartile-cell q1 mx-auto">1</span></td>
+              <td class="py-1"><span class="quartile-cell q1 mx-auto">1</span></td>
+              <td class="py-1"><span class="quartile-cell q1 mx-auto">1</span></td>
+              <td class="py-1"><span class="quartile-cell q2 mx-auto">2</span></td>
+              <td class="py-1"><span class="quartile-cell q1 mx-auto">1</span></td>
+              <td class="py-1"><span class="quartile-cell q1 mx-auto">1</span></td>
+              <td class="py-1"><span class="quartile-cell q2 mx-auto">2</span></td>
+              <td class="py-1"><span class="quartile-cell q1 mx-auto">1</span></td>
+            </tr>
+            <tr>
+              <td class="text-left text-xs text-slate-600 font-medium pr-4 py-1">Rank</td>
+              <td class="py-1"><span class="text-xs tabular-nums text-slate-600">#8</span></td>
+              <td class="py-1"><span class="text-xs tabular-nums text-emerald-600">#3</span></td>
+              <td class="py-1"><span class="text-xs tabular-nums text-emerald-600">#2</span></td>
+              <td class="py-1"><span class="text-xs tabular-nums text-emerald-600">#4</span></td>
+              <td class="py-1"><span class="text-xs tabular-nums text-emerald-600">#5</span></td>
+              <td class="py-1"><span class="text-xs tabular-nums text-emerald-600">#3</span></td>
+              <td class="py-1"><span class="text-xs tabular-nums text-slate-600">#9</span></td>
+              <td class="py-1"><span class="text-xs tabular-nums text-emerald-600">#4</span></td>
+              <td class="py-1"><span class="text-xs tabular-nums text-emerald-600">#2</span></td>
+              <td class="py-1"><span class="text-xs tabular-nums text-slate-600">#7</span></td>
+              <td class="py-1"><span class="text-xs tabular-nums text-emerald-600">#3</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- Calendar Year Percentiles -->
+      <div class="mt-4 pt-4 border-t border-slate-100">
+        <p class="text-[10px] text-slate-400 mb-2">Calendar Year Percentile Rank (lower = better)</p>
+        <div class="flex gap-2 overflow-x-auto">
+          <div class="text-center min-w-[48px]"><p class="text-[9px] text-slate-400">2016</p><div class="h-8 w-8 mx-auto rounded-lg flex items-center justify-center text-[10px] font-bold" style="background:#dcfce7;color:#166534">P12</div></div>
+          <div class="text-center min-w-[48px]"><p class="text-[9px] text-slate-400">2017</p><div class="h-8 w-8 mx-auto rounded-lg flex items-center justify-center text-[10px] font-bold" style="background:#dcfce7;color:#166534">P8</div></div>
+          <div class="text-center min-w-[48px]"><p class="text-[9px] text-slate-400">2018</p><div class="h-8 w-8 mx-auto rounded-lg flex items-center justify-center text-[10px] font-bold" style="background:#dcfce7;color:#166534">P15</div></div>
+          <div class="text-center min-w-[48px]"><p class="text-[9px] text-slate-400">2019</p><div class="h-8 w-8 mx-auto rounded-lg flex items-center justify-center text-[10px] font-bold" style="background:#dcfce7;color:#166534">P5</div></div>
+          <div class="text-center min-w-[48px]"><p class="text-[9px] text-slate-400">2020</p><div class="h-8 w-8 mx-auto rounded-lg flex items-center justify-center text-[10px] font-bold" style="background:#fef3c7;color:#92400e">P42</div></div>
+          <div class="text-center min-w-[48px]"><p class="text-[9px] text-slate-400">2021</p><div class="h-8 w-8 mx-auto rounded-lg flex items-center justify-center text-[10px] font-bold" style="background:#fee2e2;color:#991b1b">P68</div></div>
+          <div class="text-center min-w-[48px]"><p class="text-[9px] text-slate-400">2022</p><div class="h-8 w-8 mx-auto rounded-lg flex items-center justify-center text-[10px] font-bold" style="background:#dcfce7;color:#166534">P11</div></div>
+          <div class="text-center min-w-[48px]"><p class="text-[9px] text-slate-400">2023</p><div class="h-8 w-8 mx-auto rounded-lg flex items-center justify-center text-[10px] font-bold" style="background:#dcfce7;color:#166534">P9</div></div>
+          <div class="text-center min-w-[48px]"><p class="text-[9px] text-slate-400">2024</p><div class="h-8 w-8 mx-auto rounded-lg flex items-center justify-center text-[10px] font-bold" style="background:#d5f5f6;color:#115e59">P22</div></div>
+          <div class="text-center min-w-[48px]"><p class="text-[9px] text-slate-400 font-semibold">2025</p><div class="h-8 w-8 mx-auto rounded-lg flex items-center justify-center text-[10px] font-bold ring-2 ring-teal-400" style="background:#dcfce7;color:#166534">P7</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SECTION 5: RISK PROFILE — Full Stats Grid     -->
+  <!-- ============================================ -->
+  <div class="animate-in" style="animation-delay:0.25s">
+    <div class="bg-white rounded-2xl border border-slate-200 p-5">
+      <p class="section-title mb-4">Risk Profile</p>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div class="stat-highlight rounded-xl p-3">
+          <p class="text-[10px] text-slate-400">Std Dev (3Y)</p>
+          <p class="text-lg font-bold tabular-nums">13.24%</p>
+          <p class="text-[10px] text-emerald-600">Cat: 15.8%</p>
+        </div>
+        <div class="stat-highlight rounded-xl p-3">
+          <p class="text-[10px] text-slate-400">Beta (3Y)</p>
+          <p class="text-lg font-bold tabular-nums">0.87</p>
+          <p class="text-[10px] text-emerald-600">Below market</p>
+        </div>
+        <div class="stat-highlight rounded-xl p-3">
+          <p class="text-[10px] text-slate-400">Alpha (3Y)</p>
+          <p class="text-lg font-bold tabular-nums text-emerald-600">+2.84%</p>
+          <p class="text-[10px] text-slate-500">Manager skill</p>
+        </div>
+        <div class="stat-highlight rounded-xl p-3">
+          <p class="text-[10px] text-slate-400">Sharpe (3Y)</p>
+          <p class="text-lg font-bold tabular-nums">0.92</p>
+          <p class="text-[10px] text-emerald-600">Cat: 0.71</p>
+        </div>
+        <div class="stat-highlight rounded-xl p-3">
+          <p class="text-[10px] text-slate-400">Sortino (3Y)</p>
+          <p class="text-lg font-bold tabular-nums">1.34</p>
+          <p class="text-[10px] text-slate-500">Downside adjusted</p>
+        </div>
+        <div class="stat-highlight rounded-xl p-3">
+          <p class="text-[10px] text-slate-400">Info Ratio (10Y)</p>
+          <p class="text-lg font-bold tabular-nums text-teal-700">1.64</p>
+          <p class="text-[10px] text-emerald-600">Exceptional</p>
+        </div>
+        <div class="stat-highlight rounded-xl p-3">
+          <p class="text-[10px] text-slate-400">Capture Up (10Y)</p>
+          <p class="text-lg font-bold tabular-nums text-emerald-600">105.4%</p>
+          <p class="text-[10px] text-slate-500">Beats market up</p>
+        </div>
+        <div class="stat-highlight rounded-xl p-3">
+          <p class="text-[10px] text-slate-400">Capture Down (10Y)</p>
+          <p class="text-lg font-bold tabular-nums text-emerald-600">82.1%</p>
+          <p class="text-[10px] text-emerald-600">Falls less</p>
+        </div>
+        <div class="stat-highlight rounded-xl p-3">
+          <p class="text-[10px] text-slate-400">R-Squared (3Y)</p>
+          <p class="text-lg font-bold tabular-nums">89.2%</p>
+          <p class="text-[10px] text-slate-500">Active stock pick</p>
+        </div>
+        <div class="stat-highlight rounded-xl p-3">
+          <p class="text-[10px] text-slate-400">Skewness (3Y)</p>
+          <p class="text-lg font-bold tabular-nums text-emerald-600">+0.18</p>
+          <p class="text-[10px] text-emerald-600">Positive skew</p>
+        </div>
+        <div class="stat-highlight rounded-xl p-3">
+          <p class="text-[10px] text-slate-400">Tracking Error (10Y)</p>
+          <p class="text-lg font-bold tabular-nums">4.82%</p>
+          <p class="text-[10px] text-slate-500">Active deviation</p>
+        </div>
+        <div class="stat-highlight rounded-xl p-3">
+          <p class="text-[10px] text-slate-400">Mean Return (3Y)</p>
+          <p class="text-lg font-bold tabular-nums text-emerald-600">1.18%</p>
+          <p class="text-[10px] text-slate-500">Monthly average</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SECTION 6: HOLDINGS + SECTOR ALLOCATION       -->
+  <!-- ============================================ -->
+  <div class="animate-in" style="animation-delay:0.3s">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <!-- Holdings (2 cols) -->
+      <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="section-title">Top Holdings</p>
+            <p class="text-xs text-slate-500 mt-0.5">24 holdings • Top 10 = 62.4% of portfolio</p>
+          </div>
+          <span class="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded font-medium">High concentration</span>
+        </div>
+        <div class="space-y-2">
+          <!-- Holding rows -->
+          <div class="flex items-center gap-3 py-2 border-b border-slate-50">
+            <div class="w-6 text-center"><span class="text-[10px] text-slate-400 font-mono">1</span></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <p class="text-xs font-semibold text-slate-800 truncate">HDFC Bank Ltd</p>
+                <span class="text-[9px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">Financial Services</span>
+              </div>
+            </div>
+            <div class="w-32">
+              <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+                <div class="holding-bar h-full rounded-full bg-teal-500" style="width:92%"></div>
+              </div>
+            </div>
+            <span class="text-xs font-bold tabular-nums text-slate-700 w-14 text-right">9.54%</span>
+            <span class="text-[10px] tabular-nums text-emerald-600 w-16 text-right font-medium">+12,400</span>
+          </div>
+          <div class="flex items-center gap-3 py-2 border-b border-slate-50">
+            <div class="w-6 text-center"><span class="text-[10px] text-slate-400 font-mono">2</span></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <p class="text-xs font-semibold text-slate-800 truncate">Bajaj Finance Ltd</p>
+                <span class="text-[9px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">Financial Services</span>
+              </div>
+            </div>
+            <div class="w-32">
+              <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+                <div class="holding-bar h-full rounded-full bg-teal-500" style="width:82%"></div>
+              </div>
+            </div>
+            <span class="text-xs font-bold tabular-nums text-slate-700 w-14 text-right">8.52%</span>
+            <span class="text-[10px] tabular-nums text-red-600 w-16 text-right font-medium">-5,200</span>
+          </div>
+          <div class="flex items-center gap-3 py-2 border-b border-slate-50">
+            <div class="w-6 text-center"><span class="text-[10px] text-slate-400 font-mono">3</span></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <p class="text-xs font-semibold text-slate-800 truncate">Infosys Ltd</p>
+                <span class="text-[9px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">Technology</span>
+              </div>
+            </div>
+            <div class="w-32">
+              <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+                <div class="holding-bar h-full rounded-full bg-teal-500" style="width:74%"></div>
+              </div>
+            </div>
+            <span class="text-xs font-bold tabular-nums text-slate-700 w-14 text-right">7.68%</span>
+            <span class="text-[10px] tabular-nums text-emerald-600 w-16 text-right font-medium">+8,100</span>
+          </div>
+          <div class="flex items-center gap-3 py-2 border-b border-slate-50">
+            <div class="w-6 text-center"><span class="text-[10px] text-slate-400 font-mono">4</span></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <p class="text-xs font-semibold text-slate-800 truncate">Reliance Industries Ltd</p>
+                <span class="text-[9px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">Energy</span>
+              </div>
+            </div>
+            <div class="w-32">
+              <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+                <div class="holding-bar h-full rounded-full bg-teal-500" style="width:68%"></div>
+              </div>
+            </div>
+            <span class="text-xs font-bold tabular-nums text-slate-700 w-14 text-right">7.02%</span>
+            <span class="text-[10px] tabular-nums text-slate-400 w-16 text-right font-medium">—</span>
+          </div>
+          <div class="flex items-center gap-3 py-2 border-b border-slate-50">
+            <div class="w-6 text-center"><span class="text-[10px] text-slate-400 font-mono">5</span></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <p class="text-xs font-semibold text-slate-800 truncate">TCS Ltd</p>
+                <span class="text-[9px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">Technology</span>
+              </div>
+            </div>
+            <div class="w-32">
+              <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+                <div class="holding-bar h-full rounded-full bg-teal-500" style="width:62%"></div>
+              </div>
+            </div>
+            <span class="text-xs font-bold tabular-nums text-slate-700 w-14 text-right">6.41%</span>
+            <span class="text-[10px] tabular-nums text-emerald-600 w-16 text-right font-medium">+3,200</span>
+          </div>
+          <p class="text-[10px] text-slate-400 text-center pt-2">+ 19 more holdings • <span class="text-teal-600 cursor-pointer hover:underline">View all</span></p>
+        </div>
+        <div class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
+          <span class="text-[10px] text-slate-400">Column:</span>
+          <span class="text-[10px] text-slate-500 font-medium">Share Change</span>
+          <span class="text-[10px] text-emerald-600">= Shares added/reduced vs last quarter</span>
+        </div>
+      </div>
+
+      <!-- Sector + Asset Allocation (1 col) -->
+      <div class="space-y-4">
+        <!-- Sector Donut -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5">
+          <p class="section-title mb-3">Sector Allocation</p>
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 rounded-sm" style="background:#0d9488"></div>
+              <span class="text-xs text-slate-600 flex-1">Financial Services</span>
+              <span class="text-xs font-bold tabular-nums text-slate-700">32.4%</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 rounded-sm" style="background:#0ea5e9"></div>
+              <span class="text-xs text-slate-600 flex-1">Technology</span>
+              <span class="text-xs font-bold tabular-nums text-slate-700">18.7%</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 rounded-sm" style="background:#8b5cf6"></div>
+              <span class="text-xs text-slate-600 flex-1">Consumer Defensive</span>
+              <span class="text-xs font-bold tabular-nums text-slate-700">12.1%</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 rounded-sm" style="background:#f59e0b"></div>
+              <span class="text-xs text-slate-600 flex-1">Healthcare</span>
+              <span class="text-xs font-bold tabular-nums text-slate-700">9.8%</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 rounded-sm" style="background:#ef4444"></div>
+              <span class="text-xs text-slate-600 flex-1">Energy</span>
+              <span class="text-xs font-bold tabular-nums text-slate-700">8.2%</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 rounded-sm" style="background:#94a3b8"></div>
+              <span class="text-xs text-slate-600 flex-1">Others (6 sectors)</span>
+              <span class="text-xs font-bold tabular-nums text-slate-700">18.8%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Asset Allocation -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5">
+          <p class="section-title mb-3">Asset Allocation</p>
+          <div class="h-4 flex rounded-full overflow-hidden">
+            <div class="bg-teal-500" style="width:94%"></div>
+            <div class="bg-blue-400" style="width:2%"></div>
+            <div class="bg-amber-400" style="width:4%"></div>
+          </div>
+          <div class="flex justify-between mt-2 text-[10px]">
+            <span class="text-teal-700 font-semibold">Equity 94.2%</span>
+            <span class="text-blue-600">Bond 1.8%</span>
+            <span class="text-amber-600">Cash 4.0%</span>
+          </div>
+          <div class="mt-3 pt-3 border-t border-slate-100">
+            <p class="text-[10px] text-slate-400 mb-2">Portfolio Metrics</p>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div><span class="text-slate-400">P/E:</span> <span class="font-semibold tabular-nums">24.8</span></div>
+              <div><span class="text-slate-400">P/B:</span> <span class="font-semibold tabular-nums">4.12</span></div>
+              <div><span class="text-slate-400">ROE:</span> <span class="font-semibold tabular-nums">18.4%</span></div>
+              <div><span class="text-slate-400">Div Yield:</span> <span class="font-semibold tabular-nums">1.2%</span></div>
+              <div><span class="text-slate-400">Avg Mkt Cap:</span> <span class="font-semibold tabular-nums">₹2.4L Cr</span></div>
+              <div><span class="text-slate-400">Style:</span> <span class="font-semibold">Large Growth</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Credit Quality (for debt funds) -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5">
+          <p class="section-title mb-3">Credit Quality</p>
+          <div class="space-y-1.5">
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] text-slate-500 w-12">AAA</span>
+              <div class="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-emerald-400 rounded-full" style="width:82%"></div>
+              </div>
+              <span class="text-[10px] font-bold tabular-nums w-10 text-right">82%</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] text-slate-500 w-12">AA</span>
+              <div class="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-teal-400 rounded-full" style="width:12%"></div>
+              </div>
+              <span class="text-[10px] font-bold tabular-nums w-10 text-right">12%</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] text-slate-500 w-12">A & below</span>
+              <div class="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-amber-400 rounded-full" style="width:6%"></div>
+              </div>
+              <span class="text-[10px] font-bold tabular-nums w-10 text-right">6%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SECTION 7: PEER COMPARISON SCATTER            -->
+  <!-- ============================================ -->
+  <div class="animate-in" style="animation-delay:0.35s">
+    <div class="bg-white rounded-2xl border border-slate-200 p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="section-title">Peer Comparison</p>
+          <p class="text-xs text-slate-500 mt-0.5">32 funds in Large Cap category • This fund highlighted</p>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          <span class="text-slate-400">Category Avg 1Y:</span>
+          <span class="font-bold tabular-nums text-slate-700">12.10%</span>
+          <span class="text-slate-300">|</span>
+          <span class="text-slate-400">This Fund:</span>
+          <span class="font-bold tabular-nums text-emerald-600">18.45%</span>
+          <span class="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">P85</span>
+        </div>
+      </div>
+      <div style="height:300px;">
+        <canvas id="peerChart"></canvas>
+      </div>
+      <div class="flex items-center justify-center gap-6 mt-2 text-[10px]">
+        <span class="text-slate-400">X: Risk (Std Dev 3Y) →</span>
+        <span class="text-slate-400">Y: Return (1Y CAGR) ↑</span>
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-teal-500"></span> This Fund</span>
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-300"></span> Peers</span>
+        <span class="text-slate-400">Top-left = best risk-return</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SECTION 8: ACTIONABLE INTELLIGENCE CARDS      -->
+  <!-- ============================================ -->
+  <div class="animate-in" style="animation-delay:0.4s">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- Market Context Card -->
+      <div class="gradient-border">
+        <div class="p-5">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-lg">🎯</span>
+            <p class="section-title">Regime Signal</p>
+          </div>
+          <p class="text-sm font-semibold text-slate-800 mb-2">Bull Market — Fund is Well Positioned</p>
+          <p class="text-xs text-slate-500 leading-relaxed">
+            Market regime is BULL with strong breadth (68% above 200 EMA). This fund's high capture-up ratio (105%) means it captures more than the market's upside. <span class="text-emerald-600 font-semibold">Suitable for current regime.</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Alternative Suggestion -->
+      <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-lg">⚡</span>
+          <p class="section-title">Better Alternatives?</p>
+        </div>
+        <p class="text-xs text-slate-500 mb-3">Comparing risk-adjusted returns in Large Cap:</p>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between py-1.5 border-b border-slate-50">
+            <span class="text-xs font-medium text-teal-700">1. Mirae Asset Large Cap</span>
+            <span class="text-xs tabular-nums font-semibold">Sharpe: 1.56</span>
+          </div>
+          <div class="flex items-center justify-between py-1.5 border-b border-slate-50">
+            <span class="text-xs font-medium text-slate-600">2. This Fund (Axis Bluechip)</span>
+            <span class="text-xs tabular-nums font-semibold">Sharpe: 1.42</span>
+          </div>
+          <div class="flex items-center justify-between py-1.5">
+            <span class="text-xs font-medium text-slate-600">3. Canara Robeco Bluechip</span>
+            <span class="text-xs tabular-nums font-semibold">Sharpe: 1.38</span>
+          </div>
+        </div>
+        <p class="text-[10px] text-teal-600 mt-2">✓ Top 3 in category for risk-adjusted returns</p>
+      </div>
+
+      <!-- SIP Intelligence -->
+      <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-lg">📊</span>
+          <p class="section-title">SIP Intelligence</p>
+        </div>
+        <p class="text-xs text-slate-500 mb-2">₹10,000/month SIP over 5 years:</p>
+        <div class="space-y-2">
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-600">Invested</span>
+            <span class="text-sm font-bold tabular-nums">₹6,00,000</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-600">Current Value</span>
+            <span class="text-sm font-bold tabular-nums text-emerald-600">₹9,42,318</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-600">XIRR</span>
+            <span class="text-sm font-bold tabular-nums text-teal-700">16.8%</span>
+          </div>
+          <div class="flex justify-between items-center pt-2 border-t border-slate-100">
+            <span class="text-xs text-slate-600">With Signal Top-ups</span>
+            <span class="text-sm font-bold tabular-nums text-teal-700">19.2% XIRR</span>
+          </div>
+        </div>
+        <p class="text-[10px] text-teal-600 mt-2 font-medium">Signal top-ups add +2.4% XIRR → <span class="underline cursor-pointer">Try in Simulator</span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer spacer -->
+  <div class="h-8"></div>
+</div>
+
+<script>
+// Lens toggle function
+function toggleLens(lens) {
+  const detail = document.getElementById('detail-' + lens);
+  const chevron = document.getElementById('chevron-' + lens);
+  const isOpen = detail.classList.contains('open');
+
+  // Close all others first
+  document.querySelectorAll('.lens-detail').forEach(d => d.classList.remove('open'));
+  document.querySelectorAll('.lens-chevron').forEach(c => c.classList.remove('open'));
+
+  // Toggle this one
+  if (!isOpen) {
+    detail.classList.add('open');
+    chevron.classList.add('open');
+  }
+}
+
+// Radar Chart — Six Lenses
+const radarCtx = document.getElementById('radarChart').getContext('2d');
+new Chart(radarCtx, {
+  type: 'radar',
+  data: {
+    labels: ['Return', 'Risk (inv)', 'Consistency', 'Alpha', 'Efficiency', 'Resilience'],
+    datasets: [{
+      label: 'This Fund',
+      data: [85, 72, 78, 68, 81, 88],
+      backgroundColor: 'rgba(13, 148, 136, 0.15)',
+      borderColor: '#0d9488',
+      borderWidth: 2,
+      pointBackgroundColor: '#0d9488',
+      pointRadius: 4,
+    }, {
+      label: 'Category Median',
+      data: [50, 50, 50, 50, 50, 50],
+      backgroundColor: 'rgba(148, 163, 184, 0.08)',
+      borderColor: '#94a3b8',
+      borderWidth: 1.5,
+      borderDash: [4, 4],
+      pointRadius: 0,
+    }]
+  },
+  options: {
+    responsive: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      r: {
+        beginAtZero: true,
+        max: 100,
+        ticks: { display: false, stepSize: 25 },
+        grid: { color: '#e2e8f0' },
+        pointLabels: {
+          font: { size: 10, weight: '600', family: 'Inter' },
+          color: '#64748b',
+        }
+      }
+    }
+  }
+});
+
+// NAV Performance Chart
+const navCtx = document.getElementById('navChart').getContext('2d');
+const navLabels = Array.from({length:12}, (_, i) => {
+  const d = new Date(2025, 3 + i, 1);
+  return d.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+});
+const fundNav = [100, 103, 106, 102, 108, 112, 107, 115, 118, 114, 120, 118.45].map(v => v * 100);
+const catNav = [100, 101.5, 103, 100.5, 105, 107, 104, 109, 111, 108, 113, 112.1].map(v => v * 100);
+
+new Chart(navCtx, {
+  type: 'line',
+  data: {
+    labels: navLabels,
+    datasets: [{
+      label: 'Fund',
+      data: fundNav,
+      borderColor: '#0d9488',
+      backgroundColor: 'rgba(13, 148, 136, 0.08)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 0,
+      borderWidth: 2.5,
+    }, {
+      label: 'Category Avg',
+      data: catNav,
+      borderColor: '#94a3b8',
+      borderDash: [5, 5],
+      fill: false,
+      tension: 0.3,
+      pointRadius: 0,
+      borderWidth: 1.5,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { intersect: false, mode: 'index' },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(ctx) {
+            return ctx.dataset.label + ': ₹' + (ctx.parsed.y).toLocaleString('en-IN');
+          }
+        }
+      }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: {
+        grid: { color: '#f1f5f9' },
+        ticks: {
+          font: { size: 10 },
+          callback: v => '₹' + (v/100).toFixed(0) + '%'
+        }
+      }
+    }
+  }
+});
+
+// Peer Scatter Chart
+const peerCtx = document.getElementById('peerChart').getContext('2d');
+const peerData = [];
+for (let i = 0; i < 30; i++) {
+  peerData.push({
+    x: 10 + Math.random() * 12,  // Std Dev 10-22%
+    y: 5 + Math.random() * 20,    // Return 5-25%
+  });
+}
+new Chart(peerCtx, {
+  type: 'scatter',
+  data: {
+    datasets: [{
+      label: 'Peers',
+      data: peerData,
+      backgroundColor: '#cbd5e1',
+      borderColor: '#94a3b8',
+      borderWidth: 1,
+      pointRadius: 5,
+      pointHoverRadius: 8,
+    }, {
+      label: 'This Fund',
+      data: [{ x: 13.24, y: 18.45 }],
+      backgroundColor: '#0d9488',
+      borderColor: '#0d9488',
+      borderWidth: 2,
+      pointRadius: 10,
+      pointHoverRadius: 14,
+      pointStyle: 'star',
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(ctx) {
+            return `${ctx.dataset.label}: StdDev ${ctx.parsed.x.toFixed(1)}%, Return ${ctx.parsed.y.toFixed(1)}%`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        title: { display: true, text: 'Risk (Std Dev 3Y) →', font: { size: 10 }, color: '#94a3b8' },
+        grid: { color: '#f1f5f9' },
+        ticks: { font: { size: 10 }, callback: v => v + '%' },
+      },
+      y: {
+        title: { display: true, text: '↑ Return (1Y)', font: { size: 10 }, color: '#94a3b8' },
+        grid: { color: '#f1f5f9' },
+        ticks: { font: { size: 10 }, callback: v => v + '%' },
+      }
+    }
+  }
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MF Pulse — Simulation & Backtest Mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { font-family: 'Inter', system-ui, sans-serif; }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+  .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); }
+  .section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; }
+  @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  .animate-in { animation: slideUp 0.4s ease forwards; }
+  .info-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #f1f5f9; color: #94a3b8; font-size: 9px; font-weight: 700;
+    cursor: help; position: relative; flex-shrink: 0;
+  }
+  .info-icon:hover .info-tip { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+  .info-tip {
+    position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%) translateY(4px);
+    background: #1e293b; color: #e2e8f0; padding: 8px 12px; border-radius: 8px;
+    font-size: 10px; font-weight: 400; line-height: 1.5; width: 240px;
+    opacity: 0; pointer-events: none; transition: all 0.2s; z-index: 50;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .info-tip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #1e293b; }
+  .mode-card { transition: all 0.2s; border: 2px solid transparent; }
+  .mode-card:hover { border-color: #99f6e4; }
+  .mode-card.best { border-color: #14b8a6; background: #f0fdfa; }
+  .signal-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .rule-card { transition: background 0.15s; }
+  .rule-card:hover { background: #f8fafc; }
+  .metric-cell { text-align: center; padding: 8px 4px; }
+  .winner { background: #f0fdfa; font-weight: 700; color: #0d9488; }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+<!-- Top Nav -->
+<nav class="sticky top-0 z-50 glass border-b border-slate-200/50 px-6 py-3">
+  <div class="max-w-7xl mx-auto flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center">
+        <span class="text-white font-bold text-sm">P</span>
+      </div>
+      <span class="text-sm font-semibold text-slate-700">MF Pulse</span>
+      <span class="text-slate-300 mx-2">/</span>
+      <span class="text-sm text-slate-500">Simulation Lab</span>
+    </div>
+    <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+      <a href="./dashboard.html" class="px-3 py-1.5 text-xs font-medium text-slate-500">Dashboard</a>
+      <a href="./fund360.html" class="px-3 py-1.5 text-xs font-medium text-slate-500">Fund 360</a>
+      <a href="./universe.html" class="px-3 py-1.5 text-xs font-medium text-slate-500">Universe</a>
+      <a href="./sectors.html" class="px-3 py-1.5 text-xs font-medium text-slate-500">Sectors</a>
+      <a href="#" class="px-3 py-1.5 text-xs font-medium bg-white rounded-md shadow-sm text-teal-700">Simulate</a>
+    </div>
+    <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-xs font-medium text-emerald-600">MarketPulse Live</span>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="max-w-7xl mx-auto px-6 py-6 space-y-5">
+
+  <!-- ==================== SECTION 1: Fund + Config ==================== -->
+  <div class="grid grid-cols-12 gap-5 animate-in">
+
+    <!-- Fund Picker + Identity -->
+    <div class="col-span-4">
+      <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <p class="section-title mb-3">Select Fund</p>
+        <!-- Search -->
+        <div class="relative mb-4">
+          <input type="text" placeholder="Search by name, ISIN, or AMC..." class="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400" value="Parag Parikh Flexi Cap Fund - Direct Growth">
+          <svg class="absolute left-3 top-3 w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+
+        <!-- Fund identity card -->
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+          <div class="flex items-start justify-between mb-2">
+            <div>
+              <p class="text-sm font-semibold text-slate-800">Parag Parikh Flexi Cap</p>
+              <p class="text-[10px] text-slate-400">Direct Growth &middot; Flexi Cap &middot; PPFAS AMC</p>
+            </div>
+            <a href="./fund360.html" class="text-[10px] text-teal-600 font-medium hover:underline">360 View &rarr;</a>
+          </div>
+          <div class="grid grid-cols-4 gap-2 text-center">
+            <div>
+              <p class="text-[8px] text-slate-400">NAV</p>
+              <p class="text-[11px] font-bold tabular-nums text-slate-700">84.23</p>
+            </div>
+            <div>
+              <p class="text-[8px] text-slate-400">1Y</p>
+              <p class="text-[11px] font-bold tabular-nums text-emerald-600">+18.4%</p>
+            </div>
+            <div>
+              <p class="text-[8px] text-slate-400">AUM</p>
+              <p class="text-[11px] font-bold tabular-nums text-slate-700">75,210 Cr</p>
+            </div>
+            <div>
+              <p class="text-[8px] text-slate-400">Expense</p>
+              <p class="text-[11px] font-bold tabular-nums text-slate-700">0.63%</p>
+            </div>
+          </div>
+          <!-- Lens mini bars -->
+          <div class="mt-2 pt-2 border-t border-slate-200 grid grid-cols-6 gap-1">
+            <div class="text-center">
+              <div class="h-1.5 rounded-full bg-emerald-500 mx-1"></div>
+              <p class="text-[7px] text-slate-400 mt-0.5">Ret 85</p>
+            </div>
+            <div class="text-center">
+              <div class="h-1.5 rounded-full bg-blue-500 mx-1"></div>
+              <p class="text-[7px] text-slate-400 mt-0.5">Risk 72</p>
+            </div>
+            <div class="text-center">
+              <div class="h-1.5 rounded-full bg-emerald-500 mx-1"></div>
+              <p class="text-[7px] text-slate-400 mt-0.5">Con 78</p>
+            </div>
+            <div class="text-center">
+              <div class="h-1.5 rounded-full bg-teal-500 mx-1"></div>
+              <p class="text-[7px] text-slate-400 mt-0.5">Alp 68</p>
+            </div>
+            <div class="text-center">
+              <div class="h-1.5 rounded-full bg-emerald-500 mx-1"></div>
+              <p class="text-[7px] text-slate-400 mt-0.5">Eff 81</p>
+            </div>
+            <div class="text-center">
+              <div class="h-1.5 rounded-full bg-emerald-500 mx-1"></div>
+              <p class="text-[7px] text-slate-400 mt-0.5">Res 88</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Simulation Configuration -->
+    <div class="col-span-4">
+      <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <p class="section-title mb-3">Simulation Config</p>
+        <div class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <div class="flex items-center gap-1 mb-1">
+                <label class="text-[10px] font-medium text-slate-600">SIP Amount</label>
+                <span class="info-icon" style="width:12px;height:12px;font-size:8px">i
+                  <span class="info-tip">Monthly investment amount. A typical SIP of 10,000-25,000/month is common for retail investors. The simulator invests this on your chosen SIP day each month.</span>
+                </span>
+              </div>
+              <div class="relative">
+                <span class="absolute left-2.5 top-2 text-[10px] text-slate-400">&#8377;</span>
+                <input type="text" value="25,000" class="w-full pl-6 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 tabular-nums">
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center gap-1 mb-1">
+                <label class="text-[10px] font-medium text-slate-600">Lumpsum Reserve</label>
+                <span class="info-icon" style="width:12px;height:12px;font-size:8px">i
+                  <span class="info-tip">Cash reserve deployed when signals trigger. In Hybrid mode, this sits in liquid/overnight funds and gets deployed during market dips or breadth crossovers.</span>
+                </span>
+              </div>
+              <div class="relative">
+                <span class="absolute left-2.5 top-2 text-[10px] text-slate-400">&#8377;</span>
+                <input type="text" value="5,00,000" class="w-full pl-6 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 tabular-nums">
+              </div>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="text-[10px] font-medium text-slate-600 mb-1 block">Period</label>
+              <select class="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50">
+                <option>5 Years</option>
+                <option selected>7 Years</option>
+                <option>10 Years</option>
+                <option>Max</option>
+              </select>
+            </div>
+            <div>
+              <div class="flex items-center gap-1 mb-1">
+                <label class="text-[10px] font-medium text-slate-600">SIP Day</label>
+                <span class="info-icon" style="width:12px;height:12px;font-size:8px">i
+                  <span class="info-tip">Day of month for SIP execution. Studies show the specific day has negligible long-term impact. Most investors choose 1st or 5th.</span>
+                </span>
+              </div>
+              <select class="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50">
+                <option selected>5th</option>
+                <option>1st</option>
+                <option>10th</option>
+                <option>15th</option>
+              </select>
+            </div>
+            <div>
+              <div class="flex items-center gap-1 mb-1">
+                <label class="text-[10px] font-medium text-slate-600">Deploy %</label>
+                <span class="info-icon" style="width:12px;height:12px;font-size:8px">i
+                  <span class="info-tip">What % of lumpsum reserve to deploy per signal trigger. 20% means deploying 1L per signal from a 5L reserve. Lower % = more gradual deployment.</span>
+                </span>
+              </div>
+              <select class="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50">
+                <option>10%</option>
+                <option selected>20%</option>
+                <option>33%</option>
+                <option>50%</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Signal Rules -->
+    <div class="col-span-4">
+      <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-1">
+            <p class="section-title">Signal Rules</p>
+            <span class="info-icon" style="width:12px;height:12px;font-size:8px">i
+              <span class="info-tip">Market signals from MarketPulse that trigger extra lumpsum deployments. When conditions are met AND logic matches, deploy % of reserve. Cool-off prevents over-deployment.</span>
+            </span>
+          </div>
+          <button class="text-[10px] text-teal-600 font-semibold hover:text-teal-700">+ Add Rule</button>
+        </div>
+        <div class="space-y-2">
+          <!-- Rule 1 -->
+          <div class="rule-card p-2.5 rounded-lg border border-slate-100">
+            <div class="flex items-center justify-between mb-1">
+              <p class="text-[11px] font-semibold text-slate-700">Breadth Dip</p>
+              <div class="flex items-center gap-1">
+                <span class="signal-dot bg-emerald-500"></span>
+                <span class="text-[9px] text-emerald-600 font-medium">Active</span>
+              </div>
+            </div>
+            <p class="text-[9px] text-slate-500">% above 200 EMA <strong>CROSSES BELOW</strong> 40</p>
+            <div class="flex gap-3 mt-1 text-[9px] text-slate-400">
+              <span>Multiplier: 1.5x</span>
+              <span>Cool-off: 30 days</span>
+              <span class="text-emerald-600 font-medium">Hit 4 times in 7Y</span>
+            </div>
+          </div>
+          <!-- Rule 2 -->
+          <div class="rule-card p-2.5 rounded-lg border border-slate-100">
+            <div class="flex items-center justify-between mb-1">
+              <p class="text-[11px] font-semibold text-slate-700">Fear Buy</p>
+              <div class="flex items-center gap-1">
+                <span class="signal-dot bg-emerald-500"></span>
+                <span class="text-[9px] text-emerald-600 font-medium">Active</span>
+              </div>
+            </div>
+            <p class="text-[9px] text-slate-500">Sentiment <strong>BELOW</strong> 25 AND Breadth <strong>BELOW</strong> 30</p>
+            <div class="flex gap-3 mt-1 text-[9px] text-slate-400">
+              <span>Multiplier: 2.0x</span>
+              <span>Cool-off: 45 days</span>
+              <span class="text-emerald-600 font-medium">Hit 2 times in 7Y</span>
+            </div>
+          </div>
+          <!-- Rule 3 -->
+          <div class="rule-card p-2.5 rounded-lg border border-slate-100">
+            <div class="flex items-center justify-between mb-1">
+              <p class="text-[11px] font-semibold text-slate-700">Regime Shift Buy</p>
+              <div class="flex items-center gap-1">
+                <span class="signal-dot bg-slate-300"></span>
+                <span class="text-[9px] text-slate-400">Inactive</span>
+              </div>
+            </div>
+            <p class="text-[9px] text-slate-500">Regime <strong>changes to</strong> Risk-On</p>
+            <div class="flex gap-3 mt-1 text-[9px] text-slate-400">
+              <span>Multiplier: 1.0x</span>
+              <span>Cool-off: 60 days</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SECTION 2: Results — Mode Comparison ==================== -->
+  <section class="animate-in" style="animation-delay: 0.1s">
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <p class="section-title">Mode Comparison — 7 Year Backtest</p>
+          <span class="info-icon">i
+            <span class="info-tip">Compares 4 investment modes over the same period and fund. "SIP + Signals" uses your signal rules to deploy extra capital during market stress. XIRR is the true time-weighted return accounting for all cash flows.</span>
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] text-slate-400">Mar 2019 — Mar 2026</span>
+          <button class="px-3 py-1.5 text-[10px] font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700">Re-simulate</button>
+        </div>
+      </div>
+
+      <!-- 4 Mode cards -->
+      <div class="grid grid-cols-4 gap-4 mb-5">
+        <!-- Pure SIP -->
+        <div class="mode-card rounded-xl border border-slate-200 p-4">
+          <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Pure SIP</p>
+          <p class="text-xs text-slate-500 mb-3">Fixed amount, no signals</p>
+          <div class="space-y-2">
+            <div>
+              <div class="flex items-center gap-1">
+                <p class="text-[9px] text-slate-400">XIRR</p>
+                <span class="info-icon" style="width:10px;height:10px;font-size:7px">i
+                  <span class="info-tip">Extended Internal Rate of Return — the annualized return that accounts for all your cashflows (SIP amounts, dates). More accurate than CAGR for SIPs.</span>
+                </span>
+              </div>
+              <p class="text-xl font-bold text-slate-700 tabular-nums">14.8%</p>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <p class="text-[8px] text-slate-400">Invested</p>
+                <p class="text-[11px] font-semibold tabular-nums text-slate-600">21.0L</p>
+              </div>
+              <div>
+                <p class="text-[8px] text-slate-400">Current Value</p>
+                <p class="text-[11px] font-semibold tabular-nums text-emerald-600">38.2L</p>
+              </div>
+              <div>
+                <p class="text-[8px] text-slate-400">Max Drawdown</p>
+                <p class="text-[11px] font-semibold tabular-nums text-red-500">-24.1%</p>
+              </div>
+              <div>
+                <p class="text-[8px] text-slate-400">Wealth Gain</p>
+                <p class="text-[11px] font-semibold tabular-nums text-emerald-600">1.82x</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SIP + Signals (WINNER) -->
+        <div class="mode-card best rounded-xl p-4">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-[10px] text-teal-700 uppercase tracking-wider font-bold">SIP + Signals</p>
+            <span class="px-2 py-0.5 text-[8px] font-bold text-white bg-teal-600 rounded-full">BEST</span>
+          </div>
+          <p class="text-xs text-teal-600 mb-3">SIP + deploy on breadth/sentiment dips</p>
+          <div class="space-y-2">
+            <div>
+              <div class="flex items-center gap-1">
+                <p class="text-[9px] text-teal-500">XIRR</p>
+              </div>
+              <p class="text-xl font-bold text-teal-700 tabular-nums">18.2%</p>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <p class="text-[8px] text-teal-500">Invested</p>
+                <p class="text-[11px] font-semibold tabular-nums text-teal-700">26.5L</p>
+              </div>
+              <div>
+                <p class="text-[8px] text-teal-500">Current Value</p>
+                <p class="text-[11px] font-semibold tabular-nums text-teal-700">52.8L</p>
+              </div>
+              <div>
+                <p class="text-[8px] text-teal-500">Max Drawdown</p>
+                <p class="text-[11px] font-semibold tabular-nums text-red-500">-22.3%</p>
+              </div>
+              <div>
+                <p class="text-[8px] text-teal-500">Wealth Gain</p>
+                <p class="text-[11px] font-semibold tabular-nums text-teal-700">1.99x</p>
+              </div>
+            </div>
+            <div class="mt-1 p-2 bg-teal-100/50 rounded-lg">
+              <p class="text-[9px] text-teal-700 leading-relaxed"><strong>+3.4% XIRR boost</strong> vs Pure SIP. Signals deployed 5.5L extra at optimal dips. 4 of 6 signal deployments were within 5% of local bottom.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pure Lumpsum -->
+        <div class="mode-card rounded-xl border border-slate-200 p-4">
+          <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Pure Lumpsum</p>
+          <p class="text-xs text-slate-500 mb-3">One-time deployment, Day 1</p>
+          <div class="space-y-2">
+            <div>
+              <div class="flex items-center gap-1">
+                <p class="text-[9px] text-slate-400">CAGR</p>
+                <span class="info-icon" style="width:10px;height:10px;font-size:7px">i
+                  <span class="info-tip">Compound Annual Growth Rate for single lumpsum. Unlike XIRR, CAGR only works for single entry/exit. Used here because there's only one cashflow.</span>
+                </span>
+              </div>
+              <p class="text-xl font-bold text-slate-700 tabular-nums">16.1%</p>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <p class="text-[8px] text-slate-400">Invested</p>
+                <p class="text-[11px] font-semibold tabular-nums text-slate-600">21.0L</p>
+              </div>
+              <div>
+                <p class="text-[8px] text-slate-400">Current Value</p>
+                <p class="text-[11px] font-semibold tabular-nums text-emerald-600">54.1L</p>
+              </div>
+              <div>
+                <p class="text-[8px] text-slate-400">Max Drawdown</p>
+                <p class="text-[11px] font-semibold tabular-nums text-red-500">-34.8%</p>
+              </div>
+              <div>
+                <p class="text-[8px] text-slate-400">Wealth Gain</p>
+                <p class="text-[11px] font-semibold tabular-nums text-emerald-600">2.58x</p>
+              </div>
+            </div>
+            <p class="text-[9px] text-slate-400 leading-relaxed mt-1">Higher absolute return but -34.8% drawdown may be psychologically difficult to hold through.</p>
+          </div>
+        </div>
+
+        <!-- Hybrid -->
+        <div class="mode-card rounded-xl border border-slate-200 p-4">
+          <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Hybrid</p>
+          <p class="text-xs text-slate-500 mb-3">SIP + lumpsum reserve on signals</p>
+          <div class="space-y-2">
+            <div>
+              <p class="text-[9px] text-slate-400">XIRR</p>
+              <p class="text-xl font-bold text-slate-700 tabular-nums">17.4%</p>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <p class="text-[8px] text-slate-400">Invested</p>
+                <p class="text-[11px] font-semibold tabular-nums text-slate-600">26.0L</p>
+              </div>
+              <div>
+                <p class="text-[8px] text-slate-400">Current Value</p>
+                <p class="text-[11px] font-semibold tabular-nums text-emerald-600">49.7L</p>
+              </div>
+              <div>
+                <p class="text-[8px] text-slate-400">Max Drawdown</p>
+                <p class="text-[11px] font-semibold tabular-nums text-red-500">-26.5%</p>
+              </div>
+              <div>
+                <div class="flex items-center gap-1">
+                  <p class="text-[8px] text-slate-400">Capital Efficiency</p>
+                  <span class="info-icon" style="width:9px;height:9px;font-size:6px">i
+                    <span class="info-tip">% of lumpsum reserve actually deployed. 100% means all reserve was used by signals. Low % means signals were too strict or market was calm.</span>
+                  </span>
+                </div>
+                <p class="text-[11px] font-semibold tabular-nums text-slate-600">78%</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detailed Comparison Table -->
+      <div class="overflow-x-auto mb-4">
+        <table class="w-full text-[11px]">
+          <thead>
+            <tr class="text-[9px] text-slate-400 uppercase tracking-wider border-b border-slate-100">
+              <th class="text-left py-2 pr-4 font-medium">Metric</th>
+              <th class="metric-cell font-medium">Pure SIP</th>
+              <th class="metric-cell font-medium">SIP + Signals</th>
+              <th class="metric-cell font-medium">Lumpsum</th>
+              <th class="metric-cell font-medium">Hybrid</th>
+              <th class="text-left py-2 pl-4 font-medium w-40">What This Means</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50">
+            <tr>
+              <td class="py-2 pr-4 font-medium text-slate-600">XIRR / CAGR</td>
+              <td class="metric-cell tabular-nums">14.8%</td>
+              <td class="metric-cell tabular-nums winner">18.2%</td>
+              <td class="metric-cell tabular-nums">16.1%</td>
+              <td class="metric-cell tabular-nums">17.4%</td>
+              <td class="py-2 pl-4 text-[9px] text-slate-400">Your annualized return on deployed capital</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-4 font-medium text-slate-600">Total Invested</td>
+              <td class="metric-cell tabular-nums">21.0L</td>
+              <td class="metric-cell tabular-nums">26.5L</td>
+              <td class="metric-cell tabular-nums">21.0L</td>
+              <td class="metric-cell tabular-nums">26.0L</td>
+              <td class="py-2 pl-4 text-[9px] text-slate-400">How much capital you committed</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-4 font-medium text-slate-600">Current Value</td>
+              <td class="metric-cell tabular-nums">38.2L</td>
+              <td class="metric-cell tabular-nums winner">52.8L</td>
+              <td class="metric-cell tabular-nums">54.1L</td>
+              <td class="metric-cell tabular-nums">49.7L</td>
+              <td class="py-2 pl-4 text-[9px] text-slate-400">What your portfolio is worth today</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-4 font-medium text-slate-600">Max Drawdown</td>
+              <td class="metric-cell tabular-nums">-24.1%</td>
+              <td class="metric-cell tabular-nums winner">-22.3%</td>
+              <td class="metric-cell tabular-nums text-red-500">-34.8%</td>
+              <td class="metric-cell tabular-nums">-26.5%</td>
+              <td class="py-2 pl-4 text-[9px] text-slate-400">Worst peak-to-trough decline you'd have faced</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-4 font-medium text-slate-600">Sharpe Ratio</td>
+              <td class="metric-cell tabular-nums">0.92</td>
+              <td class="metric-cell tabular-nums winner">1.18</td>
+              <td class="metric-cell tabular-nums">0.84</td>
+              <td class="metric-cell tabular-nums">1.05</td>
+              <td class="py-2 pl-4 text-[9px] text-slate-400">Return per unit of risk. >1.0 = excellent</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-4 font-medium text-slate-600">Signal Hits</td>
+              <td class="metric-cell text-slate-300">—</td>
+              <td class="metric-cell tabular-nums font-semibold text-teal-600">6</td>
+              <td class="metric-cell text-slate-300">—</td>
+              <td class="metric-cell tabular-nums">4</td>
+              <td class="py-2 pl-4 text-[9px] text-slate-400">Times your signal rules triggered a deployment</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-4 font-medium text-slate-600">Signal Accuracy</td>
+              <td class="metric-cell text-slate-300">—</td>
+              <td class="metric-cell tabular-nums font-semibold text-teal-600">67%</td>
+              <td class="metric-cell text-slate-300">—</td>
+              <td class="metric-cell tabular-nums">75%</td>
+              <td class="py-2 pl-4 text-[9px] text-slate-400">% of signals that deployed within 5% of local bottom</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== SECTION 3: Equity Curve + Signal Timeline ==================== -->
+  <div class="grid grid-cols-12 gap-5 animate-in" style="animation-delay: 0.2s">
+    <!-- Main chart -->
+    <div class="col-span-8">
+      <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <p class="section-title">Equity Curve + Signal Events</p>
+            <span class="info-icon">i
+              <span class="info-tip">The green line shows portfolio value over time. Orange diamonds mark signal-triggered deployments. The shaded area shows where signals added extra capital that compounded into the XIRR boost.</span>
+            </span>
+          </div>
+          <div class="flex gap-3 text-[10px]">
+            <div class="flex items-center gap-1"><span class="w-3 h-0.5 bg-teal-500 rounded"></span><span class="text-slate-500">SIP + Signals</span></div>
+            <div class="flex items-center gap-1"><span class="w-3 h-0.5 bg-slate-300 rounded"></span><span class="text-slate-500">Pure SIP</span></div>
+            <div class="flex items-center gap-1"><span class="w-2 h-2 bg-amber-500 rounded-full" style="width:6px;height:6px"></span><span class="text-slate-500">Signal Deploy</span></div>
+          </div>
+        </div>
+        <div style="height: 320px;">
+          <canvas id="equityCurve" style="width:100%; height:100%;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Signal Event Log + Actions -->
+    <div class="col-span-4 space-y-4">
+      <!-- Signal event log -->
+      <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <p class="section-title mb-3">Signal Event Log</p>
+        <div class="space-y-2 max-h-[200px] overflow-y-auto">
+          <div class="flex items-start gap-2 p-2 rounded-lg bg-emerald-50/50">
+            <span class="signal-dot bg-emerald-500 mt-1"></span>
+            <div>
+              <p class="text-[10px] font-semibold text-slate-700">23 Mar 2020 — Breadth Dip</p>
+              <p class="text-[9px] text-slate-500">Deployed 1.5L at NAV 28.4 &middot; Now worth 4.5L</p>
+              <p class="text-[9px] text-emerald-600 font-semibold">+216% return on this deployment</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-2 p-2 rounded-lg bg-emerald-50/50">
+            <span class="signal-dot bg-emerald-500 mt-1"></span>
+            <div>
+              <p class="text-[10px] font-semibold text-slate-700">18 Mar 2020 — Fear Buy</p>
+              <p class="text-[9px] text-slate-500">Deployed 2.0L at NAV 26.1 &middot; Now worth 6.4L</p>
+              <p class="text-[9px] text-emerald-600 font-semibold">+222% return — best signal hit</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-2 p-2 rounded-lg">
+            <span class="signal-dot bg-teal-400 mt-1"></span>
+            <div>
+              <p class="text-[10px] font-semibold text-slate-700">16 Jun 2022 — Breadth Dip</p>
+              <p class="text-[9px] text-slate-500">Deployed 1.0L at NAV 52.8 &middot; Now worth 1.6L</p>
+              <p class="text-[9px] text-teal-600 font-semibold">+60% return</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-2 p-2 rounded-lg bg-amber-50/50">
+            <span class="signal-dot bg-amber-500 mt-1"></span>
+            <div>
+              <p class="text-[10px] font-semibold text-slate-700">04 Oct 2023 — Breadth Dip</p>
+              <p class="text-[9px] text-slate-500">Deployed 1.0L at NAV 68.2 &middot; Now worth 1.2L</p>
+              <p class="text-[9px] text-amber-600 font-semibold">+23% — still early</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-2">
+        <button class="w-full py-2.5 text-xs font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors">
+          Save as Strategy Template
+        </button>
+        <button class="w-full py-2 text-xs font-medium text-teal-700 bg-teal-50 rounded-lg hover:bg-teal-100 transition-colors border border-teal-200">
+          Export Results (CSV)
+        </button>
+        <button class="w-full py-2 text-xs font-medium text-slate-600 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200">
+          Share Backtest Link
+        </button>
+      </div>
+
+      <!-- Explanation -->
+      <div class="bg-teal-50 rounded-xl border border-teal-100 p-3">
+        <p class="text-[10px] font-semibold text-teal-700 mb-1">Why SIP + Signals Won</p>
+        <p class="text-[9px] text-teal-600 leading-relaxed">
+          Signal rules deployed extra capital during 2020 crash and 2022 correction — exactly when NAVs were lowest. This "buy the dip" effect compounded over 7 years to produce +3.4% XIRR boost over Pure SIP while actually reducing max drawdown.
+        </p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// Equity Curve Chart
+const eqCtx = document.getElementById('equityCurve').getContext('2d');
+
+// Generate sample equity curve data
+const months = [];
+const sipValues = [];
+const signalValues = [];
+const signalPoints = [];
+
+let sipVal = 25000, sigVal = 25000;
+const startDate = new Date(2019, 2, 1);
+
+for (let i = 0; i < 84; i++) {
+  const d = new Date(startDate);
+  d.setMonth(d.getMonth() + i);
+  months.push(d.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }));
+
+  // Simulate returns with COVID crash and recovery
+  let monthReturn = 0.012 + (Math.random() - 0.45) * 0.04;
+  if (i >= 11 && i <= 13) monthReturn = -0.08 - Math.random() * 0.05; // COVID
+  if (i >= 14 && i <= 20) monthReturn = 0.06 + Math.random() * 0.04; // Recovery
+  if (i >= 38 && i <= 40) monthReturn = -0.04 - Math.random() * 0.02; // 2022
+
+  sipVal = sipVal * (1 + monthReturn) + 25000;
+  sigVal = sigVal * (1 + monthReturn * 1.04) + 25000; // Slightly better due to signals
+
+  // Signal deployments
+  if (i === 12) { sigVal += 200000; signalPoints.push({ x: i, y: sigVal }); } // COVID
+  if (i === 13) { sigVal += 150000; signalPoints.push({ x: i, y: sigVal }); }
+  if (i === 39) { sigVal += 100000; signalPoints.push({ x: i, y: sigVal }); } // 2022
+  if (i === 54) { sigVal += 100000; signalPoints.push({ x: i, y: sigVal }); }
+
+  sipValues.push(Math.round(sipVal));
+  signalValues.push(Math.round(sigVal));
+}
+
+new Chart(eqCtx, {
+  type: 'line',
+  data: {
+    labels: months,
+    datasets: [
+      {
+        label: 'SIP + Signals',
+        data: signalValues,
+        borderColor: '#0d9488',
+        backgroundColor: 'rgba(13,148,136,0.06)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 2.5,
+      },
+      {
+        label: 'Pure SIP',
+        data: sipValues,
+        borderColor: '#94a3b8',
+        borderDash: [4, 4],
+        fill: false,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 1.5,
+      },
+      {
+        label: 'Signal Deployments',
+        data: signalPoints.map(p => ({ x: p.x, y: p.y })),
+        type: 'scatter',
+        pointBackgroundColor: '#f59e0b',
+        pointBorderColor: '#d97706',
+        pointBorderWidth: 2,
+        pointRadius: 6,
+        pointStyle: 'rectRot',
+        showLine: false,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(255,255,255,0.97)',
+        titleColor: '#1e293b',
+        bodyColor: '#475569',
+        borderColor: '#e2e8f0',
+        borderWidth: 1,
+        padding: 10,
+        cornerRadius: 8,
+        titleFont: { size: 11, weight: 'bold', family: 'Inter' },
+        bodyFont: { size: 10, family: 'Inter' },
+        callbacks: {
+          label: function(item) {
+            if (item.dataset.label === 'Signal Deployments') return null;
+            return `${item.dataset.label}: \u20b9${(item.raw / 100000).toFixed(1)}L`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { font: { size: 8, family: 'Inter' }, color: '#94a3b8', maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+      },
+      y: {
+        grid: { color: '#f1f5f9' },
+        ticks: {
+          font: { size: 9, family: 'Inter' },
+          color: '#94a3b8',
+          callback: function(v) { return '\u20b9' + (v / 100000).toFixed(0) + 'L'; }
+        },
+        beginAtZero: true,
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>

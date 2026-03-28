@@ -38,8 +38,8 @@ describe('FilterBar defaults', () => {
     expect(keys).toContain('alpha_score');
   });
 
-  it('FilterBar exports a default function', async () => {
-    const mod = await import('../components/universe/FilterBar');
+  it('HorizontalFilterBar exports a default function', async () => {
+    const mod = await import('../components/universe/HorizontalFilterBar');
     expect(typeof mod.default).toBe('function');
   });
 
@@ -103,11 +103,11 @@ describe('Universe page structure', () => {
 });
 
 // ────────────────────────────────────────────
-// HoverCard export test
+// FundCard export test
 // ────────────────────────────────────────────
-describe('HoverCard', () => {
+describe('FundCard', () => {
   it('exports a default function', async () => {
-    const mod = await import('../components/universe/HoverCard');
+    const mod = await import('../components/universe/FundCard');
     expect(typeof mod.default).toBe('function');
   });
 });

@@ -74,7 +74,7 @@ function PeerRow({ peer, onNavigate }) {
 }
 
 /**
- * PeerPositioning -- horizontal lens bars + clickable peer list.
+ * PeerPositioning -- lens comparison bars + peer list.
  *
  * Props:
  *   scores   object

@@ -1,79 +1,198 @@
+import { useRef, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import Card from '../shared/Card';
 import SkeletonLoader from '../shared/SkeletonLoader';
+import SectionTitle from '../shared/SectionTitle';
 
-const QUADRANT_STYLES = {
+const QUADRANT_CONFIG = {
   Leading: {
-    bg: 'bg-emerald-100',
-    text: 'text-emerald-700',
-  },
-  Weakening: {
-    bg: 'bg-amber-100',
-    text: 'text-amber-700',
-  },
-  Lagging: {
-    bg: 'bg-red-100',
-    text: 'text-red-700',
+    dot: 'bg-emerald-500',
+    bg: 'bg-emerald-50/50',
+    border: 'border-emerald-100',
+    badge: 'text-emerald-600 bg-emerald-100',
+    scoreColor: 'text-emerald-600',
   },
   Improving: {
-    bg: 'bg-blue-100',
-    text: 'text-blue-700',
+    dot: 'bg-sky-500',
+    bg: 'bg-sky-50/50',
+    border: 'border-sky-100',
+    badge: 'text-sky-600 bg-sky-100',
+    scoreColor: 'text-sky-600',
+  },
+  Weakening: {
+    dot: 'bg-amber-500',
+    bg: 'bg-amber-50/50',
+    border: 'border-amber-100',
+    badge: 'text-amber-600 bg-amber-100',
+    scoreColor: 'text-red-500',
+  },
+  Lagging: {
+    dot: 'bg-red-400',
+    bg: '',
+    border: '',
+    badge: 'text-red-500 bg-red-50',
+    scoreColor: 'text-red-500',
   },
 };
 
-const ACTION_STYLES = {
-  BUY: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  HOLD: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  SELL: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-  AVOID: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-};
+function toTitleCase(str) {
+  if (!str) return 'Improving';
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
 
-function RSBar({ score, maxScore = 100 }) {
-  const pct = Math.max(0, Math.min(100, ((score || 0) / maxScore) * 100));
-  const color =
-    pct >= 60 ? 'bg-emerald-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500';
+function MiniCompass({ sectors }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !sectors || sectors.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
+    const cx = W / 2;
+    const cy = H / 2;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Background quadrants
+    const quadColors = [
+      ['rgba(16,185,129,0.06)', 'Leading'],    // top-right
+      ['rgba(14,165,233,0.06)', 'Improving'],   // bottom-right
+      ['rgba(245,158,11,0.06)', 'Weakening'],   // top-left
+      ['rgba(239,68,68,0.06)', 'Lagging'],      // bottom-left
+    ];
+
+    // Top-right (Leading)
+    ctx.fillStyle = quadColors[0][0];
+    ctx.fillRect(cx, 0, cx, cy);
+    // Bottom-right (Improving)
+    ctx.fillStyle = quadColors[1][0];
+    ctx.fillRect(cx, cy, cx, cy);
+    // Top-left (Weakening)
+    ctx.fillStyle = quadColors[2][0];
+    ctx.fillRect(0, 0, cx, cy);
+    // Bottom-left (Lagging)
+    ctx.fillStyle = quadColors[3][0];
+    ctx.fillRect(0, cy, cx, cy);
+
+    // Axes
+    ctx.strokeStyle = 'rgba(148,163,184,0.3)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(cx, 0); ctx.lineTo(cx, H);
+    ctx.moveTo(0, cy); ctx.lineTo(W, cy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Axis labels
+    ctx.font = '9px Inter, system-ui';
+    ctx.fillStyle = '#94a3b8';
+    ctx.textAlign = 'center';
+    ctx.fillText('RS Score \u2192', W - 35, cy - 6);
+    ctx.save();
+    ctx.translate(cx + 6, 15);
+    ctx.fillText('Momentum \u2191', 0, 0);
+    ctx.restore();
+
+    // Quadrant labels
+    ctx.font = '8px Inter, system-ui';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('Leading', cx + cx / 2, 14);
+    ctx.fillText('Improving', cx + cx / 2, H - 6);
+    ctx.fillText('Weakening', cx / 2, 14);
+    ctx.fillText('Lagging', cx / 2, H - 6);
+
+    // Plot sectors
+    const maxRS = 100;
+    const maxMom = 10;
+
+    sectors.forEach((s) => {
+      const rs = s.rs_score || 50;
+      const mom = s.momentum || 0;
+      const x = cx + ((rs - 50) / 50) * (cx - 20);
+      const y = cy - (mom / maxMom) * (cy - 20);
+
+      const quadrant = toTitleCase(s.quadrant);
+      let color = '#059669';
+      if (quadrant === 'Improving') color = '#0ea5e9';
+      if (quadrant === 'Weakening') color = '#f59e0b';
+      if (quadrant === 'Lagging') color = '#ef4444';
+
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      const name = s.display_name || s.sector_name || s.name || '';
+      if (name) {
+        ctx.font = '9px Inter, system-ui';
+        ctx.fillStyle = '#334155';
+        ctx.textAlign = 'center';
+        ctx.fillText(name, x, y - 9);
+      }
+    });
+  }, [sectors]);
 
   return (
-    <div className="flex items-center gap-2 flex-1 min-w-0">
-      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-        <div
-          className={`h-full ${color} rounded-full transition-all`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="text-xs font-bold font-mono tabular-nums text-slate-700 w-8 text-right">
-        {score != null ? Math.round(score) : '--'}
+    <div className="relative w-full aspect-square max-w-[240px] mx-auto mb-4">
+      <canvas ref={canvasRef} width={240} height={240} className="w-full h-full" />
+    </div>
+  );
+}
+
+function SectorRow({ sector }) {
+  const quadrant = toTitleCase(sector.quadrant);
+  const config = QUADRANT_CONFIG[quadrant] || QUADRANT_CONFIG.Improving;
+  const displayName = sector.display_name || sector.sector_name || sector.name || '';
+  const mom = sector.momentum;
+  const momStr = mom != null ? `${mom >= 0 ? '+' : ''}${Number(mom).toFixed(1)}` : '--';
+
+  return (
+    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${config.bg} ${config.border ? `border ${config.border}` : 'hover:bg-slate-50'}`}>
+      <span className={`w-2 h-2 rounded-full ${config.dot}`} />
+      <span className="text-xs font-medium text-slate-700 flex-1">{displayName}</span>
+      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${config.badge}`}>
+        {quadrant}
+      </span>
+      <span className={`text-xs font-semibold tabular-nums ${config.scoreColor}`}>
+        {momStr}
       </span>
     </div>
   );
 }
 
-function toTitleCase(str) {
-  return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : str;
-}
+function RotationPlaybook({ sectors }) {
+  if (!sectors || sectors.length === 0) return null;
 
-function SectorRow({ sector }) {
-  const rawQuadrant = sector.quadrant || 'Improving';
-  const quadrant = toTitleCase(rawQuadrant);
-  const qStyle = QUADRANT_STYLES[quadrant] || QUADRANT_STYLES.Improving;
-  const action = sector.action || '';
-  const aStyle = ACTION_STYLES[action.toUpperCase()] || ACTION_STYLES.HOLD;
-  const displayName = sector.display_name || sector.sector_name || sector.name || '';
+  const leading = sectors.filter((s) => toTitleCase(s.quadrant) === 'Leading');
+  const improving = sectors.filter((s) => toTitleCase(s.quadrant) === 'Improving');
+  const weakening = sectors.filter((s) => toTitleCase(s.quadrant) === 'Weakening');
+
+  const leadingNames = leading.map((s) => s.display_name || s.sector_name || s.name).filter(Boolean);
+  const improvingNames = improving.map((s) => s.display_name || s.sector_name || s.name).filter(Boolean);
+  const weakeningNames = weakening.map((s) => s.display_name || s.sector_name || s.name).filter(Boolean);
+
+  const parts = [];
+  if (leadingNames.length > 0) {
+    parts.push(`${leadingNames.join(' & ')} entering Leading quadrant \u2014 consider overweight.`);
+  }
+  if (improvingNames.length > 0) {
+    parts.push(`${improvingNames.join(' & ')} improving \u2014 early entry window.`);
+  }
+  if (weakeningNames.length > 0) {
+    parts.push(`${weakeningNames.join(' & ')} weakening \u2014 reduce exposure.`);
+  }
+
+  if (parts.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-slate-50 last:border-0">
-      <div className="w-28 flex-shrink-0">
-        <p className="text-xs font-medium text-slate-800 truncate">{displayName}</p>
-      </div>
-      <RSBar score={sector.rs_score} />
-      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${qStyle.bg} ${qStyle.text}`}>
-        {quadrant}
-      </span>
-      {action && (
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${aStyle.bg} ${aStyle.text} ${aStyle.border}`}>
-          {action.toUpperCase()}
-        </span>
-      )}
+    <div className="mt-4 p-3 rounded-lg bg-teal-50 border border-teal-100">
+      <p className="text-[10px] font-semibold text-teal-700 uppercase tracking-wider mb-1">
+        Rotation Playbook
+      </p>
+      <p className="text-xs text-teal-800 leading-relaxed">
+        {parts.join(' ')}
+      </p>
     </div>
   );
 }
@@ -83,54 +202,66 @@ export default function SectorSnapshot({ sectors, loading }) {
 
   if (loading) {
     return (
-      <Card>
+      <div className="bg-white rounded-xl border border-slate-200 p-5">
         <div className="space-y-3">
+          <SkeletonLoader className="h-[240px] rounded-lg" />
           {[0, 1, 2, 3, 4].map((i) => (
             <SkeletonLoader key={i} className="h-10 rounded-lg" />
           ))}
         </div>
-      </Card>
+      </div>
     );
   }
 
   if (!sectors || sectors.length === 0) {
     return (
-      <Card>
+      <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="section-title">Sector Rotation</p>
+        </div>
         <div className="text-center py-6">
           <p className="text-xs text-slate-400">Sector data unavailable. MarketPulse may be offline.</p>
         </div>
-      </Card>
+      </div>
     );
   }
 
-  // Sort by RS score descending, take top 5
-  // Normalize sector data (quadrant casing, display name)
+  // Normalize quadrant casing
   const normalized = sectors.map((s) => ({
     ...s,
-    sector_name: s.sector_name || s.display_name || s.name || 'Unknown',
     quadrant: toTitleCase(s.quadrant),
+    sector_name: s.sector_name || s.display_name || s.name || 'Unknown',
   }));
 
-  const topSectors = [...normalized]
-    .sort((a, b) => (b.rs_score || 0) - (a.rs_score || 0))
-    .slice(0, 5);
+  // Sort by RS score descending
+  const sortedSectors = [...normalized].sort((a, b) => (b.rs_score || 0) - (a.rs_score || 0));
+  const topSectors = sortedSectors.slice(0, 5);
 
   return (
-    <Card>
-      <div>
+    <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <div className="flex items-center justify-between mb-4">
+        <p className="section-title">Sector Rotation</p>
+        <button
+          type="button"
+          onClick={() => router.push('/sectors')}
+          className="text-[10px] text-teal-600 font-medium hover:text-teal-700"
+        >
+          Full Compass &rarr;
+        </button>
+      </div>
+
+      {/* Mini Compass */}
+      <MiniCompass sectors={normalized} />
+
+      {/* Sector list */}
+      <div className="space-y-2">
         {topSectors.map((sector, idx) => (
           <SectorRow key={sector.display_name || sector.sector_name || idx} sector={sector} />
         ))}
       </div>
-      <div className="mt-3 pt-2 border-t border-slate-100">
-        <button
-          type="button"
-          onClick={() => router.push('/sectors')}
-          className="text-xs text-teal-600 hover:text-teal-700 font-medium"
-        >
-          View All Sectors &rarr;
-        </button>
-      </div>
-    </Card>
+
+      {/* Rotation playbook */}
+      <RotationPlaybook sectors={normalized} />
+    </div>
   );
 }

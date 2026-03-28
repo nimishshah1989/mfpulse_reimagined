@@ -2,15 +2,20 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { cachedFetch } from '../../lib/cache';
 import { fetchUniverseData } from '../../lib/api';
+import { formatPct } from '../../lib/format';
 import SkeletonLoader from '../shared/SkeletonLoader';
+import SectionTitle from '../shared/SectionTitle';
 
 const BUCKET_DEFINITIONS = [
   {
     id: 'consistent-alpha',
-    name: 'Consistent Alpha Generators',
-    description: 'Strong alpha with rock-solid consistency',
-    color: 'emerald',
-    emoji: null,
+    name: 'Consistent Alpha',
+    description: 'Alpha + Consistency top tier',
+    icon: '\u2605', // star
+    iconBg: 'bg-violet-50',
+    iconColor: 'text-violet-600',
+    countColor: 'text-violet-600',
+    highlightBg: 'bg-violet-50/50',
     filter: (f) =>
       (f.alpha_class === 'ALPHA_MACHINE' || f.alpha_class === 'POSITIVE') &&
       (f.consistency_class === 'ROCK_SOLID' || f.consistency_class === 'CONSISTENT'),
@@ -19,9 +24,12 @@ const BUCKET_DEFINITIONS = [
   {
     id: 'low-risk-leaders',
     name: 'Low-Risk Leaders',
-    description: 'Top returns with minimal volatility',
-    color: 'teal',
-    emoji: null,
+    description: 'Low Risk + Strong Return',
+    icon: '\u25CB', // circle
+    iconBg: 'bg-emerald-50',
+    iconColor: 'text-emerald-600',
+    countColor: 'text-emerald-600',
+    highlightBg: 'bg-emerald-50/50',
     filter: (f) =>
       f.risk_class === 'LOW_RISK' &&
       (f.return_class === 'LEADER' || f.return_class === 'STRONG'),
@@ -29,43 +37,56 @@ const BUCKET_DEFINITIONS = [
   },
   {
     id: 'high-efficiency',
-    name: 'High Efficiency Picks',
-    description: 'Maximum return per rupee of expense',
-    color: 'blue',
-    emoji: null,
+    name: 'High Efficiency',
+    description: 'Best return per rupee of cost',
+    icon: '\u26A1', // lightning
+    iconBg: 'bg-sky-50',
+    iconColor: 'text-sky-600',
+    countColor: 'text-sky-600',
+    highlightBg: 'bg-sky-50/50',
     filter: (f) =>
       f.efficiency_class === 'LEAN' &&
       f.return_class !== 'WEAK',
     filterParams: 'efficiency_class=LEAN&return_class=LEADER,STRONG,AVERAGE',
   },
   {
+    id: 'fortress',
+    name: 'Fortress Funds',
+    description: 'Resilience + Consistency top',
+    icon: '\u2609', // sun
+    iconBg: 'bg-teal-50',
+    iconColor: 'text-teal-600',
+    countColor: 'text-teal-600',
+    highlightBg: 'bg-teal-50/50',
+    filter: (f) =>
+      (f.resilience_class === 'FORTRESS' || f.risk_class === 'LOW_RISK') &&
+      (f.consistency_class === 'ROCK_SOLID' || f.consistency_class === 'CONSISTENT'),
+    filterParams: 'risk_class=LOW_RISK&consistency_class=ROCK_SOLID,CONSISTENT',
+  },
+  {
     id: 'turnaround',
-    name: 'Turnaround Candidates',
-    description: 'Weak returns but positive alpha -- potential comeback',
-    color: 'amber',
-    emoji: null,
+    name: 'Turnaround Watch',
+    description: 'Improving from weak',
+    icon: '\u21BB', // refresh
+    iconBg: 'bg-amber-50',
+    iconColor: 'text-amber-600',
+    countColor: 'text-amber-600',
+    highlightBg: 'bg-amber-50/50',
     filter: (f) =>
       f.return_class === 'WEAK' &&
       f.alpha_class === 'POSITIVE',
     filterParams: 'return_class=WEAK&alpha_class=POSITIVE',
   },
   {
-    id: 'fortress',
-    name: 'Fortress Funds',
-    description: 'Low risk with rock-solid consistency',
-    color: 'indigo',
-    emoji: null,
-    filter: (f) =>
-      f.risk_class === 'LOW_RISK' &&
-      (f.consistency_class === 'ROCK_SOLID' || f.consistency_class === 'CONSISTENT'),
-    filterParams: 'risk_class=LOW_RISK&consistency_class=ROCK_SOLID,CONSISTENT',
-  },
-  {
     id: 'avoid',
     name: 'Avoid Zone',
-    description: 'Weak returns with high risk or erratic behavior',
-    color: 'red',
-    emoji: null,
+    description: 'Multiple weak lenses',
+    icon: '\u26A0', // warning
+    iconBg: 'bg-red-50',
+    iconColor: 'text-red-500',
+    countColor: 'text-red-500',
+    highlightBg: 'bg-red-50/50',
+    borderClass: 'border-red-100',
     filter: (f) =>
       f.return_class === 'WEAK' &&
       (f.risk_class === 'HIGH_RISK' || f.consistency_class === 'ERRATIC'),
@@ -73,74 +94,58 @@ const BUCKET_DEFINITIONS = [
   },
 ];
 
-const COLOR_MAP = {
-  emerald: {
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-200 hover:border-emerald-300',
-    accent: 'bg-emerald-100 text-emerald-700',
-  },
-  teal: {
-    bg: 'bg-teal-50',
-    border: 'border-teal-200 hover:border-teal-300',
-    accent: 'bg-teal-100 text-teal-700',
-  },
-  blue: {
-    bg: 'bg-blue-50',
-    border: 'border-blue-200 hover:border-blue-300',
-    accent: 'bg-blue-100 text-blue-700',
-  },
-  amber: {
-    bg: 'bg-amber-50',
-    border: 'border-amber-200 hover:border-amber-300',
-    accent: 'bg-amber-100 text-amber-700',
-  },
-  indigo: {
-    bg: 'bg-indigo-50',
-    border: 'border-indigo-200 hover:border-indigo-300',
-    accent: 'bg-indigo-100 text-indigo-700',
-  },
-  red: {
-    bg: 'bg-red-50',
-    border: 'border-red-200 hover:border-red-300',
-    accent: 'bg-red-100 text-red-700',
-  },
-};
-
 function findTopFund(universe, filterFn) {
   const matches = universe.filter(filterFn);
   if (matches.length === 0) return null;
-  // Sort by return_score descending, return top
-  const sorted = matches.sort((a, b) => (b.return_score || 0) - (a.return_score || 0));
+  const sorted = [...matches].sort((a, b) => (b.return_score || 0) - (a.return_score || 0));
   return sorted[0];
 }
 
-function BucketCard({ bucket, count, topFundName, onClick }) {
-  const colors = COLOR_MAP[bucket.color] || COLOR_MAP.teal;
+function BucketCard({ bucket, count, topFund, onClick }) {
+  const borderClass = bucket.borderClass || 'border-slate-200';
 
   return (
-    <button
-      type="button"
+    <div
       onClick={onClick}
-      className={`flex-shrink-0 w-[200px] rounded-xl border ${colors.border} ${colors.bg} p-4 text-left transition-all hover:shadow-md cursor-pointer`}
+      className={`bucket-card w-52 bg-white rounded-xl border ${borderClass} p-4 cursor-pointer flex-shrink-0`}
     >
-      <div className="flex items-center justify-between mb-2">
-        <span className={`w-3 h-3 rounded-full ${colors.accent}`} />
-        <span className={`text-xs font-bold px-2 py-0.5 rounded-full font-mono tabular-nums ${colors.accent}`}>
-          {count}
-        </span>
+      {/* Icon + name header */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className={`w-8 h-8 rounded-lg ${bucket.iconBg} flex items-center justify-center`}>
+          <span className={`${bucket.iconColor} text-sm`}>{bucket.icon}</span>
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-slate-800">{bucket.name}</p>
+          <p className="text-[10px] text-slate-400">{bucket.description}</p>
+        </div>
       </div>
-      <h4 className="text-xs font-bold text-slate-800 mb-0.5 leading-tight">
-        {bucket.name}
-      </h4>
-      <p className="text-[10px] text-slate-500 leading-snug mb-2">
-        {bucket.description}
-      </p>
-      {topFundName && (
-        <p className="text-[10px] text-slate-400 truncate">
-          Top: <span className="font-medium text-slate-600">{topFundName}</span>
-        </p>
-      )}
-    </button>
+
+      {/* Count */}
+      <div className="flex items-baseline gap-1 mb-2">
+        <span className={`text-xl font-bold ${bucket.countColor} tabular-nums`}>{count}</span>
+        <span className="text-[10px] text-slate-400">funds</span>
+      </div>
+
+      {/* Top fund highlight */}
+      <div className={`${bucket.highlightBg} rounded-lg px-2.5 py-1.5`}>
+        {topFund ? (
+          <>
+            <p className="text-[10px] text-slate-500 truncate">
+              Top: {topFund.fund_name}
+            </p>
+            {topFund.return_1y != null && (
+              <p className={`text-[10px] font-semibold tabular-nums ${topFund.return_1y >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {formatPct(topFund.return_1y)} 1Y
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-[10px] text-slate-500">
+            {bucket.id === 'avoid' ? 'High risk, low return, erratic' : 'No matching funds'}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -164,38 +169,59 @@ export default function SmartBuckets() {
       const topFund = findTopFund(universe, bucket.filter);
       result[bucket.id] = {
         count: matches.length,
-        topFundName: topFund?.fund_name || null,
+        topFund,
       };
     });
     return result;
   }, [universe]);
 
-  if (loading) {
-    return (
-      <div className="flex gap-3 overflow-hidden">
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <SkeletonLoader key={i} className="h-32 w-[200px] rounded-xl flex-shrink-0" />
-        ))}
-      </div>
-    );
-  }
-
   const handleBucketClick = (bucket) => {
     router.push(`/universe?${bucket.filterParams}`);
   };
 
+  if (loading) {
+    return (
+      <div>
+        <SectionTitle tip="Pre-built fund categories based on multi-lens classifications">
+          SMART BUCKETS
+        </SectionTitle>
+        <div className="flex gap-3 overflow-hidden">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <SkeletonLoader key={i} className="h-40 w-52 rounded-xl flex-shrink-0" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="overflow-x-auto -mx-4 px-4 pb-2">
-      <div className="flex gap-3">
-        {BUCKET_DEFINITIONS.map((bucket) => (
-          <BucketCard
-            key={bucket.id}
-            bucket={bucket}
-            count={bucketData[bucket.id]?.count || 0}
-            topFundName={bucketData[bucket.id]?.topFundName}
-            onClick={() => handleBucketClick(bucket)}
-          />
-        ))}
+    <div>
+      <SectionTitle
+        tip="Pre-built fund categories based on multi-lens classifications"
+        right={
+          <a
+            href="/universe"
+            className="text-[11px] text-teal-600 font-medium hover:text-teal-700"
+            onClick={(e) => { e.preventDefault(); router.push('/universe'); }}
+          >
+            View All in Universe &rarr;
+          </a>
+        }
+      >
+        SMART BUCKETS
+      </SectionTitle>
+      <div className="scroll-x">
+        <div className="flex gap-3 pb-1" style={{ minWidth: 'max-content' }}>
+          {BUCKET_DEFINITIONS.map((bucket) => (
+            <BucketCard
+              key={bucket.id}
+              bucket={bucket}
+              count={bucketData[bucket.id]?.count || 0}
+              topFund={bucketData[bucket.id]?.topFund}
+              onClick={() => handleBucketClick(bucket)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

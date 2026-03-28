@@ -6,7 +6,6 @@ import {
   fetchSentiment,
   fetchSectors,
   fetchNiftyData,
-  fetchLensDistribution,
   fetchDataFreshness,
   fetchUniverseData,
   triggerNAVFetch,
@@ -15,19 +14,15 @@ import {
 import { cachedFetch } from '../lib/cache';
 import MorningBriefing from '../components/dashboard/MorningBriefing';
 import SmartBuckets from '../components/dashboard/SmartBuckets';
-import MetricCards from '../components/dashboard/MetricCards';
 import SectorSnapshot from '../components/dashboard/SectorSnapshot';
 import TopFundsByLens from '../components/dashboard/TopFundsByLens';
 import UniverseHealth from '../components/dashboard/UniverseHealth';
 import DataStatus from '../components/dashboard/DataStatus';
+import CategoryHeatmap from '../components/dashboard/CategoryHeatmap';
 
-function SectionHeader({ title, subtitle }) {
-  return (
-    <div className="mb-3">
-      <h2 className="text-sm font-bold text-slate-800">{title}</h2>
-      {subtitle && <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>}
-    </div>
-  );
+function toTitleCase(str) {
+  if (!str) return str;
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
 
 export default function DashboardPage() {
@@ -77,7 +72,7 @@ export default function DashboardPage() {
     loadMarketPulse();
   }, []);
 
-  // Phase 2: Universe + freshness data (non-blocking)
+  // Phase 2: Universe + freshness data
   useEffect(() => {
     cachedFetch('universe', fetchUniverseData, 600)
       .then((data) => setUniverse(data))
@@ -88,20 +83,25 @@ export default function DashboardPage() {
       .catch(() => {});
   }, []);
 
-  // Derived universe stats for metric cards
-  const universeStats = useMemo(() => {
-    if (!universe) return null;
-    const total = universe.length;
-    const scored = universe.filter((f) => f.return_score != null).length;
-    return { total, scored };
-  }, [universe]);
-
-  const handleNavigate = useCallback((route) => {
-    router.push(route);
-  }, [router]);
+  // Derived sector lists for regime actions
+  const { leadingSectors, weakeningSectors } = useMemo(() => {
+    if (!sectors || sectors.length === 0) {
+      return {
+        leadingSectors: regime?.leading_sectors || [],
+        weakeningSectors: regime?.lagging_sectors || [],
+      };
+    }
+    const leading = sectors.filter((s) => toTitleCase(s.quadrant) === 'Leading');
+    const weakening = sectors.filter((s) => toTitleCase(s.quadrant) === 'Weakening');
+    return { leadingSectors: leading, weakeningSectors: weakening };
+  }, [sectors, regime]);
 
   const handleFundClick = useCallback((mstarId) => {
     router.push(`/fund360?fund=${mstarId}`);
+  }, [router]);
+
+  const handleNavigate = useCallback((route) => {
+    router.push(route);
   }, [router]);
 
   const handleRefreshNav = useCallback(async () => {
@@ -147,44 +147,28 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Row 1: Morning Briefing Hero */}
+      {/* Section 1: Morning Briefing Hero */}
       <MorningBriefing
         regime={regime}
         breadth={breadth}
         sentiment={sentiment}
         nifty={nifty}
+        universe={universe}
         loading={isLoading}
       />
 
-      {/* Row 2: Smart Buckets */}
-      <div>
-        <SectionHeader
-          title="Smart Buckets"
-          subtitle="Functional fund categories based on lens classifications"
-        />
-        <SmartBuckets />
-      </div>
+      {/* Section 2: Smart Buckets */}
+      <SmartBuckets />
 
-      {/* Row 3: Metric Cards (4 across) */}
-      <MetricCards
-        nifty={nifty}
-        sentiment={sentiment}
-        breadth={breadth}
-        universeStats={universeStats}
-        loading={isLoading && !universe}
-      />
-
-      {/* Row 4: 2-col: Sector Intelligence + Top Funds by Lens */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
-          <SectionHeader title="Sector Intelligence" subtitle="Top sectors by relative strength" />
+      {/* Section 3: Two-column -- Sector Rotation (5:7) | Top Funds by Lens (7:5) */}
+      <div className="grid grid-cols-12 gap-6 animate-in" style={{ animationDelay: '0.2s' }}>
+        <div className="col-span-5">
           <SectorSnapshot
             sectors={sectors}
             loading={isLoading}
           />
         </div>
-        <div>
-          <SectionHeader title="Top Funds by Lens" subtitle="Highest scoring funds across lenses" />
+        <div className="col-span-7">
           <TopFundsByLens
             universe={universe}
             onFundClick={handleFundClick}
@@ -193,26 +177,33 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Row 5: Universe Health + Data Freshness */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-        <div>
-          <SectionHeader title="Universe Health" subtitle="Lens classification distributions across all funds" />
+      {/* Section 4: Two-column -- Universe Health (7:5) | Regime Actions + Data Freshness (5:7) */}
+      <div className="grid grid-cols-12 gap-6 animate-in" style={{ animationDelay: '0.3s' }}>
+        <div className="col-span-7">
           <UniverseHealth
             universe={universe}
             onNavigate={handleNavigate}
           />
         </div>
-        <div>
-          <SectionHeader title="Data Freshness" subtitle="Ingestion status and actions" />
+        <div className="col-span-5">
           <DataStatus
+            regime={regime}
             freshness={freshness}
             onRefreshNav={handleRefreshNav}
             onRecomputeLens={handleRecomputeLens}
             refreshing={refreshing}
             recomputing={recomputing}
+            leadingSectors={leadingSectors}
+            weakeningSectors={weakeningSectors}
           />
         </div>
       </div>
+
+      {/* Section 5: Category Performance Heatmap */}
+      <CategoryHeatmap
+        universe={universe}
+        loading={!universe}
+      />
     </div>
   );
 }

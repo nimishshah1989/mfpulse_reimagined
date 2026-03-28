@@ -8,8 +8,11 @@ const PATH_TO_TAB = {
   '/universe': 'universe',
   '/fund360': 'fund360',
   '/sectors': 'sectors',
-  '/strategies': 'strategies',
+  '/simulation': 'simulation',
+  '/strategy': 'strategy',
   '/dashboard': 'dashboard',
+  '/methodology': 'methodology',
+  '/admin': 'admin',
 };
 
 export default function App({ Component, pageProps }) {

@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MF Pulse — Universe Explorer Mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { font-family: 'Inter', system-ui, sans-serif; }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+  .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); }
+  .section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; }
+  @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  .animate-in { animation: slideUp 0.4s ease forwards; }
+  .info-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #f1f5f9; color: #94a3b8; font-size: 9px; font-weight: 700;
+    cursor: help; position: relative; flex-shrink: 0;
+  }
+  .info-icon:hover .info-tip {
+    opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0);
+  }
+  .info-tip {
+    position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%) translateY(4px);
+    background: #1e293b; color: #e2e8f0; padding: 8px 12px; border-radius: 8px;
+    font-size: 10px; font-weight: 400; line-height: 1.5; width: 220px;
+    opacity: 0; pointer-events: none; transition: all 0.2s; z-index: 50;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .info-tip::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: #1e293b;
+  }
+  .filter-pill { transition: all 0.15s; }
+  .filter-pill:hover { background: #f0fdfa; border-color: #99f6e4; }
+  .filter-pill.active { background: #f0fdfa; border-color: #14b8a6; color: #0d9488; }
+  .tier-bar { transition: width 0.6s ease; cursor: pointer; }
+  .tier-bar:hover { filter: brightness(1.1); }
+  .scroll-x { overflow-x: auto; scrollbar-width: none; }
+  .scroll-x::-webkit-scrollbar { display: none; }
+  .fund-row:hover { background: #f8fafc; }
+  .preset-card { transition: all 0.2s; cursor: pointer; }
+  .preset-card:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-color: #99f6e4; }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+<!-- Top Nav -->
+<nav class="sticky top-0 z-50 glass border-b border-slate-200/50 px-6 py-3">
+  <div class="max-w-[1400px] mx-auto flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center">
+        <span class="text-white font-bold text-sm">P</span>
+      </div>
+      <span class="text-sm font-semibold text-slate-700">MF Pulse</span>
+      <span class="text-slate-300 mx-2">/</span>
+      <span class="text-sm text-slate-500">Universe Explorer</span>
+    </div>
+    <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+      <a href="./dashboard.html" class="px-3 py-1.5 text-xs font-medium text-slate-500">Dashboard</a>
+      <a href="./fund360.html" class="px-3 py-1.5 text-xs font-medium text-slate-500">Fund 360</a>
+      <a href="#" class="px-3 py-1.5 text-xs font-medium bg-white rounded-md shadow-sm text-teal-700">Universe</a>
+      <a href="./sectors.html" class="px-3 py-1.5 text-xs font-medium text-slate-500">Sectors</a>
+      <a href="./simulation.html" class="px-3 py-1.5 text-xs font-medium text-slate-500">Simulate</a>
+    </div>
+    <div class="text-xs text-slate-400">
+      <span class="tabular-nums">2,588</span> funds scored &middot; Updated 28 Mar
+    </div>
+  </div>
+</nav>
+
+<main class="max-w-[1400px] mx-auto px-6 py-5 space-y-4">
+
+  <!-- ==================== SECTION 1: Smart Screener Presets ==================== -->
+  <section class="animate-in">
+    <div class="flex items-center gap-2 mb-2">
+      <p class="section-title">Quick Screener Presets</p>
+      <span class="info-icon">i
+        <span class="info-tip">One-click filters that combine multiple lenses to find specific fund profiles. Each preset applies lens + return + risk filters automatically.</span>
+      </span>
+    </div>
+    <div class="scroll-x">
+      <div class="flex gap-2 pb-1" style="min-width: max-content;">
+        <div class="preset-card px-3.5 py-2 rounded-lg bg-white border border-slate-200 flex items-center gap-2">
+          <span class="text-violet-500 text-sm">&#9733;</span>
+          <div>
+            <p class="text-[11px] font-semibold text-slate-700">Alpha Generators</p>
+            <p class="text-[9px] text-slate-400">Alpha Machine + Consistent</p>
+          </div>
+          <span class="text-[10px] font-bold text-violet-600 tabular-nums ml-1">47</span>
+        </div>
+        <div class="preset-card px-3.5 py-2 rounded-lg bg-white border border-slate-200 flex items-center gap-2">
+          <span class="text-emerald-500 text-sm">&#9711;</span>
+          <div>
+            <p class="text-[11px] font-semibold text-slate-700">Sleep Well at Night</p>
+            <p class="text-[9px] text-slate-400">Low Risk + Fortress</p>
+          </div>
+          <span class="text-[10px] font-bold text-emerald-600 tabular-nums ml-1">34</span>
+        </div>
+        <div class="preset-card px-3.5 py-2 rounded-lg bg-white border border-slate-200 flex items-center gap-2">
+          <span class="text-sky-500 text-sm">&#9889;</span>
+          <div>
+            <p class="text-[11px] font-semibold text-slate-700">Cost Killers</p>
+            <p class="text-[9px] text-slate-400">Lean + Strong Return</p>
+          </div>
+          <span class="text-[10px] font-bold text-sky-600 tabular-nums ml-1">129</span>
+        </div>
+        <div class="preset-card px-3.5 py-2 rounded-lg bg-white border border-slate-200 flex items-center gap-2">
+          <span class="text-teal-500 text-sm">&#9650;</span>
+          <div>
+            <p class="text-[11px] font-semibold text-slate-700">Small Cap Stars</p>
+            <p class="text-[9px] text-slate-400">Leader Return + Small Cap</p>
+          </div>
+          <span class="text-[10px] font-bold text-teal-600 tabular-nums ml-1">18</span>
+        </div>
+        <div class="preset-card px-3.5 py-2 rounded-lg bg-white border border-slate-200 flex items-center gap-2">
+          <span class="text-amber-500 text-sm">&#8635;</span>
+          <div>
+            <p class="text-[11px] font-semibold text-slate-700">Turnaround Plays</p>
+            <p class="text-[9px] text-slate-400">Weak &rarr; Improving 3M</p>
+          </div>
+          <span class="text-[10px] font-bold text-amber-600 tabular-nums ml-1">56</span>
+        </div>
+        <div class="preset-card px-3.5 py-2 rounded-lg bg-white border border-red-100 flex items-center gap-2">
+          <span class="text-red-400 text-sm">&#9888;</span>
+          <div>
+            <p class="text-[11px] font-semibold text-slate-700">Avoid Zone</p>
+            <p class="text-[9px] text-slate-400">3+ Weak lenses</p>
+          </div>
+          <span class="text-[10px] font-bold text-red-500 tabular-nums ml-1">198</span>
+        </div>
+        <button class="px-3.5 py-2 rounded-lg border border-dashed border-slate-300 text-[11px] text-slate-400 hover:border-teal-300 hover:text-teal-600 transition-colors">
+          + Custom Filter
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== SECTION 2: Filter Bar ==================== -->
+  <section class="bg-white rounded-xl border border-slate-200 px-4 py-3 animate-in" style="animation-delay:0.05s">
+    <div class="flex items-center gap-3 flex-wrap">
+      <!-- Axis selectors -->
+      <div class="flex items-center gap-1.5 border-r border-slate-200 pr-3">
+        <span class="text-[9px] text-slate-400 uppercase font-semibold">X-Axis</span>
+        <select class="text-[11px] font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+          <option>Risk Score</option>
+          <option>Std Dev (3Y)</option>
+          <option>Max Drawdown</option>
+          <option>Expense Ratio</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-1.5 border-r border-slate-200 pr-3">
+        <span class="text-[9px] text-slate-400 uppercase font-semibold">Y-Axis</span>
+        <select class="text-[11px] font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+          <option>1Y Return</option>
+          <option>3Y CAGR</option>
+          <option>5Y CAGR</option>
+          <option>Return Score</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-1.5 border-r border-slate-200 pr-3">
+        <span class="text-[9px] text-slate-400 uppercase font-semibold">Color</span>
+        <select class="text-[11px] font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+          <option>Alpha Score</option>
+          <option>Return Score</option>
+          <option>Consistency</option>
+          <option>Efficiency</option>
+          <option>Resilience</option>
+        </select>
+      </div>
+
+      <!-- Filter pills -->
+      <div class="flex items-center gap-1.5 flex-wrap flex-1">
+        <button class="filter-pill active px-2.5 py-1 text-[10px] font-medium border rounded-full">Direct</button>
+        <button class="filter-pill px-2.5 py-1 text-[10px] font-medium border border-slate-200 text-slate-500 rounded-full">Regular</button>
+        <button class="filter-pill px-2.5 py-1 text-[10px] font-medium border border-slate-200 text-slate-500 rounded-full">Growth</button>
+        <span class="text-slate-300">|</span>
+        <select class="text-[10px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+          <option>All Categories</option>
+          <option>Large Cap</option>
+          <option>Mid Cap</option>
+          <option>Small Cap</option>
+          <option>Flexi Cap</option>
+        </select>
+        <select class="text-[10px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+          <option>All AMCs</option>
+        </select>
+        <select class="text-[10px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+          <option>Any AUM</option>
+          <option>&gt; 500 Cr</option>
+          <option>&gt; 1,000 Cr</option>
+          <option>&gt; 5,000 Cr</option>
+        </select>
+      </div>
+
+      <!-- Count -->
+      <div class="text-right flex-shrink-0">
+        <p class="text-xs font-bold text-teal-600 tabular-nums">1,247</p>
+        <p class="text-[9px] text-slate-400">of 2,588 shown</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== SECTION 3: Main Chart + Intelligence Panel ==================== -->
+  <div class="grid grid-cols-12 gap-4 animate-in" style="animation-delay:0.1s">
+
+    <!-- LEFT: Stats sidebar -->
+    <div class="col-span-2 space-y-3">
+      <!-- Summary stats -->
+      <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <p class="section-title mb-3">Visible Funds</p>
+        <div class="space-y-3">
+          <div>
+            <div class="flex items-center gap-1 mb-0.5">
+              <p class="text-[10px] text-slate-400">Avg 1Y Return</p>
+              <span class="info-icon" style="width:12px;height:12px;font-size:8px">i
+                <span class="info-tip">Mean 1-year return across all currently visible (filtered) funds. Higher than Nifty 50 (+14.2%) indicates fund universe outperformance.</span>
+              </span>
+            </div>
+            <p class="text-lg font-bold text-emerald-600 tabular-nums">+16.8%</p>
+            <p class="text-[9px] text-slate-400">vs Nifty 50: +14.2%</p>
+          </div>
+          <div>
+            <div class="flex items-center gap-1 mb-0.5">
+              <p class="text-[10px] text-slate-400">Median Risk Score</p>
+              <span class="info-icon" style="width:12px;height:12px;font-size:8px">i
+                <span class="info-tip">Middle-point risk score (0-100 scale). Below 50 = lower risk than average Indian MF. The median tells you where "typical" sits.</span>
+              </span>
+            </div>
+            <p class="text-lg font-bold text-slate-700 tabular-nums">48</p>
+            <p class="text-[9px] text-slate-400">Moderate range</p>
+          </div>
+          <div>
+            <div class="flex items-center gap-1 mb-0.5">
+              <p class="text-[10px] text-slate-400">Top Performer</p>
+            </div>
+            <p class="text-xs font-semibold text-slate-700 leading-tight">Quant Small Cap</p>
+            <p class="text-[10px] font-bold text-emerald-600 tabular-nums">+28.4% 1Y</p>
+          </div>
+          <div>
+            <div class="flex items-center gap-1 mb-0.5">
+              <p class="text-[10px] text-slate-400">Avg AUM</p>
+              <span class="info-icon" style="width:12px;height:12px;font-size:8px">i
+                <span class="info-tip">Average Assets Under Management. Larger AUM (>1000 Cr) generally means more liquid, lower impact cost, and more institutional ownership.</span>
+              </span>
+            </div>
+            <p class="text-base font-bold text-slate-700 tabular-nums">4,280 Cr</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tier distribution -->
+      <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <div class="flex items-center gap-1 mb-3">
+          <p class="section-title">Alpha Tiers</p>
+          <span class="info-icon" style="width:12px;height:12px;font-size:8px">i
+            <span class="info-tip">Distribution based on selected Color axis (Alpha Score). Click any tier to highlight those funds on the chart.</span>
+          </span>
+        </div>
+        <div class="space-y-2">
+          <div>
+            <div class="flex justify-between text-[10px] mb-0.5">
+              <span class="text-slate-600 font-medium">Alpha Machine</span>
+              <span class="font-semibold text-emerald-600 tabular-nums">145</span>
+            </div>
+            <div class="h-4 bg-slate-100 rounded-full overflow-hidden cursor-pointer hover:ring-1 ring-emerald-400">
+              <div class="tier-bar h-full bg-emerald-500 rounded-full" style="width: 6%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-[10px] mb-0.5">
+              <span class="text-slate-600 font-medium">Positive Alpha</span>
+              <span class="font-semibold text-teal-600 tabular-nums">380</span>
+            </div>
+            <div class="h-4 bg-slate-100 rounded-full overflow-hidden cursor-pointer hover:ring-1 ring-teal-400">
+              <div class="tier-bar h-full bg-teal-400 rounded-full" style="width: 15%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-[10px] mb-0.5">
+              <span class="text-slate-600 font-medium">Neutral</span>
+              <span class="font-semibold text-amber-600 tabular-nums">830</span>
+            </div>
+            <div class="h-4 bg-slate-100 rounded-full overflow-hidden cursor-pointer hover:ring-1 ring-amber-400">
+              <div class="tier-bar h-full bg-amber-400 rounded-full" style="width: 32%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-[10px] mb-0.5">
+              <span class="text-slate-600 font-medium">Negative Alpha</span>
+              <span class="font-semibold text-red-500 tabular-nums">1,233</span>
+            </div>
+            <div class="h-4 bg-slate-100 rounded-full overflow-hidden cursor-pointer hover:ring-1 ring-red-400">
+              <div class="tier-bar h-full bg-red-400 rounded-full" style="width: 47%"></div>
+            </div>
+          </div>
+        </div>
+        <p class="text-[9px] text-slate-400 mt-2 leading-relaxed">Only 6% of funds generate machine-level alpha. 47% destroy value — avoid zone.</p>
+      </div>
+
+      <!-- Context note -->
+      <div class="bg-teal-50 rounded-xl border border-teal-100 p-3">
+        <p class="text-[10px] font-semibold text-teal-700 mb-1">Reading the Chart</p>
+        <p class="text-[9px] text-teal-600 leading-relaxed">
+          <strong>Top-left = ideal</strong> (high return, low risk). Bubble size = AUM. Color intensity = Alpha score. Look for large, dark-green bubbles in the top-left quadrant.
+        </p>
+      </div>
+    </div>
+
+    <!-- CENTER: Main Bubble Scatter Chart -->
+    <div class="col-span-7">
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden" style="height: 560px;">
+        <!-- Chart container with quadrant backgrounds -->
+        <div class="relative w-full h-full">
+          <!-- Quadrant color overlays -->
+          <div class="absolute inset-0 grid grid-cols-2 grid-rows-2 pointer-events-none z-0">
+            <div class="bg-emerald-50/50 flex items-start justify-start p-3">
+              <span class="text-[9px] font-bold text-emerald-400/50 uppercase tracking-wider">Sweet Spot</span>
+            </div>
+            <div class="bg-amber-50/30 flex items-start justify-end p-3">
+              <span class="text-[9px] font-bold text-amber-400/40 uppercase tracking-wider">High Risk, High Return</span>
+            </div>
+            <div class="bg-sky-50/30 flex items-end justify-start p-3">
+              <span class="text-[9px] font-bold text-sky-400/40 uppercase tracking-wider">Conservative</span>
+            </div>
+            <div class="bg-red-50/30 flex items-end justify-end p-3">
+              <span class="text-[9px] font-bold text-red-400/40 uppercase tracking-wider">Avoid</span>
+            </div>
+          </div>
+          <canvas id="universeChart" class="relative z-10" style="width:100%; height:100%;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Intelligence Panel -->
+    <div class="col-span-3 space-y-3">
+      <!-- Market context -->
+      <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <div class="flex items-center gap-1 mb-3">
+          <p class="section-title">Market Context</p>
+          <span class="info-icon" style="width:12px;height:12px;font-size:8px">i
+            <span class="info-tip">Current market regime affects which funds perform well. In Risk-On regimes, aggressive funds outperform. In Risk-Off, defensive funds shine.</span>
+          </span>
+        </div>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-slate-600">Regime</span>
+            <span class="text-[11px] font-semibold text-emerald-600">Risk-On (Day 17)</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-slate-600">Sentiment</span>
+            <span class="text-[11px] font-semibold text-amber-600">52 — Neutral</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-slate-600">Breadth</span>
+            <span class="text-[11px] font-semibold text-emerald-600">68% above 200 EMA</span>
+          </div>
+        </div>
+        <div class="mt-2 p-2 bg-emerald-50 rounded-lg">
+          <p class="text-[9px] text-emerald-700 leading-relaxed"><strong>Implication:</strong> Risk-On favours equity-heavy, high-beta funds. Small & mid caps tend to outperform in this regime.</p>
+        </div>
+      </div>
+
+      <!-- Top movers -->
+      <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <p class="section-title mb-3">Top 5 — Visible Funds</p>
+        <div class="space-y-2">
+          <a href="./fund360.html" class="fund-row flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer">
+            <span class="text-[10px] text-slate-400 tabular-nums w-3">1</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-[11px] font-medium text-slate-800 truncate">Quant Small Cap</p>
+              <p class="text-[9px] text-slate-400">Small Cap &middot; Score 94</p>
+            </div>
+            <span class="text-[10px] font-bold text-emerald-600 tabular-nums">+28.4%</span>
+          </a>
+          <a href="./fund360.html" class="fund-row flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer">
+            <span class="text-[10px] text-slate-400 tabular-nums w-3">2</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-[11px] font-medium text-slate-800 truncate">Motilal Midcap</p>
+              <p class="text-[9px] text-slate-400">Mid Cap &middot; Score 91</p>
+            </div>
+            <span class="text-[10px] font-bold text-emerald-600 tabular-nums">+25.7%</span>
+          </a>
+          <a href="./fund360.html" class="fund-row flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer">
+            <span class="text-[10px] text-slate-400 tabular-nums w-3">3</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-[11px] font-medium text-slate-800 truncate">Nippon Small Cap</p>
+              <p class="text-[9px] text-slate-400">Small Cap &middot; Score 84</p>
+            </div>
+            <span class="text-[10px] font-bold text-emerald-600 tabular-nums">+26.3%</span>
+          </a>
+          <a href="./fund360.html" class="fund-row flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer">
+            <span class="text-[10px] text-slate-400 tabular-nums w-3">4</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-[11px] font-medium text-slate-800 truncate">HDFC Mid-Cap Opp</p>
+              <p class="text-[9px] text-slate-400">Mid Cap &middot; Score 86</p>
+            </div>
+            <span class="text-[10px] font-bold text-emerald-600 tabular-nums">+21.9%</span>
+          </a>
+          <a href="./fund360.html" class="fund-row flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer">
+            <span class="text-[10px] text-slate-400 tabular-nums w-3">5</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-[11px] font-medium text-slate-800 truncate">Parag Parikh Flexi</p>
+              <p class="text-[9px] text-slate-400">Flexi Cap &middot; Score 89</p>
+            </div>
+            <span class="text-[10px] font-bold text-emerald-600 tabular-nums">+18.4%</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Insights -->
+      <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <p class="section-title mb-3">Insights from Data</p>
+        <div class="space-y-2.5">
+          <div class="flex gap-2">
+            <span class="text-emerald-500 text-xs mt-0.5 flex-shrink-0">&#9650;</span>
+            <p class="text-[10px] text-slate-600 leading-relaxed"><strong>Small Caps dominate</strong> the top-right: 8 of top 10 returns are small/mid cap. Higher risk, but rewarded in current regime.</p>
+          </div>
+          <div class="flex gap-2">
+            <span class="text-sky-500 text-xs mt-0.5 flex-shrink-0">&#9679;</span>
+            <p class="text-[10px] text-slate-600 leading-relaxed"><strong>Index funds cluster tightly</strong> at moderate risk, moderate return — visible as the dense band near the center. Low cost, predictable.</p>
+          </div>
+          <div class="flex gap-2">
+            <span class="text-red-400 text-xs mt-0.5 flex-shrink-0">&#9660;</span>
+            <p class="text-[10px] text-slate-600 leading-relaxed"><strong>198 funds in Avoid Zone</strong> (bottom-right): high risk, negative alpha. Most are high-expense regular plans with poor manager skill.</p>
+          </div>
+          <div class="flex gap-2">
+            <span class="text-amber-500 text-xs mt-0.5 flex-shrink-0">&#8635;</span>
+            <p class="text-[10px] text-slate-600 leading-relaxed"><strong>Turnaround signal:</strong> 56 funds improved from Weak to Average on 3M return basis. Watch for lens reclassification.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- How to read -->
+      <div class="bg-slate-50 rounded-xl border border-slate-100 p-3">
+        <p class="text-[10px] font-semibold text-slate-500 mb-1.5">How to Use This Chart</p>
+        <ul class="text-[9px] text-slate-500 space-y-1 leading-relaxed">
+          <li><strong>Click</strong> any bubble to see fund details</li>
+          <li><strong>Double-click</strong> to open full Fund 360 view</li>
+          <li><strong>Scroll</strong> to zoom in/out on clusters</li>
+          <li><strong>Drag</strong> to pan across the universe</li>
+          <li><strong>Click a tier bar</strong> (left) to spotlight those funds</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// Universe Bubble Chart
+const ctx = document.getElementById('universeChart').getContext('2d');
+
+// Generate sample fund data (in real app, this comes from /api/v1/funds/universe)
+function generateFunds(n) {
+  const funds = [];
+  const categories = ['Large Cap','Mid Cap','Small Cap','Flexi Cap','ELSS','Sectoral','Hybrid','Debt'];
+  for (let i = 0; i < n; i++) {
+    const risk = 8 + Math.random() * 22;  // std dev 8-30%
+    const ret = -5 + risk * 0.8 + (Math.random() - 0.4) * 20;  // correlated with risk + noise
+    const aum = 100 + Math.random() * 50000;
+    const alpha = Math.max(0, Math.min(100, 50 + (ret - risk) * 2 + (Math.random() - 0.5) * 30));
+    funds.push({
+      x: risk,
+      y: Math.max(-10, Math.min(45, ret)),
+      r: Math.max(2.5, Math.min(18, Math.sqrt(aum / 200))),
+      alpha: alpha,
+      name: `Fund ${i+1}`,
+      category: categories[Math.floor(Math.random() * categories.length)],
+      aum: Math.round(aum),
+    });
+  }
+  return funds;
+}
+
+const fundData = generateFunds(400);
+const midX = 18, midY = 16;
+
+new Chart(ctx, {
+  type: 'bubble',
+  data: {
+    datasets: [{
+      data: fundData,
+      backgroundColor: function(context) {
+        const d = context.raw;
+        if (!d) return 'rgba(100,100,100,0.2)';
+        // Color by alpha score
+        const a = d.alpha;
+        const opacity = 0.35 + (d.r / 30) * 0.3;
+        if (a >= 75) return `rgba(5, 150, 105, ${opacity})`;    // Alpha Machine — green
+        if (a >= 50) return `rgba(13, 148, 136, ${opacity})`;   // Positive — teal
+        if (a >= 25) return `rgba(245, 158, 11, ${opacity})`;   // Neutral — amber
+        return `rgba(239, 68, 68, ${opacity})`;                   // Negative — red
+      },
+      borderColor: function(context) {
+        const d = context.raw;
+        if (!d) return '#999';
+        const a = d.alpha;
+        if (a >= 75) return 'rgba(5,150,105,0.7)';
+        if (a >= 50) return 'rgba(13,148,136,0.6)';
+        if (a >= 25) return 'rgba(245,158,11,0.5)';
+        return 'rgba(239,68,68,0.5)';
+      },
+      borderWidth: 1,
+      hoverBorderWidth: 2.5,
+      hoverBorderColor: '#0d9488',
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    layout: { padding: { top: 25, right: 25, bottom: 15, left: 15 } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(255,255,255,0.97)',
+        titleColor: '#1e293b',
+        bodyColor: '#475569',
+        borderColor: '#e2e8f0',
+        borderWidth: 1,
+        padding: 12,
+        cornerRadius: 10,
+        titleFont: { size: 12, weight: 'bold', family: 'Inter' },
+        bodyFont: { size: 10, family: 'Inter' },
+        callbacks: {
+          title: function(items) { return items[0].raw.name; },
+          afterTitle: function(items) { return items[0].raw.category + '  \u00b7  AUM \u20b9' + items[0].raw.aum.toLocaleString('en-IN') + ' Cr'; },
+          label: function(item) {
+            return [
+              '',
+              `1Y Return:  ${item.raw.y > 0 ? '+' : ''}${item.raw.y.toFixed(1)}%`,
+              `Risk (StdDev):  ${item.raw.x.toFixed(1)}%`,
+              `Alpha Score:  ${Math.round(item.raw.alpha)} / 100`,
+            ];
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        title: { display: true, text: 'Risk (Std Dev 3Y %) \u2014 Lower is Better  \u2192', font: { size: 10, weight: '600', family: 'Inter' }, color: '#64748b', padding: 8 },
+        grid: { color: function(ctx) { return ctx.tick.value === midX ? '#cbd5e1' : '#f1f5f9'; }, lineWidth: function(ctx) { return ctx.tick.value === midX ? 1 : 0.5; } },
+        ticks: { font: { size: 9, family: 'Inter' }, color: '#94a3b8', callback: v => v + '%' },
+        min: 6, max: 32,
+      },
+      y: {
+        title: { display: true, text: '\u2191  1Y Return %', font: { size: 10, weight: '600', family: 'Inter' }, color: '#64748b', padding: 8 },
+        grid: { color: function(ctx) { return ctx.tick.value === midY ? '#cbd5e1' : '#f1f5f9'; }, lineWidth: function(ctx) { return ctx.tick.value === midY ? 1 : 0.5; } },
+        ticks: { font: { size: 9, family: 'Inter' }, color: '#94a3b8', callback: v => v + '%' },
+        min: -10, max: 45,
+      }
+    },
+    onClick: function(evt, elements) {
+      if (elements.length > 0) {
+        window.location.href = './fund360.html';
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>

@@ -1,74 +1,110 @@
 import { useState, useMemo } from 'react';
-import Card from '../shared/Card';
 import EmptyState from '../shared/EmptyState';
+import SectionTitle from '../shared/SectionTitle';
 
-/** Diverging green-white-red color scale based on quadrant */
-function quadrantBgColor(quadrant) {
-  switch (quadrant) {
-    case 'Leading': return '#dcfce7';
-    case 'Improving': return '#d5f5f6';
-    case 'Weakening': return '#fef3c7';
-    case 'Lagging': return '#fee2e2';
-    default: return '#f1f5f9';
-  }
-}
-
-function quadrantTextColor(quadrant) {
-  switch (quadrant) {
-    case 'Leading': return '#166534';
-    case 'Improving': return '#115e59';
-    case 'Weakening': return '#92400e';
-    case 'Lagging': return '#991b1b';
-    default: return '#94a3b8';
-  }
-}
-
-function quadrantFullBgColor(quadrant) {
-  switch (quadrant) {
-    case 'Leading': return '#059669';
-    case 'Improving': return '#0d9488';
-    case 'Weakening': return '#d97706';
-    case 'Lagging': return '#dc2626';
-    default: return '#f1f5f9';
-  }
-}
+const QUADRANT_CELL = {
+  Leading: {
+    bg: 'bg-emerald-100',
+    bgStrong: 'bg-emerald-200',
+    text: 'text-emerald-700',
+    textStrong: 'text-emerald-800',
+    ring: 'ring-emerald-400',
+    abbr: 'LED',
+  },
+  Improving: {
+    bg: 'bg-sky-100',
+    bgStrong: 'bg-sky-200',
+    text: 'text-sky-700',
+    textStrong: 'text-sky-800',
+    ring: 'ring-sky-400',
+    abbr: 'IMP',
+  },
+  Weakening: {
+    bg: 'bg-amber-100',
+    bgStrong: 'bg-amber-200',
+    text: 'text-amber-700',
+    textStrong: 'text-amber-800',
+    ring: 'ring-amber-400',
+    abbr: 'WKN',
+  },
+  Lagging: {
+    bg: 'bg-red-100',
+    bgStrong: 'bg-red-200',
+    text: 'text-red-600',
+    textStrong: 'text-red-800',
+    ring: 'ring-red-400',
+    abbr: 'LAG',
+  },
+};
 
 function getMonthLabel(monthsAgo, currentMonth) {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
   const now = currentMonth ? new Date(currentMonth) : new Date();
   const d = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
   return months[d.getMonth()];
 }
 
-/**
- * 12-month sector rotation heatmap with clickable cells and hover tooltips.
- *
- * Props:
- *   sectorData — array of sector objects with optional .history array
- *   currentMonth — ISO date string for the current month (defaults to today)
- *   online — whether MarketPulse is reachable
- *   onSectorClick — callback(sectorName) when a sector row/cell is clicked
- */
-export default function RotationHeatmap({ sectorData, currentMonth, online, onSectorClick }) {
-  const [hoveredCell, setHoveredCell] = useState(null);
+function deriveTrend(months) {
+  if (!months || months.length < 2) return null;
+  const last = months[months.length - 1]?.quadrant;
+  const prev = months[months.length - 2]?.quadrant;
+  if (!last || !prev) return null;
 
-  // Use actual sector names from API data (not hardcoded Morningstar names)
+  const rank = { Leading: 4, Improving: 3, Weakening: 2, Lagging: 1 };
+  const diff = (rank[last] || 0) - (rank[prev] || 0);
+
+  if (last === 'Leading' && prev === 'Improving')
+    return { icon: '\u2191\u2191', text: 'Strong momentum', color: 'text-emerald-600' };
+  if (last === 'Leading' && prev === 'Leading')
+    return { icon: '\u2191', text: 'Holding strong', color: 'text-emerald-600' };
+  if (last === 'Improving')
+    return { icon: '\u2197', text: 'Breakout forming', color: 'text-sky-600' };
+  if (last === 'Weakening' && diff < 0)
+    return { icon: '\u2198', text: 'Losing momentum', color: 'text-amber-600' };
+  if (last === 'Lagging' && prev === 'Lagging')
+    return { icon: '\u2193', text: 'Persistent weakness', color: 'text-red-500' };
+  if (last === 'Lagging')
+    return { icon: '\u2193', text: 'Full cycle down', color: 'text-red-500' };
+  if (diff > 0)
+    return { icon: '\u2191', text: 'Improving', color: 'text-emerald-600' };
+  if (diff < 0)
+    return { icon: '\u2193', text: 'Declining', color: 'text-red-500' };
+  return { icon: '\u2192', text: 'Stable', color: 'text-slate-500' };
+}
+
+export default function RotationHeatmap({
+  sectorData,
+  currentMonth,
+  online,
+  onSectorClick,
+}) {
+  const [hoveredCell, setHoveredCell] = useState(null);
+  const NUM_MONTHS = 6;
+
   const sectorNames = useMemo(() => {
     if (!sectorData?.length) return [];
-    return sectorData.map((s) => s.sector_name || s.display_name || s.name).filter(Boolean);
+    return sectorData
+      .map((s) => s.sector_name || s.display_name || s.name)
+      .filter(Boolean);
   }, [sectorData]);
 
   if (!online || !sectorData || sectorData.length === 0) {
     return (
-      <Card title="Sector Rotation Heatmap">
+      <div className="bg-white rounded-xl border border-slate-200 p-5 animate-in">
+        <SectionTitle
+          tip="Track how sectors move through quadrants over time"
+        >
+          Sector Rotation Heatmap — Quadrant History
+        </SectionTitle>
         <EmptyState message="Sector heatmap requires MarketPulse data" />
-      </Card>
+      </div>
     );
   }
 
-  const NUM_MONTHS = 12;
-
-  // Build quadrant + RS score map per sector per month
+  // Build data map
   const sectorDataMap = {};
   for (const sector of sectorData) {
     const arr = new Array(NUM_MONTHS).fill(null);
@@ -76,20 +112,18 @@ export default function RotationHeatmap({ sectorData, currentMonth, online, onSe
       arr[NUM_MONTHS - 1] = {
         quadrant: sector.quadrant,
         rs_score: sector.rs_score,
-        rs_rank: sector.rs_rank,
         rs_momentum: sector.rs_momentum,
       };
     }
     if (Array.isArray(sector.history)) {
       for (let i = 0; i < sector.history.length && i < NUM_MONTHS - 1; i++) {
-        const histEntry = sector.history[i];
-        const monthIndex = NUM_MONTHS - 2 - i;
-        if (histEntry?.quadrant) {
-          arr[monthIndex] = {
-            quadrant: histEntry.quadrant,
-            rs_score: histEntry.rs_score,
-            rs_rank: histEntry.rs_rank,
-            rs_momentum: histEntry.rs_momentum,
+        const h = sector.history[i];
+        const idx = NUM_MONTHS - 2 - i;
+        if (h?.quadrant) {
+          arr[idx] = {
+            quadrant: h.quadrant,
+            rs_score: h.rs_score,
+            rs_momentum: h.rs_momentum,
           };
         }
       }
@@ -102,141 +136,125 @@ export default function RotationHeatmap({ sectorData, currentMonth, online, onSe
   );
 
   return (
-    <Card title="Sector Rotation Heatmap">
-      <div className="overflow-x-auto relative">
-        <table className="w-full text-xs border-collapse">
+    <div className="bg-white rounded-xl border border-slate-200 p-5 animate-in">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="section-title">
+            Sector Rotation Heatmap — Quadrant History
+          </p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            Track how sectors move through quadrants over time
+          </p>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-[11px]">
           <thead>
-            <tr>
-              <th className="text-left py-2 pr-3 pl-1 text-slate-500 font-medium whitespace-nowrap w-36 sticky left-0 bg-white z-10">
-                Sector
-              </th>
+            <tr className="text-[9px] text-slate-400 uppercase tracking-wider">
+              <th className="text-left pb-2 pr-4 font-medium w-32">Sector</th>
               {columnLabels.map((label, i) => (
                 <th
                   key={i}
-                  className={`text-center py-2 px-1 font-medium w-12 ${
-                    i === NUM_MONTHS - 1 ? 'text-teal-700 font-semibold' : 'text-slate-400'
+                  className={`text-center pb-2 font-medium w-16 ${
+                    i === NUM_MONTHS - 1
+                      ? 'text-teal-700 font-semibold border-r-2 border-teal-200'
+                      : ''
                   }`}
                 >
                   {label}
                   {i === NUM_MONTHS - 1 && (
-                    <span className="block text-[9px] font-normal text-teal-500">Now</span>
+                    <span className="block text-[8px] font-normal text-teal-500">
+                      Now
+                    </span>
                   )}
                 </th>
               ))}
+              <th className="text-left pb-2 pl-3 font-medium">Trend</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-50">
             {sectorNames.map((sectorName) => {
-              const months = sectorDataMap[sectorName] || new Array(NUM_MONTHS).fill(null);
+              const months =
+                sectorDataMap[sectorName] ||
+                new Array(NUM_MONTHS).fill(null);
+              const trend = deriveTrend(months);
 
               return (
-                <tr
-                  key={sectorName}
-                  className="border-t border-slate-50 hover:bg-slate-50/50 transition-colors"
-                >
+                <tr key={sectorName}>
                   <td
-                    className="py-1.5 pr-3 pl-1 text-slate-700 font-medium whitespace-nowrap sticky left-0 bg-white z-10 cursor-pointer hover:text-teal-700 transition-colors"
+                    className="py-2 pr-4 font-medium text-slate-700 cursor-pointer hover:text-teal-700 transition-colors"
                     onClick={() => onSectorClick?.(sectorName)}
                   >
                     {sectorName}
                   </td>
                   {months.map((data, i) => {
-                    const isCurrentMonth = i === NUM_MONTHS - 1;
-                    const quadrant = data?.quadrant || null;
-                    const bgColor = quadrant ? quadrantBgColor(quadrant) : '#f8fafc';
-                    const textColor = quadrant ? quadrantTextColor(quadrant) : '#94a3b8';
-                    const isHovered = hoveredCell?.sector === sectorName && hoveredCell?.month === i;
+                    const isNow = i === NUM_MONTHS - 1;
+                    const q = data?.quadrant || null;
+                    const style = q ? QUADRANT_CELL[q] : null;
 
                     return (
                       <td
                         key={i}
-                        className={`py-1.5 px-1 text-center relative ${
-                          isCurrentMonth ? 'ring-2 ring-teal-400 ring-inset rounded' : ''
+                        className={`py-2 text-center ${
+                          isNow ? 'border-r-2 border-teal-200' : ''
                         }`}
-                        onMouseEnter={() => setHoveredCell({ sector: sectorName, month: i, data })}
+                        onMouseEnter={() =>
+                          setHoveredCell({ sector: sectorName, month: i, data })
+                        }
                         onMouseLeave={() => setHoveredCell(null)}
                         onClick={() => onSectorClick?.(sectorName)}
-                        style={{ cursor: 'pointer' }}
                       >
-                        <span
-                          className={`inline-flex items-center justify-center rounded text-[9px] font-semibold transition-transform ${
-                            isHovered ? 'scale-110 shadow-sm' : ''
-                          }`}
-                          style={{
-                            backgroundColor: bgColor,
-                            color: textColor,
-                            width: 32,
-                            height: 22,
-                            border: isHovered ? `1.5px solid ${quadrantFullBgColor(quadrant)}` : '1px solid transparent',
-                          }}
-                        >
-                          {quadrant ? quadrant.slice(0, 2) : '\u2014'}
-                        </span>
-
-                        {/* Hover tooltip */}
-                        {isHovered && data && (
-                          <div className="absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
-                            <div className="bg-white rounded-lg shadow-lg border border-slate-200 px-3 py-2 text-xs whitespace-nowrap">
-                              <p className="font-semibold text-slate-800">{sectorName}</p>
-                              <p className="text-slate-600">{columnLabels[i]}</p>
-                              <div className="mt-1 space-y-0.5">
-                                <p className="font-mono tabular-nums">
-                                  Quadrant: <span style={{ color: quadrantFullBgColor(data.quadrant) }} className="font-semibold">{data.quadrant}</span>
-                                </p>
-                                {data.rs_score != null && (
-                                  <p className="font-mono tabular-nums">RS Score: {data.rs_score}</p>
-                                )}
-                                {data.rs_rank != null && (
-                                  <p className="font-mono tabular-nums">Rank: #{data.rs_rank}</p>
-                                )}
-                                {data.rs_momentum != null && (
-                                  <p className="font-mono tabular-nums">
-                                    Momentum: {data.rs_momentum > 0 ? '+' : ''}{Number(data.rs_momentum).toFixed(1)}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                        {style ? (
+                          <span
+                            className={`inline-block w-8 h-6 rounded leading-6 text-[10px] font-semibold cursor-pointer transition-transform hover:scale-105 ${
+                              isNow
+                                ? `${style.bgStrong} ${style.textStrong} font-bold ring-2 ${style.ring}`
+                                : `${style.bg} ${style.text}`
+                            }`}
+                          >
+                            {style.abbr}
+                          </span>
+                        ) : (
+                          <span className="inline-block w-8 h-6 rounded bg-slate-50 text-slate-300 leading-6 text-[10px]">
+                            &mdash;
+                          </span>
                         )}
                       </td>
                     );
                   })}
+                  <td className="py-2 pl-3">
+                    {trend ? (
+                      <span className={`${trend.color} font-semibold`}>
+                        {trend.icon} {trend.text}
+                      </span>
+                    ) : (
+                      <span className="text-slate-300">&mdash;</span>
+                    )}
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-
-        {/* Legend */}
-        <div className="flex flex-wrap gap-4 mt-3 pt-3 border-t border-slate-100">
-          {[
-            { label: 'Leading', quadrant: 'Leading' },
-            { label: 'Improving', quadrant: 'Improving' },
-            { label: 'Weakening', quadrant: 'Weakening' },
-            { label: 'Lagging', quadrant: 'Lagging' },
-          ].map(({ label, quadrant }) => (
-            <div key={label} className="flex items-center gap-1.5">
-              <span
-                className="inline-block rounded"
-                style={{
-                  backgroundColor: quadrantBgColor(quadrant),
-                  border: `1px solid ${quadrantFullBgColor(quadrant)}`,
-                  width: 14,
-                  height: 14,
-                }}
-              />
-              <span className="text-xs text-slate-600 font-medium">{label}</span>
-            </div>
-          ))}
-          <div className="flex items-center gap-1.5">
-            <span
-              className="inline-block rounded"
-              style={{ backgroundColor: '#f8fafc', width: 14, height: 14, border: '1px solid #cbd5e1' }}
-            />
-            <span className="text-xs text-slate-500">No data</span>
-          </div>
-        </div>
       </div>
-    </Card>
+
+      {/* Legend */}
+      <div className="flex gap-4 mt-4 pt-3 border-t border-slate-100">
+        {Object.entries(QUADRANT_CELL).map(([name, style]) => (
+          <div key={name} className="flex items-center gap-1.5">
+            <span
+              className={`inline-block w-7 h-4 rounded ${style.bg} text-[8px] ${style.text} text-center leading-4 font-bold`}
+            >
+              {style.abbr}
+            </span>
+            <span className="text-[10px] text-slate-500">{name}</span>
+          </div>
+        ))}
+        <span className="text-[10px] text-slate-400 ml-auto">
+          Ideal rotation: LAG &rarr; IMP &rarr; LED &rarr; WKN (clockwise)
+        </span>
+      </div>
+    </div>
   );
 }

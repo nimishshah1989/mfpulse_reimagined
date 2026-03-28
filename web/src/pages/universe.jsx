@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/router';
 import { fetchUniverseData } from '../lib/api';
 import { cachedFetch } from '../lib/cache';
-import { formatCount, formatPct, formatAUM } from '../lib/format';
-import { LENS_OPTIONS, lensLabel, LENS_LABELS } from '../lib/lens';
-import Pill from '../components/shared/Pill';
+import { formatPct, formatAUM } from '../lib/format';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
 import EmptyState from '../components/shared/EmptyState';
+import SmartPresets, { PRESETS } from '../components/universe/SmartPresets';
 import HorizontalFilterBar, { AUM_RANGES } from '../components/universe/HorizontalFilterBar';
 import TierSummary from '../components/universe/TierSummary';
 import IntelligencePanel from '../components/universe/IntelligencePanel';
@@ -17,55 +17,38 @@ const BubbleScatter = dynamic(
   {
     ssr: false,
     loading: () => (
-      <SkeletonLoader variant="chart" className="flex-1 min-h-[500px]" />
+      <SkeletonLoader variant="chart" className="w-full h-full" />
     ),
   }
 );
 
 const DEFAULT_FILTERS = {
-  purchaseMode: 'Regular',
-  dividendType: 'Growth',
-  broadCategories: [],
+  purchaseMode: 'Direct',
   categories: [],
   amcs: [],
-  aumRange: 'All',
-  lensFilters: {},
-  period: '1Y',
+  aumRange: 'Any AUM',
 };
 
-const PERIOD_RETURN_KEY = {
-  '1Y': 'return_1y',
-  '3Y': 'return_3y',
-  '5Y': 'return_5y',
+/** Map tier display names to class values for filtering */
+const TIER_CLASS_MAP = {
+  'Alpha Machine': 'ALPHA_MACHINE',
+  'Positive Alpha': 'POSITIVE',
+  'Neutral': 'NEUTRAL',
+  'Negative Alpha': 'NEGATIVE',
 };
-
-/* ── Float Stats Card ─────────────────────────────────────── */
-function StatCard({ label, value, sub, trend }) {
-  return (
-    <div className="bg-gradient-to-br from-white to-slate-50/80 border-[0.5px] border-slate-200/40 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.03),0_8px_32px_rgba(0,0,0,0.04)] px-3 py-2.5 hover:-translate-y-0.5 transition-all duration-[400ms]">
-      <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
-      <p className="font-mono text-lg font-bold tabular-nums text-slate-800 mt-0.5 leading-tight">{value}</p>
-      {sub && (
-        <p className={`text-[10px] mt-0.5 ${trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-500' : 'text-slate-400'}`}>
-          {sub}
-        </p>
-      )}
-    </div>
-  );
-}
 
 export default function UniversePage() {
+  const router = useRouter();
   const [allFunds, setAllFunds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [xAxis, setXAxis] = useState('return_score');
-  const [yAxis, setYAxis] = useState('risk_score');
+  const [xAxis, setXAxis] = useState('risk_score');
+  const [yAxis, setYAxis] = useState('return_1y');
   const [colorLens, setColorLens] = useState('alpha_score');
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS });
   const [selectedTier, setSelectedTier] = useState(null);
-
-  const [intelCollapsed, setIntelCollapsed] = useState(false);
+  const [activePreset, setActivePreset] = useState(null);
 
   const [selectedFund, setSelectedFund] = useState(null);
   const [fundCardPos, setFundCardPos] = useState({ x: 0, y: 0 });
@@ -74,7 +57,7 @@ export default function UniversePage() {
 
   const chartContainerRef = useRef(null);
   const [chartWidth, setChartWidth] = useState(800);
-  const [chartHeight, setChartHeight] = useState(600);
+  const [chartHeight, setChartHeight] = useState(560);
   const [chartMeasured, setChartMeasured] = useState(false);
 
   useEffect(() => {
@@ -92,83 +75,140 @@ export default function UniversePage() {
     loadData();
   }, []);
 
+  // ResizeObserver for chart sizing
   useEffect(() => {
-    function measure() {
-      if (chartContainerRef.current) {
-        const rect = chartContainerRef.current.getBoundingClientRect();
-        setChartWidth(Math.max(400, Math.floor(rect.width)));
-        setChartHeight(Math.max(400, Math.floor(rect.height)));
+    if (!chartContainerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        setChartWidth(Math.max(400, Math.floor(width)));
+        setChartHeight(Math.max(400, Math.floor(height)));
         setChartMeasured(true);
       }
+    });
+    observer.observe(chartContainerRef.current);
+    return () => observer.disconnect();
+  }, [loading]);
+
+  // Apply preset filters
+  const handlePresetClick = useCallback((presetId) => {
+    if (presetId === activePreset) {
+      setActivePreset(null);
+      return;
     }
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, [loading, intelCollapsed]);
+    setActivePreset(presetId);
+    if (presetId === 'custom') {
+      // Just deselect preset, keep current filters
+      return;
+    }
+  }, [activePreset]);
 
-  const effectiveXAxis = useMemo(() => xAxis, [xAxis]);
-
-  const xAxisOptions = useMemo(() => {
-    const returnKey = PERIOD_RETURN_KEY[filters.period] || 'return_1y';
-    const returnLabel = `${filters.period || '1Y'} Return (%)`;
-    return [
-      { key: returnKey, label: returnLabel },
-      ...LENS_OPTIONS,
-    ];
-  }, [filters.period]);
-
-  // Apply all filters
+  // Apply all filters (including preset)
   const filteredFunds = useMemo(() => {
-    return allFunds.filter((fund) => {
-      const { purchaseMode, dividendType, broadCategories, categories, amcs, aumRange, lensFilters } = filters;
-      if (purchaseMode !== 'Both' && fund.purchase_mode !== purchaseMode) return false;
-      if (dividendType !== 'Both' && fund.dividend_type !== dividendType) return false;
-      if (broadCategories.length > 0 && !broadCategories.includes(fund.broad_category)) return false;
+    let result = allFunds;
+
+    // Standard filters
+    result = result.filter((fund) => {
+      const { purchaseMode, categories, amcs, aumRange } = filters;
+      if (purchaseMode && purchaseMode !== 'Both' && fund.purchase_mode !== purchaseMode) return false;
       if (categories.length > 0 && !categories.includes(fund.category_name)) return false;
       if (amcs.length > 0 && !amcs.includes(fund.amc_name)) return false;
-      if (aumRange !== 'All') {
+      if (aumRange && aumRange !== 'Any AUM') {
         const range = AUM_RANGES.find((r) => r.label === aumRange);
         if (range) {
           const aumCr = (Number(fund.aum) || 0) / 10000000;
           if (aumCr < range.min || aumCr >= range.max) return false;
         }
       }
-      for (const [key, range] of Object.entries(lensFilters)) {
-        if (!range) continue;
-        const score = Number(fund[key]) || 0;
-        if (score < range.min || score > range.max) return false;
-      }
       return true;
     });
-  }, [allFunds, filters]);
 
+    // Preset filter
+    if (activePreset && activePreset !== 'custom') {
+      const preset = PRESETS.find((p) => p.id === activePreset);
+      if (preset) {
+        result = result.filter(preset.filter);
+      }
+    }
+
+    return result;
+  }, [allFunds, filters, activePreset]);
+
+  // Tag funds with tier display for selected tier highlighting
   const taggedFunds = useMemo(() => {
-    const activeLens = colorLens || 'return_score';
+    const classKey = {
+      alpha_score: 'alpha_class',
+      return_score: 'return_class',
+      risk_score: 'risk_class',
+      consistency_score: 'consistency_class',
+      efficiency_score: 'efficiency_class',
+      resilience_score: 'resilience_class',
+    }[colorLens] || 'alpha_class';
+
+    const tierDisplayMap = {
+      ALPHA_MACHINE: 'Alpha Machine',
+      POSITIVE: 'Positive Alpha',
+      NEUTRAL: 'Neutral',
+      NEGATIVE: 'Negative Alpha',
+      LEADER: 'Leader',
+      STRONG: 'Strong',
+      AVERAGE: 'Average',
+      WEAK: 'Weak',
+      LOW_RISK: 'Low Risk',
+      MODERATE: 'Moderate',
+      ELEVATED: 'Elevated',
+      HIGH_RISK: 'High Risk',
+      ROCK_SOLID: 'Rock Solid',
+      CONSISTENT: 'Consistent',
+      MIXED: 'Mixed',
+      ERRATIC: 'Erratic',
+      LEAN: 'Lean',
+      FAIR: 'Fair',
+      EXPENSIVE: 'Expensive',
+      BLOATED: 'Bloated',
+      FORTRESS: 'Fortress',
+      STURDY: 'Sturdy',
+      FRAGILE: 'Fragile',
+      VULNERABLE: 'Vulnerable',
+    };
+
     return filteredFunds.map((f) => ({
       ...f,
-      _tierLabel: lensLabel(Number(f[activeLens]) || 0),
+      _tierDisplay: tierDisplayMap[f[classKey]] || f[classKey] || '',
     }));
   }, [filteredFunds, colorLens]);
 
-  // Stats for the left column
+  // Stats for left sidebar
   const stats = useMemo(() => {
-    if (taggedFunds.length === 0) return { avgReturn: '--', medianRisk: '--', topFund: '--', avgAum: '--' };
-    const retKey = PERIOD_RETURN_KEY[filters.period] || 'return_1y';
-    const returns = taggedFunds.map((f) => Number(f[retKey]) || 0).sort((a, b) => a - b);
+    if (taggedFunds.length === 0) {
+      return { avgReturn: 0, medianRisk: '--', topFundName: '--', topReturn: 0, avgAum: '--' };
+    }
+    const returns = taggedFunds.map((f) => Number(f.return_1y) || 0).sort((a, b) => a - b);
     const risks = taggedFunds.map((f) => Number(f.risk_score) || 0).sort((a, b) => a - b);
     const aums = taggedFunds.map((f) => (Number(f.aum) || 0) / 10000000);
     const avg = (arr) => arr.reduce((s, v) => s + v, 0) / arr.length;
-    const median = (arr) => arr.length % 2 === 0 ? (arr[arr.length / 2 - 1] + arr[arr.length / 2]) / 2 : arr[Math.floor(arr.length / 2)];
-    const topIdx = returns.length - 1;
-    const topReturn = returns[topIdx];
+    const median = (arr) =>
+      arr.length % 2 === 0
+        ? (arr[arr.length / 2 - 1] + arr[arr.length / 2]) / 2
+        : arr[Math.floor(arr.length / 2)];
+
+    const topFund = taggedFunds.reduce((best, f) => {
+      const r = Number(f.return_1y) || 0;
+      return r > (Number(best.return_1y) || 0) ? f : best;
+    }, taggedFunds[0]);
+
     const avgAumCr = avg(aums);
+
     return {
-      avgReturn: `${avg(returns).toFixed(1)}%`,
+      avgReturn: avg(returns),
       medianRisk: Math.round(median(risks)),
-      topReturn: `${topReturn.toFixed(1)}%`,
-      avgAum: avgAumCr >= 1000 ? `${(avgAumCr / 1000).toFixed(1)}K Cr` : `${Math.round(avgAumCr)} Cr`,
+      topFundName: topFund.fund_name || topFund.legal_name || '--',
+      topReturn: Number(topFund.return_1y) || 0,
+      avgAum: avgAumCr >= 1000
+        ? `${(avgAumCr / 1000).toFixed(1)}K Cr`
+        : `${Math.round(avgAumCr).toLocaleString('en-IN')} Cr`,
     };
-  }, [taggedFunds, filters.period]);
+  }, [taggedFunds]);
 
   const handleHover = useCallback((fund, x, y) => {
     setHoverFund(fund || null);
@@ -181,19 +221,15 @@ export default function UniversePage() {
   }, []);
 
   const handleFundDoubleClick = useCallback((fund) => {
-    if (fund?.mstar_id) window.location.href = `/fund360?fund=${fund.mstar_id}`;
-  }, []);
+    if (fund?.mstar_id) router.push(`/fund360?fund=${fund.mstar_id}`);
+  }, [router]);
 
   const handleTierClick = useCallback((tierLabel) => setSelectedTier(tierLabel), []);
 
   const handleResetFilters = useCallback(() => {
     setFilters({ ...DEFAULT_FILTERS });
     setSelectedTier(null);
-  }, []);
-
-  const handleIntelFundClick = useCallback((fund) => {
-    setSelectedFund(fund);
-    setFundCardPos({ x: window.innerWidth / 2 - 144, y: window.innerHeight / 2 - 100 });
+    setActivePreset(null);
   }, []);
 
   useEffect(() => {
@@ -204,125 +240,67 @@ export default function UniversePage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  if (loading) {
-    return (
-      <div className="h-full flex flex-col -m-6">
-        <div className="px-3 py-2 space-y-2">
-          <SkeletonLoader variant="row" className="w-full h-8" />
-          <SkeletonLoader variant="row" className="w-full h-6" />
-        </div>
-        <div className="flex flex-1">
-          <div className="w-36 p-2 space-y-2">
-            {[1, 2, 3, 4].map((i) => <SkeletonLoader key={i} className="h-16 rounded-2xl" />)}
-          </div>
-          <SkeletonLoader variant="chart" className="flex-1 min-h-[400px]" />
-          <div className="w-72 p-2 space-y-3">
-            <SkeletonLoader className="h-16 rounded-xl" />
-            <SkeletonLoader className="h-32 rounded-xl" />
-          </div>
-        </div>
+  if (loading) return (
+    <div className="max-w-[1400px] mx-auto px-1 space-y-4">
+      <SkeletonLoader variant="row" className="w-full h-12" />
+      <SkeletonLoader variant="row" className="w-full h-10" />
+      <div className="grid grid-cols-12 gap-4">
+        <div className="col-span-2 space-y-3">{[1, 2, 3].map((i) => <SkeletonLoader key={i} className="h-32 rounded-xl" />)}</div>
+        <SkeletonLoader variant="chart" className="col-span-7 h-[560px] rounded-xl" />
+        <div className="col-span-3 space-y-3">{[1, 2, 3].map((i) => <SkeletonLoader key={i} className="h-40 rounded-xl" />)}</div>
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (error) {
-    return (
-      <EmptyState
-        icon={<svg className="w-6 h-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>}
-        message={`Failed to load fund data: ${error}`}
-        action="Retry"
-        onAction={() => window.location.reload()}
-      />
-    );
-  }
+  if (error) return (
+    <div className="max-w-[1400px] mx-auto px-1">
+      <EmptyState message={`Failed to load fund data: ${error}`} action="Retry" onAction={() => window.location.reload()} />
+    </div>
+  );
 
   return (
-    <div className="h-full flex flex-col -m-6">
-      {/* Row 1: Horizontal Filter Bar */}
-      <div className="bg-gradient-to-br from-white to-slate-50/50 border-b-[0.5px] border-slate-200/40 px-3 py-2 flex-shrink-0">
-        <HorizontalFilterBar
-          filters={filters}
-          onFiltersChange={setFilters}
-          allFunds={allFunds}
-          filteredCount={taggedFunds.length}
-          totalCount={allFunds.length}
-        />
-      </div>
-
-      {/* Row 2: Axis controls toolbar */}
-      <div className="bg-white/80 backdrop-blur-sm border-b-[0.5px] border-slate-200/30 px-3 py-1 flex items-center gap-3 flex-shrink-0">
-        <div className="flex items-center gap-1.5">
-          <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">X</label>
-          <select
-            value={xAxis}
-            onChange={(e) => setXAxis(e.target.value)}
-            className="text-[11px] border-[0.5px] border-slate-200/60 rounded-full px-2.5 py-0.5 bg-white text-slate-600 focus:outline-none focus:ring-1 focus:ring-teal-400/50"
-          >
-            {xAxisOptions.map((l) => <option key={l.key} value={l.key}>{l.label}</option>)}
-          </select>
-        </div>
-        <span className="text-slate-300 text-[10px]">vs</span>
-        <div className="flex items-center gap-1.5">
-          <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Y</label>
-          <select
-            value={yAxis}
-            onChange={(e) => setYAxis(e.target.value)}
-            className="text-[11px] border-[0.5px] border-slate-200/60 rounded-full px-2.5 py-0.5 bg-white text-slate-600 focus:outline-none focus:ring-1 focus:ring-teal-400/50"
-          >
-            {LENS_OPTIONS.map((l) => <option key={l.key} value={l.key}>{l.label}</option>)}
-          </select>
-        </div>
-        <div className="w-px h-3.5 bg-slate-200/50" />
-        <div className="flex items-center gap-1.5">
-          <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Color</label>
-          <select
-            value={colorLens}
-            onChange={(e) => setColorLens(e.target.value)}
-            className="text-[11px] border-[0.5px] border-slate-200/60 rounded-full px-2.5 py-0.5 bg-white text-slate-600 focus:outline-none focus:ring-1 focus:ring-teal-400/50"
-          >
-            {LENS_OPTIONS.map((l) => <option key={l.key} value={l.key}>{l.label}</option>)}
-          </select>
-        </div>
-      </div>
-
-      {/* Row 3: Tier summary */}
-      <TierSummary
-        funds={taggedFunds}
-        colorLens={colorLens}
-        onTierClick={handleTierClick}
-        selectedTier={selectedTier}
+    <div className="max-w-[1400px] mx-auto px-1 space-y-4">
+      {/* Section 1: Smart Screener Presets */}
+      <SmartPresets
+        allFunds={allFunds}
+        activePreset={activePreset}
+        onPresetClick={handlePresetClick}
       />
 
-      {/* Main: StatsColumn | Chart | IntelPanel */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Left: Stats Column */}
-        <div className="w-36 flex-shrink-0 p-2 space-y-2 overflow-y-auto hidden lg:flex flex-col">
-          <StatCard
-            label={`Avg ${filters.period} Return`}
-            value={stats.avgReturn}
-            sub={`${taggedFunds.length} funds`}
-          />
-          <StatCard
-            label="Median Risk"
-            value={stats.medianRisk}
-            sub="Score 0-100"
-          />
-          <StatCard
-            label={`Top ${filters.period}`}
-            value={stats.topReturn}
-            sub="Best performer"
-            trend="up"
-          />
-          <StatCard
-            label="Avg AUM"
-            value={stats.avgAum}
-            sub="Per fund"
-          />
-        </div>
+      {/* Section 2: Filter Bar */}
+      <HorizontalFilterBar
+        filters={filters}
+        onFiltersChange={setFilters}
+        allFunds={allFunds}
+        filteredCount={taggedFunds.length}
+        totalCount={allFunds.length}
+        xAxis={xAxis}
+        yAxis={yAxis}
+        colorLens={colorLens}
+        onXAxisChange={setXAxis}
+        onYAxisChange={setYAxis}
+        onColorChange={setColorLens}
+      />
 
-        {/* Center: Scatter Chart */}
-        <div className="flex-1 min-w-0 flex flex-col bg-slate-50/50">
-          <div ref={chartContainerRef} className="flex-1 min-h-0 max-h-[700px] relative">
+      {/* Section 3: Main 3-Column Layout (2:7:3) */}
+      <div className="grid grid-cols-12 gap-4 animate-in" style={{ animationDelay: '0.1s' }}>
+        {/* LEFT: Stats sidebar */}
+        <TierSummary
+          funds={taggedFunds}
+          colorLens={colorLens}
+          onTierClick={handleTierClick}
+          selectedTier={selectedTier}
+          stats={stats}
+          period="1Y"
+        />
+
+        {/* CENTER: Bubble Chart */}
+        <div className="col-span-7">
+          <div
+            ref={chartContainerRef}
+            className="bg-white rounded-xl border border-slate-200 overflow-hidden relative"
+            style={{ height: 560 }}
+          >
             {taggedFunds.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <EmptyState
@@ -333,14 +311,13 @@ export default function UniversePage() {
                 />
               </div>
             ) : !chartMeasured ? (
-              <SkeletonLoader variant="chart" className="flex-1 min-h-[400px]" />
+              <SkeletonLoader variant="chart" className="w-full h-full" />
             ) : (
               <BubbleScatter
                 data={taggedFunds}
                 xAxis={xAxis}
                 yAxis={yAxis}
                 colorLens={colorLens}
-                period={filters.period}
                 onFundClick={handleFundClick}
                 onFundDoubleClick={handleFundDoubleClick}
                 onHover={handleHover}
@@ -352,19 +329,17 @@ export default function UniversePage() {
           </div>
         </div>
 
-        {/* Right: Intelligence Panel */}
-        <div className="hidden xl:flex">
-          <IntelligencePanel
-            funds={taggedFunds}
-            allFundsCount={allFunds.length}
-            colorLens={colorLens}
-            xAxis={xAxis}
-            yAxis={yAxis}
-            onFundClick={handleIntelFundClick}
-            collapsed={intelCollapsed}
-            onToggleCollapse={() => setIntelCollapsed(!intelCollapsed)}
-          />
-        </div>
+        {/* RIGHT: Intelligence Panel */}
+        <IntelligencePanel
+          funds={taggedFunds}
+          allFundsCount={allFunds.length}
+          colorLens={colorLens}
+          yAxis={yAxis}
+          onFundClick={(fund) => {
+            setSelectedFund(fund);
+            setFundCardPos({ x: window.innerWidth / 2 - 144, y: window.innerHeight / 2 - 100 });
+          }}
+        />
       </div>
 
       {/* FundCard popup */}
@@ -383,15 +358,36 @@ export default function UniversePage() {
       {/* Hover tooltip */}
       {hoverFund && !selectedFund && (
         <div
-          className="fixed z-30 bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shadow-lg pointer-events-none text-[11px] max-w-64"
+          className="fixed z-30 pointer-events-none"
           style={{
-            left: Math.min(hoverPos.x + 16, window.innerWidth - 260),
+            left: Math.min(hoverPos.x + 16, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 280),
             top: Math.max(hoverPos.y - 40, 8),
           }}
         >
-          <p className="font-medium truncate">{hoverFund.fund_name || hoverFund.legal_name}</p>
-          <p className="text-slate-300 text-[10px] truncate">{hoverFund.amc_name}</p>
-          <p className="text-slate-400 text-[9px] mt-0.5">Click for details</p>
+          <div className="bg-white/97 border border-slate-200 rounded-xl shadow-lg px-3 py-2.5 max-w-64">
+            <p className="text-xs font-bold text-slate-800 truncate">
+              {hoverFund.fund_name || hoverFund.legal_name}
+            </p>
+            <p className="text-[9px] text-slate-400 truncate">
+              {hoverFund.category_name || hoverFund.broad_category} &middot; AUM {formatAUM((Number(hoverFund.aum) || 0) / 10000000)}
+            </p>
+            <div className="flex gap-3 mt-1.5 text-[10px]">
+              <span>
+                <span className="text-slate-400">1Y Return: </span>
+                <span className={`font-bold tabular-nums ${(Number(hoverFund.return_1y) || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {formatPct(hoverFund.return_1y)}
+                </span>
+              </span>
+              <span>
+                <span className="text-slate-400">Risk: </span>
+                <span className="font-bold tabular-nums text-slate-700">{Math.round(Number(hoverFund.risk_score) || 0)}</span>
+              </span>
+              <span>
+                <span className="text-slate-400">Alpha: </span>
+                <span className="font-bold tabular-nums text-slate-700">{Math.round(Number(hoverFund.alpha_score) || 0)}</span>
+              </span>
+            </div>
+          </div>
         </div>
       )}
     </div>

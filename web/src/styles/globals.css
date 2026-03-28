@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
 
 html {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -24,4 +24,207 @@ html {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* ── Shared utility classes matching mockups ─── */
+
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation: slideUp 0.4s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.view-fade {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Tabular numbers for financial data */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Float design card */
+.float-card {
+  background: linear-gradient(to bottom right, #ffffff, rgba(248, 250, 252, 0.8));
+  border: 0.5px solid rgba(226, 232, 240, 0.4);
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03), 0 8px 32px rgba(0, 0, 0, 0.04);
+}
+
+/* Lens mini-bar (used in fund cards, strategy cards) */
+.lens-mini {
+  height: 4px;
+  border-radius: 2px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.lens-mini-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+/* Mode/trigger card hover */
+.mode-card {
+  transition: all 0.2s;
+  border: 2px solid transparent;
+}
+
+.mode-card:hover {
+  border-color: #99f6e4;
+}
+
+.mode-card.best {
+  border-color: #14b8a6;
+  background: #f0fdfa;
+}
+
+/* ── Dashboard-specific styles ─── */
+
+.gradient-hero {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+}
+
+.regime-glow {
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.15);
+}
+
+.sentiment-ring {
+  transition: stroke-dasharray 1s ease;
+}
+
+.bucket-card {
+  transition: all 0.2s ease;
+}
+
+.bucket-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+.health-bar {
+  transition: width 0.8s ease;
+}
+
+.signal-pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.freshness-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.scroll-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+.stat-grid > div {
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-grid > div:last-child {
+  border-right: none;
+}
+
+/* ── Universe page styles ─── */
+
+.preset-card {
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.preset-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+  border-color: #99f6e4;
+}
+
+.filter-pill {
+  transition: all 0.15s;
+}
+
+.filter-pill:hover {
+  background: #f0fdfa;
+  border-color: #99f6e4;
+}
+
+.filter-pill.active {
+  background: #f0fdfa;
+  border-color: #14b8a6;
+  color: #0d9488;
+}
+
+.tier-bar {
+  transition: width 0.6s ease;
+  cursor: pointer;
+}
+
+.tier-bar:hover {
+  filter: brightness(1.1);
+}
+
+.fund-row:hover {
+  background: #f8fafc;
+}
+
+/* ── Simulation page styles ─── */
+
+.rule-card {
+  transition: background 0.15s;
+}
+
+.rule-card:hover {
+  background: #f8fafc;
+}
+
+.metric-cell {
+  text-align: center;
+  padding: 8px 4px;
+}
+
+.winner {
+  background: #f0fdfa;
+  font-weight: 700;
+  color: #0d9488;
+}
+
+.signal-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }

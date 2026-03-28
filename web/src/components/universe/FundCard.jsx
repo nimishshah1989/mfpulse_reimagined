@@ -1,17 +1,18 @@
 import { useRef, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import LensCircle from '../shared/LensCircle';
 import TierBadge from '../shared/TierBadge';
-import { LENS_OPTIONS, lensColor, lensLabel } from '../../lib/lens';
-import { formatPct, formatAUM, formatScore } from '../../lib/format';
+import { LENS_OPTIONS, lensColor } from '../../lib/lens';
+import { formatPct, formatAUM } from '../../lib/format';
 
 /**
  * Inline popup card shown when clicking a bubble in BubbleScatter.
  * Positioned near the click point, stays within viewport bounds.
  */
-export default function FundCard({ fund, x, y, onClose, onCompare }) {
+export default function FundCard({ fund, x, y, onClose }) {
   const cardRef = useRef(null);
+  const router = useRouter();
 
-  // Position the card within viewport
   useEffect(() => {
     if (!cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
@@ -20,7 +21,6 @@ export default function FundCard({ fund, x, y, onClose, onCompare }) {
     let left = x + 16;
     let top = y - rect.height / 2;
 
-    // Keep within viewport
     if (left + rect.width > window.innerWidth - pad) {
       left = x - rect.width - 16;
     }
@@ -40,10 +40,9 @@ export default function FundCard({ fund, x, y, onClose, onCompare }) {
   const aumCr = (Number(fund.aum) || 0) / 10000000;
   const return1y = Number(fund.return_1y);
   const return1yValid = !isNaN(return1y);
-  const ter = Number(fund.net_expense_ratio);
+  const ter = Number(fund.expense_ratio);
   const terValid = !isNaN(ter);
 
-  // Top 3 tier badges
   const topLenses = LENS_OPTIONS
     .map((l) => ({ ...l, score: Number(fund[l.key]) || 0 }))
     .sort((a, b) => b.score - a.score)
@@ -59,7 +58,7 @@ export default function FundCard({ fund, x, y, onClose, onCompare }) {
         transition: 'opacity 150ms ease-out, transform 150ms ease-out',
       }}
     >
-      {/* Header with close button */}
+      {/* Header */}
       <div className="px-3.5 pt-3 pb-2 relative">
         <button
           type="button"
@@ -119,11 +118,7 @@ export default function FundCard({ fund, x, y, onClose, onCompare }) {
           <span>
             <span className="text-slate-400">1Y </span>
             {return1yValid ? (
-              <span
-                className={`font-mono font-semibold tabular-nums ${
-                  return1y >= 0 ? 'text-emerald-600' : 'text-red-600'
-                }`}
-              >
+              <span className={`font-mono font-semibold tabular-nums ${return1y >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 {formatPct(return1y)}
               </span>
             ) : (
@@ -143,23 +138,15 @@ export default function FundCard({ fund, x, y, onClose, onCompare }) {
         </div>
       </div>
 
-      {/* Action buttons */}
-      <div className="px-3.5 py-2.5 border-t border-slate-100 flex items-center gap-2">
-        <a
-          href={`/fund360?fund=${fund.mstar_id}`}
-          className="flex-1 text-center px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-semibold rounded-lg transition-colors"
+      {/* Action */}
+      <div className="px-3.5 py-2.5 border-t border-slate-100">
+        <button
+          type="button"
+          onClick={() => router.push(`/fund360?fund=${fund.mstar_id}`)}
+          className="w-full text-center px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-semibold rounded-lg transition-colors"
         >
           View Full Profile
-        </a>
-        {onCompare && (
-          <button
-            type="button"
-            onClick={() => onCompare(fund)}
-            className="px-3 py-1.5 border border-slate-200 hover:border-teal-300 text-slate-600 hover:text-teal-600 text-[11px] font-medium rounded-lg transition-colors"
-          >
-            Compare
-          </button>
-        )}
+        </button>
       </div>
     </div>
   );

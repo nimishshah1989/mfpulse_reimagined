@@ -1,39 +1,36 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { scaleLinear } from 'd3-scale';
 import { QUADRANT_COLORS } from '../../lib/sectors';
-import { momentumColor } from '../../lib/lens';
 
 const QUADRANT_BG = {
-  Leading: 'rgba(5,150,105,0.06)',
-  Improving: 'rgba(20,184,166,0.06)',
-  Weakening: 'rgba(245,158,11,0.06)',
-  Lagging: 'rgba(220,38,38,0.06)',
+  Improving: 'rgba(14,165,233,0.04)',
+  Leading: 'rgba(5,150,105,0.04)',
+  Lagging: 'rgba(239,68,68,0.03)',
+  Weakening: 'rgba(245,158,11,0.03)',
 };
 
-const QUADRANT_LABEL_COLOR = {
-  Leading: 'rgba(5,150,105,0.45)',
-  Improving: 'rgba(20,184,166,0.45)',
-  Weakening: 'rgba(245,158,11,0.45)',
-  Lagging: 'rgba(220,38,38,0.45)',
+const QL_COLOR = { Improving: 'rgba(14,165,233,0.45)', Leading: 'rgba(5,150,105,0.45)', Lagging: 'rgba(239,68,68,0.35)', Weakening: 'rgba(245,158,11,0.35)' };
+
+const BUBBLE_COLORS = {
+  Leading: { fill: 'rgba(5,150,105,0.8)', stroke: '#059669' },
+  Improving: { fill: 'rgba(14,165,233,0.75)', stroke: '#0ea5e9' },
+  Weakening: { fill: 'rgba(245,158,11,0.7)', stroke: '#f59e0b' },
+  Lagging: { fill: 'rgba(239,68,68,0.65)', stroke: '#ef4444' },
 };
 
-const MARGIN = { top: 32, right: 32, bottom: 40, left: 48 };
+const MARGIN = { top: 28, right: 28, bottom: 36, left: 44 };
 
 export default function CompassChart({
   sectors,
   selectedSector,
   onSectorClick,
   width: rawWidth,
-  height = 480,
+  height = 520,
 }) {
   const width = Math.max(400, rawWidth);
   const canvasRef = useRef(null);
-  const overlayRef = useRef(null);
-  const [tooltip, setTooltip] = useState(null);
-  const animFrameRef = useRef(null);
-  const [pulsePhase, setPulsePhase] = useState(0);
+  const [hovered, setHovered] = useState(null);
 
-  // Auto-zoom axes to data range with padding, always include 0 for both axes
   const xDomain = useMemo(() => {
     if (!sectors.length) return [-20, 25];
     const scores = sectors.map((s) => s.rs_score);
@@ -41,11 +38,7 @@ export default function CompassChart({
     const max = Math.max(...scores);
     const range = max - min || 10;
     const pad = range * 0.2;
-    // Always include 0 (zero line = benchmark) in domain
-    return [
-      Math.min(min - pad, -pad),
-      Math.max(max + pad, pad),
-    ];
+    return [Math.min(min - pad, -pad), Math.max(max + pad, pad)];
   }, [sectors]);
 
   const yDomain = useMemo(() => {
@@ -55,44 +48,26 @@ export default function CompassChart({
     const max = Math.max(...moms);
     const range = max - min || 5;
     const pad = range * 0.25;
-    // Always include 0 (zero momentum) in domain
-    return [
-      Math.min(min - pad, -pad),
-      Math.max(max + pad, pad),
-    ];
+    return [Math.min(min - pad, -pad), Math.max(max + pad, pad)];
   }, [sectors]);
 
   const xScale = useCallback(
-    () => scaleLinear().domain(xDomain).range([MARGIN.left, width - MARGIN.right]),
+    () =>
+      scaleLinear()
+        .domain(xDomain)
+        .range([MARGIN.left, width - MARGIN.right]),
     [width, xDomain]
   );
   const yScale = useCallback(
-    () => scaleLinear().domain(yDomain).range([height - MARGIN.bottom, MARGIN.top]),
+    () =>
+      scaleLinear()
+        .domain(yDomain)
+        .range([height - MARGIN.bottom, MARGIN.top]),
     [height, yDomain]
   );
 
-  const getRadius = (s) => Math.max(8, Math.min(22, 4 + (s.fund_count || 0) * 0.4));
-
-  // Pulse animation for selected sector
-  useEffect(() => {
-    if (!selectedSector) {
-      setPulsePhase(0);
-      return;
-    }
-    let running = true;
-    let phase = 0;
-    const animate = () => {
-      if (!running) return;
-      phase = (phase + 0.03) % (Math.PI * 2);
-      setPulsePhase(phase);
-      animFrameRef.current = requestAnimationFrame(animate);
-    };
-    animFrameRef.current = requestAnimationFrame(animate);
-    return () => {
-      running = false;
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    };
-  }, [selectedSector]);
+  const getRadius = (s) =>
+    Math.max(16, Math.min(30, 12 + (s.fund_count || 0) * 0.4));
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -108,8 +83,8 @@ export default function CompassChart({
 
     const x = xScale();
     const y = yScale();
-    const midX = x(0);  // RS Score = 0 means at benchmark
-    const midY = y(0);  // Momentum = 0 means flat
+    const midX = x(0);
+    const midY = y(0);
     const left = MARGIN.left;
     const right = width - MARGIN.right;
     const top = MARGIN.top;
@@ -126,84 +101,59 @@ export default function CompassChart({
     ctx.fillRect(midX, midY, right - midX, bottom - midY);
 
     // Quadrant dividers
-    ctx.strokeStyle = '#cbd5e1';
+    ctx.strokeStyle = '#e2e8f0';
     ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
+    ctx.setLineDash([]);
     ctx.beginPath();
     ctx.moveTo(midX, top);
     ctx.lineTo(midX, bottom);
     ctx.moveTo(left, midY);
     ctx.lineTo(right, midY);
     ctx.stroke();
-    ctx.setLineDash([]);
 
-    // Quadrant labels — LARGE, bold, positioned in corners
+    // Quadrant labels
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const labelOffsetX = (right - left) * 0.25;
-    const labelOffsetY = (bottom - top) * 0.12;
-
-    ctx.font = 'bold 16px Inter, sans-serif';
-    ctx.fillStyle = QUADRANT_LABEL_COLOR.Improving;
-    ctx.fillText('Improving', left + labelOffsetX, top + labelOffsetY);
-    ctx.fillStyle = QUADRANT_LABEL_COLOR.Leading;
-    ctx.fillText('Leading', right - labelOffsetX, top + labelOffsetY);
-    ctx.fillStyle = QUADRANT_LABEL_COLOR.Lagging;
-    ctx.fillText('Lagging', left + labelOffsetX, bottom - labelOffsetY);
-    ctx.fillStyle = QUADRANT_LABEL_COLOR.Weakening;
-    ctx.fillText('Weakening', right - labelOffsetX, bottom - labelOffsetY);
-
-    // Reset baseline
+    ctx.font = 'bold 10px Inter, sans-serif';
+    const qLabels = [
+      ['IMPROVING', left + (midX - left) / 2, top + 16, QL_COLOR.Improving],
+      ['LEADING', midX + (right - midX) / 2, top + 16, QL_COLOR.Leading],
+      ['LAGGING', left + (midX - left) / 2, bottom - 14, QL_COLOR.Lagging],
+      ['WEAKENING', midX + (right - midX) / 2, bottom - 14, QL_COLOR.Weakening],
+    ];
+    for (const [text, lx, ly, color] of qLabels) {
+      ctx.fillStyle = color;
+      ctx.fillText(text, lx, ly);
+    }
     ctx.textBaseline = 'alphabetic';
 
-    // Axes ticks — dynamic based on data domain
-    ctx.fillStyle = '#64748b';
+    // Axis ticks + labels
+    ctx.fillStyle = '#94a3b8';
     ctx.font = '10px Inter, sans-serif';
     ctx.textAlign = 'center';
-    const xTicks = [];
-    const xStep = Math.max(5, Math.round((xDomain[1] - xDomain[0]) / 5));
-    for (let v = Math.ceil(xDomain[0] / xStep) * xStep; v <= xDomain[1]; v += xStep) {
-      xTicks.push(v);
-    }
-    for (const v of xTicks) {
-      const px = x(v);
-      ctx.fillText(String(v), px, bottom + 16);
-    }
+    const xStep = Math.max(5, Math.round((xDomain[1] - xDomain[0]) / 6));
+    for (let v = Math.ceil(xDomain[0] / xStep) * xStep; v <= xDomain[1]; v += xStep) ctx.fillText(String(v), x(v), bottom + 14);
     ctx.textAlign = 'right';
-    const yTicks = [];
-    const yStep = Math.max(1, Math.round((yDomain[1] - yDomain[0]) / 5));
-    for (let v = Math.ceil(yDomain[0] / yStep) * yStep; v <= yDomain[1]; v += yStep) {
-      yTicks.push(v);
-    }
-    for (const v of yTicks) {
-      const py = y(v);
-      ctx.fillText(String(v), left - 8, py + 3);
-    }
-
-    // Axis labels
-    ctx.font = '11px Inter, sans-serif';
+    const yStep = Math.max(1, Math.round((yDomain[1] - yDomain[0]) / 6));
+    for (let v = Math.ceil(yDomain[0] / yStep) * yStep; v <= yDomain[1]; v += yStep) ctx.fillText(String(v), left - 6, y(v) + 3);
+    ctx.font = '9px Inter, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('RS Score', (left + right) / 2, height - 2);
+    ctx.fillText('RS Score \u2192', (left + right) / 2, height - 2);
     ctx.save();
-    ctx.translate(14, (top + bottom) / 2);
+    ctx.translate(10, (top + bottom) / 2);
     ctx.rotate(-Math.PI / 2);
-    ctx.fillText('RS Momentum', 0, 0);
+    ctx.fillText('RS Momentum \u2192', 0, 0);
     ctx.restore();
 
-    // Historical trails + sectors
+    // Draw trail lines
     for (const sector of sectors) {
       const cx = x(sector.rs_score);
       const cy = y(sector.rs_momentum);
-      const r = getRadius(sector);
-      const color = momentumColor(sector.rs_momentum);
-      const isSelected = selectedSector?.sector_name === sector.sector_name;
-
-      // Trail
       if (sector.history?.length) {
-        const trailColor = QUADRANT_COLORS[sector.quadrant]?.circle || '#64748b';
+        const colors = BUBBLE_COLORS[sector.quadrant] || BUBBLE_COLORS.Leading;
         ctx.setLineDash([3, 3]);
-        ctx.strokeStyle = trailColor;
-        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = colors.stroke;
+        ctx.globalAlpha = 0.4;
         ctx.lineWidth = 1;
         let prevX = cx;
         let prevY = cy;
@@ -214,82 +164,65 @@ export default function CompassChart({
           ctx.moveTo(prevX, prevY);
           ctx.lineTo(hx, hy);
           ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(hx, hy, r * 0.5, 0, Math.PI * 2);
-          ctx.fillStyle = trailColor;
-          ctx.fill();
           prevX = hx;
           prevY = hy;
         }
         ctx.globalAlpha = 1;
         ctx.setLineDash([]);
       }
+    }
 
-      // Selected sector glow ring (animated pulse)
-      if (isSelected) {
-        const pulseRadius = r + 6 + Math.sin(pulsePhase) * 3;
-        ctx.beginPath();
-        ctx.arc(cx, cy, pulseRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.3 + Math.sin(pulsePhase) * 0.15;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
+    // Draw bubbles
+    for (const sector of sectors) {
+      const cx = x(sector.rs_score);
+      const cy = y(sector.rs_momentum);
+      const r = getRadius(sector);
+      const colors = BUBBLE_COLORS[sector.quadrant] || BUBBLE_COLORS.Leading;
+      const isHovered = hovered?.sector_name === sector.sector_name;
+      const isSelected = selectedSector?.sector_name === sector.sector_name;
+      const drawR = isSelected || isHovered ? r + 4 : r;
 
-        // Outer glow
-        const gradient = ctx.createRadialGradient(cx, cy, r, cx, cy, pulseRadius + 4);
-        gradient.addColorStop(0, color + '30');
-        gradient.addColorStop(1, color + '00');
-        ctx.fillStyle = gradient;
+      // Shadow for hovered/selected
+      if (isHovered || isSelected) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.15)';
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetY = 4;
         ctx.beginPath();
-        ctx.arc(cx, cy, pulseRadius + 4, 0, Math.PI * 2);
+        ctx.arc(cx, cy, drawR, 0, Math.PI * 2);
+        ctx.fillStyle = colors.fill;
         ctx.fill();
+        ctx.restore();
       }
 
-      // Main circle — slightly larger for selected
-      const drawR = isSelected ? r + 3 : r;
       ctx.beginPath();
       ctx.arc(cx, cy, drawR, 0, Math.PI * 2);
-      ctx.fillStyle = color;
+      ctx.fillStyle = colors.fill;
       ctx.fill();
+
       if (isSelected) {
         ctx.strokeStyle = '#0f172a';
         ctx.lineWidth = 3;
         ctx.stroke();
       }
 
-      // Text inside bubble
+      // Bubble label
       const shortName =
-        sector.sector_name.length > 10
-          ? sector.sector_name.slice(0, 8) + '..'
+        sector.sector_name.length > 8
+          ? sector.sector_name.slice(0, 6) + '..'
           : sector.sector_name;
       ctx.fillStyle = '#fff';
-      ctx.font = `bold ${Math.max(8, drawR * 0.55)}px Inter, sans-serif`;
+      ctx.font = `bold ${Math.max(7, drawR * 0.4)}px Inter, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(shortName, cx, cy - 4);
-      ctx.font = `${Math.max(7, drawR * 0.45)}px Inter, sans-serif`;
-      ctx.fillText(
-        (sector.rs_momentum > 0 ? '+' : '') + sector.rs_momentum.toFixed(1),
-        cx,
-        cy + 6
-      );
-
-      // External label for larger bubbles or selected
-      if (isSelected || r >= 14) {
-        ctx.font = '11px Inter, sans-serif';
-        ctx.fillStyle = '#334155';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.fillText(sector.sector_name, cx, cy + drawR + 4);
-        ctx.textBaseline = 'alphabetic';
-      }
+      ctx.fillText(shortName, cx, cy);
+      ctx.textBaseline = 'alphabetic';
     }
+  }, [sectors, selectedSector, hovered, width, height, xScale, yScale, xDomain, yDomain]);
 
-    ctx.textBaseline = 'alphabetic';
-  }, [sectors, selectedSector, width, height, xScale, yScale, xDomain, yDomain, pulsePhase]);
-
-  useEffect(() => { draw(); }, [draw]);
+  useEffect(() => {
+    draw();
+  }, [draw]);
 
   const findNearest = useCallback(
     (clientX, clientY) => {
@@ -300,12 +233,13 @@ export default function CompassChart({
       const x = xScale();
       const y = yScale();
       let best = null;
-      let bestDist = 25;
+      let bestDist = 35;
       for (const s of sectors) {
+        const r = getRadius(s);
         const dx = x(s.rs_score) - mx;
         const dy = y(s.rs_momentum) - my;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < bestDist) {
+        if (dist < bestDist && dist < r + 12) {
           bestDist = dist;
           best = s;
         }
@@ -317,7 +251,7 @@ export default function CompassChart({
 
   const handleMouseMove = (e) => {
     const result = findNearest(e.clientX, e.clientY);
-    setTooltip(result);
+    setHovered(result ? result.sector : null);
   };
 
   const handleClick = (e) => {
@@ -325,48 +259,138 @@ export default function CompassChart({
     if (result && onSectorClick) onSectorClick(result.sector);
   };
 
-  const quadrantLabel = tooltip?.sector?.quadrant || '';
+  const hoveredPos = useMemo(() => {
+    if (!hovered || !canvasRef.current) return null;
+    const x = xScale();
+    const y = yScale();
+    const cx = x(hovered.rs_score);
+    const cy = y(hovered.rs_momentum);
+    const r = getRadius(hovered);
+    return { x: cx, y: cy + r + 8 };
+  }, [hovered, xScale, yScale]);
+
+  const quadrantColor = BUBBLE_COLORS[hovered?.quadrant] || BUBBLE_COLORS.Leading;
 
   return (
     <div className="relative w-full" style={{ height }}>
       <canvas ref={canvasRef} className="absolute inset-0 w-full" />
       <svg
-        ref={overlayRef}
         className="absolute inset-0 cursor-crosshair w-full"
         width={width}
         height={height}
         onMouseMove={handleMouseMove}
-        onMouseLeave={() => setTooltip(null)}
+        onMouseLeave={() => setHovered(null)}
         onClick={handleClick}
       />
-      {tooltip && (
+
+      {/* Hover expand card (matching mockup) */}
+      {hovered && hoveredPos && (
         <div
-          className="pointer-events-none absolute z-10 rounded-lg bg-white px-3 py-2 shadow-lg border border-slate-200 text-xs"
+          className="pointer-events-none absolute z-50"
           style={{
-            left: Math.min(tooltip.x + 14, width - 180),
-            top: tooltip.y - 10,
+            left: Math.min(
+              Math.max(hoveredPos.x - 110, 8),
+              width - 228
+            ),
+            top: hoveredPos.y,
           }}
         >
-          <p className="font-semibold text-slate-800">{tooltip.sector.sector_name}</p>
-          <p className="font-mono tabular-nums text-slate-600">
-            RS: {tooltip.sector.rs_score} &middot; Momentum: {tooltip.sector.rs_momentum > 0 ? '+' : ''}
-            {tooltip.sector.rs_momentum}
-          </p>
-          {tooltip.sector.rs_rank != null && (
-            <p className="font-mono tabular-nums text-slate-500">
-              Rank: #{tooltip.sector.rs_rank}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-lg p-3 w-[220px]">
+            <p className="text-xs font-bold text-slate-800 mb-1.5">
+              {hovered.sector_name}
             </p>
-          )}
-          <span
-            className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${
-              QUADRANT_COLORS[quadrantLabel]?.badge || 'bg-slate-100 text-slate-600'
-            }`}
-          >
-            {quadrantLabel}
-          </span>
-          <p className="text-slate-500 mt-0.5">{tooltip.sector.fund_count} funds</p>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <div>
+                <p className="text-[9px] text-slate-400">RS Score</p>
+                <p
+                  className="text-sm font-bold tabular-nums"
+                  style={{ color: quadrantColor.stroke }}
+                >
+                  {hovered.rs_score}
+                </p>
+              </div>
+              <div>
+                <p className="text-[9px] text-slate-400">Momentum</p>
+                <p
+                  className="text-sm font-bold tabular-nums"
+                  style={{
+                    color:
+                      hovered.rs_momentum >= 0
+                        ? quadrantColor.stroke
+                        : '#ef4444',
+                  }}
+                >
+                  {hovered.rs_momentum > 0 ? '+' : ''}
+                  {Number(hovered.rs_momentum).toFixed(1)}
+                </p>
+              </div>
+            </div>
+
+            {/* Mini sparkline */}
+            {hovered.history?.length > 0 && (
+              <div className="mb-2">
+                <p className="text-[9px] text-slate-400 mb-1">
+                  RS Trend (3M)
+                </p>
+                <svg viewBox="0 0 180 30" className="w-full h-6">
+                  <polyline
+                    points={buildSparkline(hovered)}
+                    fill="none"
+                    stroke={quadrantColor.stroke}
+                    strokeWidth="2"
+                  />
+                </svg>
+              </div>
+            )}
+
+            <div
+              className="flex items-center gap-1 text-[10px] font-semibold rounded px-2 py-1"
+              style={{
+                backgroundColor: quadrantColor.fill.replace(
+                  /[\d.]+\)$/,
+                  '0.1)'
+                ),
+                color: quadrantColor.stroke,
+              }}
+            >
+              <span>{quadrantIcon(hovered.quadrant)}</span>
+              {hovered.quadrant}
+              {hovered.action && ` \u00B7 ${hovered.action}`}
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
+}
+
+function quadrantIcon(q) {
+  switch (q) {
+    case 'Leading':
+      return '\u25CF';
+    case 'Improving':
+      return '\u2197';
+    case 'Weakening':
+      return '\u2198';
+    case 'Lagging':
+      return '\u25BC';
+    default:
+      return '\u25CF';
+  }
+}
+
+function buildSparkline(sector) {
+  const points = [];
+  const history = sector.history || [];
+  const allScores = [...history.map((h) => h.rs_score), sector.rs_score];
+  const min = Math.min(...allScores);
+  const max = Math.max(...allScores);
+  const range = max - min || 1;
+  const count = allScores.length;
+  allScores.forEach((score, i) => {
+    const px = (i / (count - 1)) * 180;
+    const py = 28 - ((score - min) / range) * 26;
+    points.push(`${px.toFixed(0)},${py.toFixed(0)}`);
+  });
+  return points.join(' ');
 }

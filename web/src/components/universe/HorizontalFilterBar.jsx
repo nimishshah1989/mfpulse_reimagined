@@ -1,66 +1,55 @@
-import { useMemo, useCallback, useState } from 'react';
-import { LENS_OPTIONS } from '../../lib/lens';
+import { useMemo, useCallback } from 'react';
+import { LENS_OPTIONS, LENS_LABELS } from '../../lib/lens';
 
-const PURCHASE_MODES = ['Regular', 'Direct', 'Both'];
-const DIVIDEND_TYPES = ['Growth', 'IDCW', 'Both'];
+const PLAN_TYPES = ['Direct', 'Regular'];
+const GROWTH_TYPES = ['Growth'];
 
 const AUM_RANGES = [
-  { label: 'All', min: 0, max: Infinity },
-  { label: '<100Cr', min: 0, max: 100 },
-  { label: '100-500Cr', min: 100, max: 500 },
-  { label: '500-2KCr', min: 500, max: 2000 },
-  { label: '>2KCr', min: 2000, max: Infinity },
+  { label: 'Any AUM', min: 0, max: Infinity },
+  { label: '> 500 Cr', min: 500, max: Infinity },
+  { label: '> 1,000 Cr', min: 1000, max: Infinity },
+  { label: '> 5,000 Cr', min: 5000, max: Infinity },
 ];
 
-function FloatPill({ active, onClick, children, className = '' }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all duration-300 ${
-        active
-          ? 'bg-gradient-to-r from-teal-600 to-teal-700 text-white shadow-[0_2px_8px_rgba(13,148,136,0.25)]'
-          : 'bg-slate-100/70 text-slate-500 hover:bg-slate-200/80 hover:text-slate-600 backdrop-blur-sm'
-      } ${className}`}
-    >
-      {children}
-    </button>
-  );
-}
+const X_AXIS_OPTIONS = [
+  { key: 'risk_score', label: 'Risk Score' },
+  { key: 'return_score', label: 'Return Score' },
+  { key: 'expense_ratio', label: 'Expense Ratio' },
+];
 
-function FloatSelect({ value, onChange, children, className = '' }) {
-  return (
-    <select
-      value={value}
-      onChange={onChange}
-      className={`px-3 py-1 rounded-full text-[11px] border-[0.5px] border-slate-200/60 bg-white text-slate-600 focus:outline-none focus:ring-1 focus:ring-teal-400/50 transition-all duration-200 appearance-none cursor-pointer hover:border-slate-300 ${className}`}
-      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center', paddingRight: '22px' }}
-    >
-      {children}
-    </select>
-  );
-}
+const Y_AXIS_OPTIONS = [
+  { key: 'return_1y', label: '1Y Return' },
+  { key: 'return_3y', label: '3Y CAGR' },
+  { key: 'return_5y', label: '5Y CAGR' },
+  { key: 'return_score', label: 'Return Score' },
+];
 
-/**
- * HorizontalFilterBar — compact filter row replacing the left sidebar.
- * Float design: rounded pills, gradient active states, subtle backdrop-blur.
- */
+const COLOR_OPTIONS = [
+  { key: 'alpha_score', label: 'Alpha Score' },
+  { key: 'return_score', label: 'Return Score' },
+  { key: 'consistency_score', label: 'Consistency' },
+  { key: 'efficiency_score', label: 'Efficiency' },
+  { key: 'resilience_score', label: 'Resilience' },
+];
+
 export default function HorizontalFilterBar({
   filters,
   onFiltersChange,
   allFunds,
   filteredCount,
   totalCount,
+  xAxis,
+  yAxis,
+  colorLens,
+  onXAxisChange,
+  onYAxisChange,
+  onColorChange,
 }) {
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-
   const {
-    purchaseMode = 'Regular',
-    dividendType = 'Growth',
+    purchaseMode = 'Direct',
     categories = [],
     amcs = [],
-    aumRange = 'All',
-    period = '1Y',
+    aumRange = 'Any AUM',
   } = filters;
 
   function update(patch) {
@@ -80,138 +69,123 @@ export default function HorizontalFilterBar({
     };
   }, [allFunds]);
 
-  const hasActiveFilters = purchaseMode !== 'Regular' || dividendType !== 'Growth' ||
-    categories.length > 0 || amcs.length > 0 || aumRange !== 'All';
-
-  const clearAll = useCallback(() => {
-    onFiltersChange({
-      ...filters,
-      purchaseMode: 'Regular',
-      dividendType: 'Growth',
-      broadCategories: [],
-      categories: [],
-      amcs: [],
-      aumRange: 'All',
-      lensFilters: {},
-    });
-  }, [onFiltersChange, filters]);
-
   return (
-    <div className="space-y-1.5 flex-shrink-0">
-      {/* Mobile: compact toggle + count */}
-      <div className="flex items-center justify-between px-1 md:hidden">
-        <button
-          type="button"
-          onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
-          </svg>
-          Filters
-          {hasActiveFilters && (
-            <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
-          )}
-        </button>
-        <span className="text-[11px] text-slate-400 font-mono tabular-nums">
-          <span className="font-semibold text-slate-700">{filteredCount.toLocaleString('en-IN')}</span>
-          {' / '}{totalCount.toLocaleString('en-IN')}
-        </span>
-      </div>
-
-      {/* Desktop filters (always visible) / Mobile filters (toggled) */}
-      <div className={`${mobileFiltersOpen ? 'flex' : 'hidden'} md:flex items-center gap-1.5 flex-wrap px-1`}>
-        {/* Purchase mode */}
-        <div className="flex gap-0.5">
-          {PURCHASE_MODES.map((m) => (
-            <FloatPill key={m} active={purchaseMode === m} onClick={() => update({ purchaseMode: m })}>
-              {m}
-            </FloatPill>
-          ))}
+    <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 animate-in" style={{ animationDelay: '0.05s' }}>
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* X-Axis selector */}
+        <div className="flex items-center gap-1.5 border-r border-slate-200 pr-3">
+          <span className="text-[9px] text-slate-400 uppercase font-semibold">X-Axis</span>
+          <select
+            value={xAxis}
+            onChange={(e) => onXAxisChange(e.target.value)}
+            className="text-[11px] font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-md px-2 py-1"
+          >
+            {X_AXIS_OPTIONS.map((o) => (
+              <option key={o.key} value={o.key}>{o.label}</option>
+            ))}
+          </select>
         </div>
 
-        <div className="w-px h-4 bg-slate-200/50" />
-
-        {/* Dividend type */}
-        <div className="flex gap-0.5">
-          {DIVIDEND_TYPES.map((t) => (
-            <FloatPill key={t} active={dividendType === t} onClick={() => update({ dividendType: t })}>
-              {t}
-            </FloatPill>
-          ))}
+        {/* Y-Axis selector */}
+        <div className="flex items-center gap-1.5 border-r border-slate-200 pr-3">
+          <span className="text-[9px] text-slate-400 uppercase font-semibold">Y-Axis</span>
+          <select
+            value={yAxis}
+            onChange={(e) => onYAxisChange(e.target.value)}
+            className="text-[11px] font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-md px-2 py-1"
+          >
+            {Y_AXIS_OPTIONS.map((o) => (
+              <option key={o.key} value={o.key}>{o.label}</option>
+            ))}
+          </select>
         </div>
 
-        <div className="w-px h-4 bg-slate-200/50" />
-
-        {/* Category dropdown */}
-        <FloatSelect
-          value={categories.length === 1 ? categories[0] : ''}
-          onChange={(e) => update({ categories: e.target.value ? [e.target.value] : [] })}
-        >
-          <option value="">All Categories</option>
-          {categoryList.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </FloatSelect>
-
-        {/* AMC dropdown */}
-        <FloatSelect
-          value={amcs.length === 1 ? amcs[0] : ''}
-          onChange={(e) => update({ amcs: e.target.value ? [e.target.value] : [] })}
-        >
-          <option value="">All AMCs</option>
-          {amcList.map((a) => (
-            <option key={a} value={a}>{a}</option>
-          ))}
-        </FloatSelect>
-
-        <div className="w-px h-4 bg-slate-200/50" />
-
-        {/* AUM range */}
-        <div className="flex gap-0.5">
-          {AUM_RANGES.map((r) => (
-            <FloatPill
-              key={r.label}
-              active={aumRange === r.label}
-              onClick={() => update({ aumRange: r.label })}
-              className="text-[10px] px-2.5"
-            >
-              {r.label}
-            </FloatPill>
-          ))}
+        {/* Color-by selector */}
+        <div className="flex items-center gap-1.5 border-r border-slate-200 pr-3">
+          <span className="text-[9px] text-slate-400 uppercase font-semibold">Color</span>
+          <select
+            value={colorLens}
+            onChange={(e) => onColorChange(e.target.value)}
+            className="text-[11px] font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-md px-2 py-1"
+          >
+            {COLOR_OPTIONS.map((o) => (
+              <option key={o.key} value={o.key}>{o.label}</option>
+            ))}
+          </select>
         </div>
 
-        <div className="w-px h-4 bg-slate-200/50" />
-
-        {/* Period */}
-        <div className="flex gap-0.5">
-          {['1Y', '3Y', '5Y'].map((p) => (
-            <FloatPill key={p} active={period === p} onClick={() => update({ period: p })} className="text-[10px] px-2.5">
-              {p}
-            </FloatPill>
-          ))}
-        </div>
-
-        {/* Clear + Count */}
-        <div className="ml-auto flex items-center gap-2">
-          {hasActiveFilters && (
+        {/* Filter pills */}
+        <div className="flex items-center gap-1.5 flex-wrap flex-1">
+          {PLAN_TYPES.map((m) => (
             <button
+              key={m}
               type="button"
-              onClick={clearAll}
-              className="text-[10px] text-slate-400 hover:text-red-500 font-medium transition-colors"
+              onClick={() => update({ purchaseMode: m })}
+              className={`filter-pill px-2.5 py-1 text-[10px] font-medium border rounded-full ${
+                purchaseMode === m
+                  ? 'active bg-teal-50 border-teal-500 text-teal-700'
+                  : 'border-slate-200 text-slate-500'
+              }`}
             >
-              Clear
+              {m}
             </button>
-          )}
-          <span className="text-[11px] text-slate-400 font-mono tabular-nums">
-            <span className="font-semibold text-slate-700">{filteredCount.toLocaleString('en-IN')}</span>
-            {' / '}
-            <span>{totalCount.toLocaleString('en-IN')}</span>
-          </span>
+          ))}
+          {GROWTH_TYPES.map((t) => (
+            <button
+              key={t}
+              type="button"
+              className="filter-pill px-2.5 py-1 text-[10px] font-medium border border-slate-200 text-slate-500 rounded-full"
+            >
+              {t}
+            </button>
+          ))}
+
+          <span className="text-slate-300">|</span>
+
+          {/* Category dropdown */}
+          <select
+            value={categories.length === 1 ? categories[0] : ''}
+            onChange={(e) => update({ categories: e.target.value ? [e.target.value] : [] })}
+            className="text-[10px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1"
+          >
+            <option value="">All Categories</option>
+            {categoryList.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+
+          {/* AMC dropdown */}
+          <select
+            value={amcs.length === 1 ? amcs[0] : ''}
+            onChange={(e) => update({ amcs: e.target.value ? [e.target.value] : [] })}
+            className="text-[10px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1"
+          >
+            <option value="">All AMCs</option>
+            {amcList.map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+
+          {/* AUM range */}
+          <select
+            value={aumRange}
+            onChange={(e) => update({ aumRange: e.target.value })}
+            className="text-[10px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1"
+          >
+            {AUM_RANGES.map((r) => (
+              <option key={r.label} value={r.label}>{r.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Count */}
+        <div className="text-right flex-shrink-0">
+          <p className="text-xs font-bold text-teal-600 tabular-nums">{filteredCount.toLocaleString('en-IN')}</p>
+          <p className="text-[9px] text-slate-400">of {totalCount.toLocaleString('en-IN')} shown</p>
         </div>
       </div>
     </div>
   );
 }
 
-export { AUM_RANGES };
+export { AUM_RANGES, X_AXIS_OPTIONS, Y_AXIS_OPTIONS, COLOR_OPTIONS };

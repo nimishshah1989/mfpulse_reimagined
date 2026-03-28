@@ -1,3 +1,5 @@
+import { formatPct } from '../../lib/format';
+
 const PERIODS = [
   { key: 'return_1m', label: '1M' },
   { key: 'return_3m', label: '3M' },
@@ -57,9 +59,7 @@ function BarRow({ label, fundVal, catVal, maxAbs }) {
             fundVal != null && fundVal >= 0 ? 'text-emerald-600' : 'text-red-600'
           }`}
         >
-          {fundVal != null
-            ? `${fundVal >= 0 ? '+' : '\u2212'}${Math.abs(Number(fundVal)).toFixed(1)}%`
-            : '\u2014'}
+          {fundVal != null ? formatPct(fundVal) : '\u2014'}
         </span>
       </div>
 
@@ -74,7 +74,7 @@ function BarRow({ label, fundVal, catVal, maxAbs }) {
             />
           </div>
           <span className="text-xs font-mono tabular-nums text-slate-500 w-16 text-right">
-            {`${catVal >= 0 ? '+' : '\u2212'}${Math.abs(Number(catVal)).toFixed(1)}%`}
+            {formatPct(catVal)}
           </span>
         </div>
       )}
@@ -83,7 +83,7 @@ function BarRow({ label, fundVal, catVal, maxAbs }) {
 }
 
 /**
- * ReturnsBars -- visual bars for multiple periods comparing fund vs category.
+ * ReturnsBars -- visual bars comparing fund vs category returns.
  *
  * Props:
  *   fundReturns     object

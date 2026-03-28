@@ -1,105 +1,169 @@
-import { useMemo, useState } from 'react';
-import { lensLabel, lensColor, LENS_LABELS } from '../../lib/lens';
-import { formatCount } from '../../lib/format';
-
-const TIER_ORDER = [
-  { label: 'Exceptional', score: 95 },
-  { label: 'Leader', score: 80 },
-  { label: 'Strong', score: 65 },
-  { label: 'Adequate', score: 50 },
-  { label: 'Weak', score: 35 },
-  { label: 'Poor', score: 15 },
-];
+import { useMemo } from 'react';
+import { lensColor, lensLabel, LENS_LABELS } from '../../lib/lens';
+import { formatPct, formatAUM, formatCount } from '../../lib/format';
+import InfoIcon from '../shared/InfoIcon';
 
 /**
- * Compact horizontal stacked bar showing tier distribution.
- * Each segment is proportional. Hover shows count + percentage. Click highlights.
+ * Tier labels for the Alpha lens — these match the mockup exactly.
+ * Other lenses use the generic lensLabel function.
  */
-export default function TierSummary({ funds = [], colorLens, onTierClick, selectedTier }) {
-  const [hoveredTier, setHoveredTier] = useState(null);
-  const lensKey = colorLens || 'return_score';
-  const lensName = LENS_LABELS[lensKey] || 'Return';
+const ALPHA_TIERS = [
+  { label: 'ALPHA_MACHINE', display: 'Alpha Machine', color: '#059669', barColor: 'bg-emerald-500', ringColor: 'ring-emerald-400' },
+  { label: 'POSITIVE', display: 'Positive Alpha', color: '#0d9488', barColor: 'bg-teal-400', ringColor: 'ring-teal-400' },
+  { label: 'NEUTRAL', display: 'Neutral', color: '#d97706', barColor: 'bg-amber-400', ringColor: 'ring-amber-400' },
+  { label: 'NEGATIVE', display: 'Negative Alpha', color: '#ef4444', barColor: 'bg-red-400', ringColor: 'ring-red-400' },
+];
 
-  const tierCounts = useMemo(() => {
-    const counts = {};
-    funds.forEach((f) => {
-      const score = Number(f[lensKey]) || 0;
-      const label = lensLabel(score);
-      counts[label] = (counts[label] || 0) + 1;
+const GENERIC_TIERS = [
+  { scoreMin: 75, display: 'Leader', color: '#059669', barColor: 'bg-emerald-500', ringColor: 'ring-emerald-400' },
+  { scoreMin: 55, display: 'Strong', color: '#0d9488', barColor: 'bg-teal-400', ringColor: 'ring-teal-400' },
+  { scoreMin: 35, display: 'Average', color: '#d97706', barColor: 'bg-amber-400', ringColor: 'ring-amber-400' },
+  { scoreMin: 0, display: 'Weak', color: '#ef4444', barColor: 'bg-red-400', ringColor: 'ring-red-400' },
+];
+
+function getClassKey(scoreKey) {
+  const map = {
+    alpha_score: 'alpha_class',
+    return_score: 'return_class',
+    risk_score: 'risk_class',
+    consistency_score: 'consistency_class',
+    efficiency_score: 'efficiency_class',
+    resilience_score: 'resilience_class',
+  };
+  return map[scoreKey];
+}
+
+export default function TierSummary({
+  funds,
+  colorLens,
+  onTierClick,
+  selectedTier,
+  stats,
+  period,
+}) {
+  const lensKey = colorLens || 'alpha_score';
+  const lensName = LENS_LABELS[lensKey] || 'Alpha';
+  const classKey = getClassKey(lensKey);
+
+  // Use class-based tiers for alpha, score-based for others
+  const useClassTiers = lensKey === 'alpha_score' && classKey;
+
+  const tierData = useMemo(() => {
+    if (useClassTiers) {
+      return ALPHA_TIERS.map((t) => {
+        const count = funds.filter((f) => f[classKey] === t.label).length;
+        return { ...t, count };
+      });
+    }
+    return GENERIC_TIERS.map((t, i) => {
+      const nextMin = i > 0 ? GENERIC_TIERS[i - 1].scoreMin : 101;
+      const count = funds.filter((f) => {
+        const s = Number(f[lensKey]) || 0;
+        return s >= t.scoreMin && s < nextMin;
+      }).length;
+      return { ...t, count };
     });
-    return counts;
-  }, [funds, lensKey]);
+  }, [funds, lensKey, classKey, useClassTiers]);
 
   const total = funds.length;
-  if (total === 0) return null;
+  const maxCount = Math.max(...tierData.map((t) => t.count), 1);
+
+  // Find top insight
+  const topTier = tierData[0];
+  const bottomTier = tierData[tierData.length - 1];
+  const topPct = total > 0 ? ((topTier.count / total) * 100).toFixed(0) : 0;
+  const bottomPct = total > 0 ? ((bottomTier.count / total) * 100).toFixed(0) : 0;
 
   return (
-    <div className="px-4 py-2 bg-white border-b border-slate-200 flex-shrink-0">
-      <div className="flex items-center gap-3">
-        {/* Label */}
-        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-          {lensName}
-        </span>
+    <div className="col-span-2 space-y-3">
+      {/* Summary stats */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <p className="section-title mb-3">Visible Funds</p>
+        <div className="space-y-3">
+          <div>
+            <div className="flex items-center gap-1 mb-0.5">
+              <p className="text-[10px] text-slate-400">Avg {period || '1Y'} Return</p>
+              <InfoIcon tip="Mean 1-year return across all currently visible (filtered) funds. Higher than Nifty 50 (+14.2%) indicates fund universe outperformance." />
+            </div>
+            <p className={`text-lg font-bold tabular-nums ${
+              Number(stats.avgReturn) >= 0 ? 'text-emerald-600' : 'text-red-600'
+            }`}>
+              {formatPct(stats.avgReturn)}
+            </p>
+            <p className="text-[9px] text-slate-400">vs Nifty 50: +14.2%</p>
+          </div>
+          <div>
+            <div className="flex items-center gap-1 mb-0.5">
+              <p className="text-[10px] text-slate-400">Median Risk Score</p>
+              <InfoIcon tip="Middle-point risk score (0-100 scale). Below 50 = lower risk than average Indian MF. The median tells you where 'typical' sits." />
+            </div>
+            <p className="text-lg font-bold text-slate-700 tabular-nums">{stats.medianRisk}</p>
+            <p className="text-[9px] text-slate-400">Moderate range</p>
+          </div>
+          <div>
+            <div className="flex items-center gap-1 mb-0.5">
+              <p className="text-[10px] text-slate-400">Top Performer</p>
+            </div>
+            <p className="text-xs font-semibold text-slate-700 leading-tight">{stats.topFundName}</p>
+            <p className="text-[10px] font-bold text-emerald-600 tabular-nums">
+              {formatPct(stats.topReturn)} {period || '1Y'}
+            </p>
+          </div>
+          <div>
+            <div className="flex items-center gap-1 mb-0.5">
+              <p className="text-[10px] text-slate-400">Avg AUM</p>
+              <InfoIcon tip="Average Assets Under Management. Larger AUM (>1000 Cr) generally means more liquid, lower impact cost, and more institutional ownership." />
+            </div>
+            <p className="text-base font-bold text-slate-700 tabular-nums">{stats.avgAum}</p>
+          </div>
+        </div>
+      </div>
 
-        {/* Stacked bar */}
-        <div className="flex-1 h-5 rounded-full overflow-hidden flex bg-slate-100 relative">
-          {TIER_ORDER.map(({ label, score }) => {
-            const count = tierCounts[label] || 0;
-            if (count === 0) return null;
-            const pct = (count / total) * 100;
-            const color = lensColor(score);
-            const isSelected = selectedTier === label;
-            const isHovered = hoveredTier === label;
-
+      {/* Tier distribution */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="flex items-center gap-1 mb-3">
+          <p className="section-title">{lensName} Tiers</p>
+          <InfoIcon tip={`Distribution based on selected Color axis (${lensName} Score). Click any tier to highlight those funds on the chart.`} />
+        </div>
+        <div className="space-y-2">
+          {tierData.map((t) => {
+            const pct = total > 0 ? Math.max((t.count / total) * 100, 1) : 0;
+            const isSelected = selectedTier === t.display;
             return (
-              <button
-                key={label}
-                type="button"
-                onClick={() => onTierClick?.(isSelected ? null : label)}
-                onMouseEnter={() => setHoveredTier(label)}
-                onMouseLeave={() => setHoveredTier(null)}
-                className="h-full relative transition-all"
-                style={{
-                  width: `${Math.max(pct, 1.5)}%`,
-                  backgroundColor: color,
-                  opacity: selectedTier && !isSelected ? 0.3 : isHovered ? 0.9 : 0.75,
-                  outline: isSelected ? '2px solid white' : 'none',
-                  outlineOffset: '-2px',
-                }}
-                title={`${label}: ${formatCount(count)} (${pct.toFixed(1)}%)`}
-              >
-                {pct > 8 && (
-                  <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-white/90">
-                    {count}
+              <div key={t.display}>
+                <div className="flex justify-between text-[10px] mb-0.5">
+                  <span className="text-slate-600 font-medium">{t.display}</span>
+                  <span className="font-semibold tabular-nums" style={{ color: t.color }}>
+                    {t.count.toLocaleString('en-IN')}
                   </span>
-                )}
-              </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onTierClick?.(isSelected ? null : t.display)}
+                  className={`w-full h-4 bg-slate-100 rounded-full overflow-hidden cursor-pointer hover:ring-1 ${t.ringColor} ${
+                    isSelected ? 'ring-2 ' + t.ringColor : ''
+                  }`}
+                >
+                  <div
+                    className={`tier-bar h-full ${t.barColor} rounded-full`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </button>
+              </div>
             );
           })}
-
-          {/* Hover tooltip */}
-          {hoveredTier && (
-            <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-slate-800 text-white text-[10px] rounded-md whitespace-nowrap pointer-events-none z-10">
-              {hoveredTier}: {formatCount(tierCounts[hoveredTier] || 0)} (
-              {(((tierCounts[hoveredTier] || 0) / total) * 100).toFixed(1)}%)
-            </div>
-          )}
         </div>
+        <p className="text-[9px] text-slate-400 mt-2 leading-relaxed">
+          Only {topPct}% of funds are {topTier.display}. {bottomPct}% are {bottomTier.display} — avoid zone.
+        </p>
+      </div>
 
-        {/* Legend pills */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {TIER_ORDER.filter(({ label }) => (tierCounts[label] || 0) > 0)
-            .slice(0, 4)
-            .map(({ label, score }) => (
-              <div key={label} className="flex items-center gap-1">
-                <div
-                  className="w-2 h-2 rounded-sm flex-shrink-0"
-                  style={{ backgroundColor: lensColor(score) }}
-                />
-                <span className="text-[9px] text-slate-500 whitespace-nowrap">{label}</span>
-              </div>
-            ))}
-        </div>
+      {/* Reading the Chart */}
+      <div className="bg-teal-50 rounded-xl border border-teal-100 p-3">
+        <p className="text-[10px] font-semibold text-teal-700 mb-1">Reading the Chart</p>
+        <p className="text-[9px] text-teal-600 leading-relaxed">
+          <strong>Top-left = ideal</strong> (high return, low risk). Bubble size = AUM. Color intensity = {lensName} score. Look for large, dark-green bubbles in the top-left quadrant.
+        </p>
       </div>
     </div>
   );

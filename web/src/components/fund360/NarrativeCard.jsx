@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { fetchNarrative } from '../../lib/api';
 
 /**
- * NarrativeCard -- AI-generated intelligence brief for a fund.
- * Falls back to headline_tag if narrative API is unavailable.
+ * NarrativeCard -- AI intelligence brief with teal-left-border style.
  *
  * Props:
  *   mstarId      string
@@ -40,7 +39,6 @@ export default function NarrativeCard({ mstarId, headlineTag }) {
     return () => { cancelled = true; };
   }, [mstarId]);
 
-  // Loading skeleton
   if (loading) {
     return (
       <div className="bg-gradient-to-r from-teal-50 to-emerald-50 rounded-xl border border-teal-200/50 p-5">
@@ -57,7 +55,6 @@ export default function NarrativeCard({ mstarId, headlineTag }) {
     );
   }
 
-  // Got narrative from API
   if (narrative) {
     return (
       <div className="bg-gradient-to-r from-teal-50 to-emerald-50 rounded-xl border border-teal-200/50 p-5">
@@ -80,7 +77,6 @@ export default function NarrativeCard({ mstarId, headlineTag }) {
     );
   }
 
-  // Fallback to headline_tag
   if (headlineTag) {
     return (
       <div className="border-l-4 border-teal-500 pl-4 py-3 bg-teal-50/30 rounded-r-lg">

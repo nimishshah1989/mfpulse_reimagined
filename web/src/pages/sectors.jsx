@@ -11,15 +11,18 @@ import SkeletonLoader from '../components/shared/SkeletonLoader';
 import EmptyState from '../components/shared/EmptyState';
 import Pill from '../components/shared/Pill';
 import dynamic from 'next/dynamic';
-const CompassChart = dynamic(() => import('../components/sectors/CompassChart'), { ssr: false });
+const CompassChart = dynamic(
+  () => import('../components/sectors/CompassChart'),
+  { ssr: false }
+);
 import MarketContextPanel from '../components/sectors/MarketContextPanel';
 import FundDrillDown from '../components/sectors/FundDrillDown';
 import RotationHeatmap from '../components/sectors/RotationHeatmap';
+import FundExposureMatrix from '../components/sectors/FundExposureMatrix';
 
 const PERIODS = ['1M', '3M', '6M', '1Y'];
 
 export default function SectorsPage() {
-  // MarketPulse data
   const [sectorData, setSectorData] = useState([]);
   const [breadthData, setBreadthData] = useState(null);
   const [sentimentData, setSentimentData] = useState(null);
@@ -27,23 +30,20 @@ export default function SectorsPage() {
   const [mpOnline, setMpOnline] = useState(true);
   const [mpLoading, setMpLoading] = useState(true);
 
-  // Fund data
   const [funds, setFunds] = useState([]);
   const [sectorExposures, setSectorExposures] = useState({});
   const [exposureAvailable, setExposureAvailable] = useState(null);
   const [fundsLoading, setFundsLoading] = useState(true);
 
-  // UI state
   const [period, setPeriod] = useState('3M');
+  const [view, setView] = useState('compass');
   const [selectedSector, setSelectedSector] = useState(null);
   const [drillDownSort, setDrillDownSort] = useState('composite');
   const [drillDownCategory, setDrillDownCategory] = useState('all');
   const [drillDownPurchaseMode, setDrillDownPurchaseMode] = useState('Regular');
   const [exposureLoading, setExposureLoading] = useState(false);
 
-  // Compass sizing
   const compassRef = useRef(null);
-  const drillDownRef = useRef(null);
   const [compassWidth, setCompassWidth] = useState(600);
 
   useEffect(() => {
@@ -57,21 +57,21 @@ export default function SectorsPage() {
     return () => observer.disconnect();
   }, []);
 
-  // Load MarketPulse data
   const loadMarketPulse = useCallback(async (p) => {
     setMpLoading(true);
-    const [sectorsRes, breadthRes, sentimentRes, regimeRes] = await Promise.allSettled([
-      fetchSectors(p),
-      fetchBreadth('1y'),
-      fetchSentiment(),
-      fetchMarketRegime(),
-    ]);
+    const [sectorsRes, breadthRes, sentimentRes, regimeRes] =
+      await Promise.allSettled([
+        fetchSectors(p),
+        fetchBreadth('1y'),
+        fetchSentiment(),
+        fetchMarketRegime(),
+      ]);
 
     let anySuccess = false;
     if (sectorsRes.status === 'fulfilled') {
       const raw = sectorsRes.value.data || [];
-      // Normalize: MarketPulse uses display_name + uppercase quadrants
-      const toTitleCase = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : str;
+      const toTitleCase = (str) =>
+        str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : str;
       const normalized = (Array.isArray(raw) ? raw : []).map((s) => ({
         ...s,
         sector_name: s.sector_name || s.display_name || s.name || 'Unknown',
@@ -96,7 +96,6 @@ export default function SectorsPage() {
     setMpLoading(false);
   }, []);
 
-  // Load funds
   useEffect(() => {
     async function loadFunds() {
       try {
@@ -111,76 +110,80 @@ export default function SectorsPage() {
     loadFunds();
   }, []);
 
-  // Initial MarketPulse load
   useEffect(() => {
     loadMarketPulse(period);
   }, [period, loadMarketPulse]);
 
-  // Period change clears selection
   const handlePeriodChange = useCallback((p) => {
     setPeriod(p);
     setSelectedSector(null);
+    setView('compass');
   }, []);
 
-  // Sector click from compass or heatmap
-  const handleSectorClick = useCallback(async (sector) => {
-    setSelectedSector(sector);
+  const showFundQuadrant = useCallback(
+    async (sector) => {
+      setSelectedSector(sector);
+      setView('drilldown');
 
-    // Scroll drill-down into view after state update
-    setTimeout(() => {
-      drillDownRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
-
-    // First time: probe if exposure data exists
-    if (exposureAvailable === null && funds.length > 0) {
-      setExposureLoading(true);
-      try {
-        const sample = funds.slice(0, 5);
-        const results = await Promise.allSettled(
-          sample.map((f) => fetchSectorExposure(f.mstar_id))
-        );
-        const hasData = results.some(
-          (r) => r.status === 'fulfilled' && r.value.data && r.value.data.length > 0
-        );
-        setExposureAvailable(hasData);
-
-        if (hasData) {
-          const newExposures = { ...sectorExposures };
-          results.forEach((r, i) => {
-            if (r.status === 'fulfilled' && r.value.data) {
-              const map = {};
-              r.value.data.forEach((s) => { map[s.sector_name] = s.allocation_pct; });
-              newExposures[sample[i].mstar_id] = map;
-            }
-          });
-          setSectorExposures(newExposures);
+      if (exposureAvailable === null && funds.length > 0) {
+        setExposureLoading(true);
+        try {
+          const sample = funds.slice(0, 5);
+          const results = await Promise.allSettled(
+            sample.map((f) => fetchSectorExposure(f.mstar_id))
+          );
+          const hasData = results.some(
+            (r) =>
+              r.status === 'fulfilled' &&
+              r.value.data &&
+              r.value.data.length > 0
+          );
+          setExposureAvailable(hasData);
+          if (hasData) {
+            const newExposures = { ...sectorExposures };
+            results.forEach((r, i) => {
+              if (r.status === 'fulfilled' && r.value.data) {
+                const map = {};
+                r.value.data.forEach((s) => {
+                  map[s.sector_name] = s.allocation_pct;
+                });
+                newExposures[sample[i].mstar_id] = map;
+              }
+            });
+            setSectorExposures(newExposures);
+          }
+        } catch {
+          setExposureAvailable(false);
+        } finally {
+          setExposureLoading(false);
         }
-      } catch {
-        setExposureAvailable(false);
-      } finally {
-        setExposureLoading(false);
       }
-    }
-  }, [exposureAvailable, funds, sectorExposures]);
+    },
+    [exposureAvailable, funds, sectorExposures]
+  );
 
-  // Heatmap sector click — find the sector object by name
-  const handleHeatmapSectorClick = useCallback((sectorName) => {
-    const found = sectorData.find((s) => s.sector_name === sectorName);
-    if (found) {
-      handleSectorClick(found);
-    }
-  }, [sectorData, handleSectorClick]);
+  const showCompass = useCallback(() => {
+    setView('compass');
+    setSelectedSector(null);
+  }, []);
+
+  const handleHeatmapSectorClick = useCallback(
+    (sectorName) => {
+      const found = sectorData.find((s) => s.sector_name === sectorName);
+      if (found) showFundQuadrant(found);
+    },
+    [sectorData, showFundQuadrant]
+  );
 
   if (mpLoading && fundsLoading) {
     return (
       <div className="space-y-4">
-        <SkeletonLoader variant="chart" className="h-[480px]" />
         <div className="grid grid-cols-4 gap-4">
-          <SkeletonLoader variant="card" className="h-32" />
-          <SkeletonLoader variant="card" className="h-32" />
-          <SkeletonLoader variant="card" className="h-32" />
-          <SkeletonLoader variant="card" className="h-32" />
+          {[0, 1, 2, 3].map((i) => (
+            <SkeletonLoader key={i} variant="card" className="h-24" />
+          ))}
         </div>
+        <SkeletonLoader variant="chart" className="h-[520px]" />
         <SkeletonLoader variant="card" className="h-64" />
       </div>
     );
@@ -195,7 +198,11 @@ export default function SectorsPage() {
         </p>
         <div className="flex gap-1.5">
           {PERIODS.map((p) => (
-            <Pill key={p} active={period === p} onClick={() => handlePeriodChange(p)}>
+            <Pill
+              key={p}
+              active={period === p}
+              onClick={() => handlePeriodChange(p)}
+            >
               {p}
             </Pill>
           ))}
@@ -218,46 +225,7 @@ export default function SectorsPage() {
       )}
 
       <div className="px-6 space-y-6">
-        {/* Compass chart — FULL WIDTH */}
-        <div ref={compassRef} className="w-full">
-          {!mpOnline ? (
-            <EmptyState
-              icon={<svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" /></svg>}
-              message="MarketPulse offline — sector data unavailable"
-              action="Retry"
-              onAction={() => loadMarketPulse(period)}
-            />
-          ) : (
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-slate-700">Sector Compass</h3>
-                {selectedSector && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500">Selected:</span>
-                    <span className="text-xs font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
-                      {selectedSector.sector_name}
-                    </span>
-                    <button
-                      onClick={() => setSelectedSector(null)}
-                      className="text-xs text-slate-400 hover:text-slate-600"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                )}
-              </div>
-              <CompassChart
-                sectors={sectorData}
-                selectedSector={selectedSector}
-                onSectorClick={handleSectorClick}
-                width={compassWidth - 42}
-                height={480}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Market Context Panel — horizontal row below compass */}
+        {/* Market Context Bar */}
         <MarketContextPanel
           regime={regimeData}
           sentiment={sentimentData}
@@ -267,21 +235,118 @@ export default function SectorsPage() {
           onRetry={() => loadMarketPulse(period)}
         />
 
-        {/* Fund Drill-Down */}
-        <div ref={drillDownRef}>
-          <FundDrillDown
-            sector={selectedSector}
-            funds={funds}
-            sectorExposures={sectorExposures}
-            exposureAvailable={exposureAvailable}
-            loading={exposureLoading || fundsLoading}
-            sort={drillDownSort}
-            onSortChange={setDrillDownSort}
-            categoryFilter={drillDownCategory}
-            onCategoryFilterChange={setDrillDownCategory}
-            purchaseMode={drillDownPurchaseMode}
-            onPurchaseModeChange={setDrillDownPurchaseMode}
-          />
+        {/* Main card: Compass or Fund Drill-Down */}
+        <div ref={compassRef} className="w-full animate-in">
+          {!mpOnline ? (
+            <EmptyState
+              icon={
+                <svg
+                  className="w-5 h-5 text-amber-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z"
+                  />
+                </svg>
+              }
+              message="MarketPulse offline — sector data unavailable"
+              action="Retry"
+              onAction={() => loadMarketPulse(period)}
+            />
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              {/* Shared header bar */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  {view === 'drilldown' && (
+                    <button
+                      onClick={showCompass}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                    >
+                      <span>&larr;</span> All Sectors
+                    </button>
+                  )}
+                  <div>
+                    <p className="section-title">
+                      {view === 'compass'
+                        ? 'Sector Rotation Compass'
+                        : `${selectedSector?.sector_name} — Fund Explorer`}
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {view === 'compass'
+                        ? 'Click any sector bubble to drill into fund-level view'
+                        : 'Risk vs Return · Bubble size = sector exposure % · Click any fund for 360 view'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {view === 'drilldown' && selectedSector && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <span className="text-xs font-semibold text-emerald-700">
+                        {selectedSector.sector_name}
+                      </span>
+                      <span className="text-[10px] text-emerald-600">
+                        {selectedSector.quadrant}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex gap-1 bg-slate-100 rounded-md p-0.5">
+                    {PERIODS.map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => handlePeriodChange(p)}
+                        className={`px-2.5 py-1 text-[10px] font-medium rounded transition-colors ${
+                          period === p
+                            ? 'bg-white shadow-sm text-teal-700 font-semibold'
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* VIEW 1: Compass */}
+              {view === 'compass' && (
+                <div className="view-fade">
+                  <CompassChart
+                    sectors={sectorData}
+                    selectedSector={selectedSector}
+                    onSectorClick={showFundQuadrant}
+                    width={compassWidth - 48}
+                    height={520}
+                  />
+                </div>
+              )}
+
+              {/* VIEW 2: Fund Drill-Down */}
+              {view === 'drilldown' && selectedSector && (
+                <div className="view-fade">
+                  <FundDrillDown
+                    sector={selectedSector}
+                    funds={funds}
+                    sectorExposures={sectorExposures}
+                    exposureAvailable={exposureAvailable}
+                    loading={exposureLoading || fundsLoading}
+                    sort={drillDownSort}
+                    onSortChange={setDrillDownSort}
+                    categoryFilter={drillDownCategory}
+                    onCategoryFilterChange={setDrillDownCategory}
+                    purchaseMode={drillDownPurchaseMode}
+                    onPurchaseModeChange={setDrillDownPurchaseMode}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Rotation Heatmap */}
@@ -289,6 +354,14 @@ export default function SectorsPage() {
           sectorData={sectorData}
           online={mpOnline}
           onSectorClick={handleHeatmapSectorClick}
+        />
+
+        {/* Fund Exposure Matrix */}
+        <FundExposureMatrix
+          funds={funds}
+          sectorData={sectorData}
+          sectorExposures={sectorExposures}
+          online={mpOnline}
         />
       </div>
     </div>
