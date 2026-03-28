@@ -310,6 +310,24 @@ HOLDING_DETAIL_FIELD_MAP: dict[str, str] = {
     "HoldingDetail_ShareChange": "share_change",
 }
 
+# Nested XML element names → DB columns for <HoldingDetail> child elements.
+# The bulk Holdings Detail API returns holdings as nested XML, not pipe-delimited.
+HOLDING_DETAIL_NESTED_MAP: dict[str, str] = {
+    "Name": "holding_name",
+    "ISIN": "isin",
+    "HoldingType": "holding_type",
+    "Weighting": "weighting_pct",
+    "NumberOfShare": "num_shares",
+    "MarketValue": "market_value",
+    "GlobalSector": "global_sector",
+    "Country": "country",
+    "Currency": "currency",
+    "Coupon": "coupon",
+    "MaturityDate": "maturity_date",
+    "IndianCreditQualityClassification": "credit_quality",
+    "ShareChange": "share_change",
+}
+
 SECTOR_EXPOSURE_MAP: dict[str, str] = {
     "EquitySectorBasicMaterialsNet": "Basic Materials",
     "EquitySectorCommunicationServicesNet": "Communication Services",

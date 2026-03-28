@@ -739,3 +739,41 @@ class TestWriteHoldingsDetail:
         details = record["holding_details"]
         assert len(details) == 3
         assert details[0]["holding_name"] == "HDFC Bank"
+
+    def test_parse_xml_holdings_detail_nested_elements(self, fetcher) -> None:
+        """Fund Holdings Detail XML → nested <HoldingDetail> elements parsed."""
+        xml = (
+            '<?xml version="1.0"?>'
+            "<response><status><code>0</code><message>OK</message></status>"
+            '<data _idtype="mstarid" _id="F001">'
+            '<api _id="fq9mxhk7xeb20f3b">'
+            "<FHV2-Holdings>"
+            "<HoldingDetail>"
+            "<Name>HDFC Bank Ltd</Name>"
+            "<ISIN>INE040A01034</ISIN>"
+            "<HoldingType>E</HoldingType>"
+            "<Weighting>8.5</Weighting>"
+            "<NumberOfShare>1000000</NumberOfShare>"
+            "<MarketValue>50000000</MarketValue>"
+            "<Country>India</Country>"
+            "</HoldingDetail>"
+            "<HoldingDetail>"
+            "<Name>Infosys Ltd</Name>"
+            "<ISIN>INE009A01021</ISIN>"
+            "<HoldingType>E</HoldingType>"
+            "<Weighting>6.2</Weighting>"
+            "</HoldingDetail>"
+            "</FHV2-Holdings>"
+            "</api></data></response>"
+        ).encode("utf-8")
+        api = MorningstarAPI("Fund Holdings Detail", "fq9mxhk7xeb20f3b", "holdings_detail", "HOLDING_DETAIL_FIELD_MAP")
+        records, result = fetcher._parse_xml(xml, api)
+        assert result.fund_count == 1
+        record = records[0]
+        assert "holding_details" in record
+        details = record["holding_details"]
+        assert len(details) == 2
+        assert details[0]["holding_name"] == "HDFC Bank Ltd"
+        assert details[0]["weighting_pct"] == "8.5"
+        assert details[0]["isin"] == "INE040A01034"
+        assert details[1]["holding_name"] == "Infosys Ltd"

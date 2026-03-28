@@ -78,6 +78,7 @@ class MorningstarFetcher:
         self.audit_repo = AuditRepository(db)
         self._access_code = self.settings.morningstar_access_code
         self._timeout = 120  # seconds — bulk responses can be large (5-8MB)
+        self._timeout_large = 600  # seconds — holdings detail can be 50MB+
         self._col_type_cache: dict[type, dict[str, type]] = {}
 
     def _get_category_lookup(self) -> dict[str, str]:
@@ -180,7 +181,8 @@ class MorningstarFetcher:
             url = f"{API_BASE}/{api.hash}/universeid/{UNIVERSE_CODE}?accesscode={self._access_code}"
             logger.info("Fetching %s from %s", api.name, url[:80] + "...")
 
-            with httpx.Client(timeout=self._timeout) as client:
+            timeout = self._timeout_large if api.db_target == "holdings_detail" else self._timeout
+            with httpx.Client(timeout=timeout) as client:
                 response = client.get(url)
                 response.raise_for_status()
 
@@ -347,6 +349,14 @@ class MorningstarFetcher:
                 if detail_records:
                     record["holding_details"] = detail_records
 
+            # Parse nested <HoldingDetail> elements (bulk Holdings Detail API)
+            if is_detail_api and "holding_details" not in record:
+                nested_map = getattr(field_maps, "HOLDING_DETAIL_NESTED_MAP", {})
+                nested_details = self._parse_nested_holdings(api_elem, nested_map)
+                if nested_details:
+                    record["holding_details"] = nested_details
+                    result.mapped_fields += sum(len(d) for d in nested_details)
+
             if len(record) > 1:  # has more than just mstar_id
                 fund_records.append(record)
 
@@ -365,6 +375,32 @@ class MorningstarFetcher:
             if len(c) > 1:  # more than just mstar_id / category_code
                 coerced.append(c)
         return coerced
+
+    @staticmethod
+    def _parse_nested_holdings(api_elem: ET.Element, nested_map: dict[str, str]) -> list[dict[str, str]]:
+        """Parse nested <HoldingDetail> XML elements into a list of dicts.
+
+        The bulk Holdings Detail API returns holdings as:
+            <FHV2-Holdings>
+                <HoldingDetail>
+                    <Name>HDFC Bank</Name>
+                    <Weighting>8.5</Weighting>
+                </HoldingDetail>
+                ...
+            </FHV2-Holdings>
+        """
+        holdings: list[dict[str, str]] = []
+        # Search for HoldingDetail elements anywhere under api_elem
+        for container in api_elem.iter():
+            if container.tag != "HoldingDetail":
+                continue
+            holding: dict[str, str] = {}
+            for child in container:
+                if child.text and child.tag in nested_map:
+                    holding[nested_map[child.tag]] = child.text.strip()
+            if holding and holding.get("holding_name"):
+                holdings.append(holding)
+        return holdings
 
     @staticmethod
     def _split_holding_details(detail_raw: dict[str, str]) -> list[dict[str, str]]:
