@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import InfoIcon from '../shared/InfoIcon';
+import { fetchStrategyInsights } from '../../lib/api';
 
 const INSIGHT_STYLES = {
   positive: { bg: 'bg-emerald-50', border: 'border-emerald-100', title: 'text-emerald-700', text: 'text-emerald-600' },
@@ -55,8 +57,37 @@ function generateInsights(strategy) {
 }
 
 export default function StrategyInsights({ strategy }) {
-  const insights = generateInsights(strategy);
+  const [aiInsights, setAiInsights] = useState(null);
+  const localInsights = generateInsights(strategy);
 
+  useEffect(() => {
+    if (!strategy?.funds?.length) return;
+    let cancelled = false;
+    fetchStrategyInsights({
+      id: strategy.id || '',
+      name: strategy.name || 'Unnamed',
+      funds: (strategy.funds || []).map((f) => ({
+        fund_name: f.fund_name,
+        return_score: f.return_score,
+        alpha_score: f.alpha_score,
+        risk_score: f.risk_score,
+      })),
+      total_aum: strategy.total_aum,
+      xirr: strategy.portfolio_performance?.xirr,
+      sector_exposure: (strategy.sector_exposure || []).map((s) => s.sector_name).join(', '),
+      overlap_pct: strategy.overlap_pct,
+    })
+      .then((res) => {
+        if (!cancelled) {
+          const data = res?.data?.insights;
+          if (Array.isArray(data) && data.length > 0) setAiInsights(data);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [strategy]);
+
+  const insights = aiInsights || localInsights;
   if (insights.length === 0) return null;
 
   return (

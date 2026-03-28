@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { findBestMode, MODE_LABELS } from '../../lib/simulation';
+import { fetchSimulationExplainer } from '../../lib/api';
 
 function formatCompact(val) {
   if (val == null) return '\u2014';
@@ -78,33 +79,62 @@ function SignalEventItem({ event, latestNav }) {
   );
 }
 
-function WhySignalsWon({ results }) {
+function WhySignalsWon({ results, fund }) {
+  const [aiExplainer, setAiExplainer] = useState(null);
   const bestMode = findBestMode(results);
-  if (!results) return null;
 
-  const sipSummary = results.SIP?.summary || results.SIP;
-  const bestSummary = results[bestMode]?.summary || results[bestMode];
-  if (!sipSummary || !bestSummary) return null;
+  const sipSummary = results?.SIP?.summary || results?.SIP;
+  const bestSummary = results?.[bestMode]?.summary || results?.[bestMode];
 
-  const sipXirr = sipSummary.xirr_pct ?? 0;
-  const bestXirr = bestSummary.xirr_pct ?? 0;
+  const sipXirr = sipSummary?.xirr_pct ?? 0;
+  const bestXirr = bestSummary?.xirr_pct ?? 0;
   const boost = (bestXirr - sipXirr).toFixed(1);
   const bestLabel = MODE_LABELS[bestMode] || bestMode;
 
+  useEffect(() => {
+    if (!results || !bestSummary) return;
+    let cancelled = false;
+    const modes = {};
+    Object.entries(results).forEach(([k, v]) => {
+      const s = v?.summary || v;
+      if (s) modes[k] = { xirr: s.xirr_pct, cagr: s.cagr_pct, max_drawdown: s.max_drawdown_pct, total_value: s.final_value };
+    });
+    fetchSimulationExplainer({
+      fund_name: fund?.fund_name || 'Unknown',
+      period: '5Y',
+      best_mode: bestMode,
+      signal_hit_rate: bestSummary?.signal_hit_rate,
+      modes,
+    })
+      .then((res) => {
+        if (!cancelled) {
+          const text = res?.data?.explanation;
+          if (text) setAiExplainer(text);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [results, bestMode, bestSummary, fund]);
+
+  if (!results || !sipSummary || !bestSummary) return null;
   if (Number(boost) <= 0 || bestMode === 'SIP') return null;
 
   return (
     <div className="bg-teal-50 rounded-xl border border-teal-100 p-3">
       <p className="text-[10px] font-semibold text-teal-700 mb-1">
-        Why {bestLabel} Won
+        {aiExplainer ? <>{'\u2726'} </> : null}Why {bestLabel} Won
       </p>
       <p className="text-[9px] text-teal-600 leading-relaxed">
-        Signal rules deployed extra capital during market corrections {'\u2014'} exactly when NAVs were lowest.
-        This "buy the dip" effect compounded over time to produce +{boost}% XIRR boost over Pure SIP
-        {bestSummary.max_drawdown_pct != null && sipSummary.max_drawdown_pct != null &&
-          Math.abs(bestSummary.max_drawdown_pct) < Math.abs(sipSummary.max_drawdown_pct)
-          ? ' while actually reducing max drawdown.'
-          : '.'}
+        {aiExplainer || (
+          <>
+            Signal rules deployed extra capital during market corrections {'\u2014'} exactly when NAVs were lowest.
+            This &ldquo;buy the dip&rdquo; effect compounded over time to produce +{boost}% XIRR boost over Pure SIP
+            {bestSummary.max_drawdown_pct != null && sipSummary.max_drawdown_pct != null &&
+              Math.abs(bestSummary.max_drawdown_pct) < Math.abs(sipSummary.max_drawdown_pct)
+              ? ' while actually reducing max drawdown.'
+              : '.'}
+          </>
+        )}
       </p>
     </div>
   );

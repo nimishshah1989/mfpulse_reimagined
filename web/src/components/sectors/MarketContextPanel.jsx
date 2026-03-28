@@ -1,4 +1,7 @@
+import { useState, useEffect } from 'react';
 import InfoIcon from '../shared/InfoIcon';
+import { fetchSectorPlaybook } from '../../lib/api';
+import { cachedFetch } from '../../lib/cache';
 
 const REGIME_STYLES = {
   'Risk-On': 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -245,7 +248,39 @@ export default function MarketContextPanel({
           <span className="text-xs text-slate-400">No rotation signals</span>
         )}
       </div>
+
+      {/* AI Sector Playbook */}
+      <SectorPlaybookBar />
     </section>
+  );
+}
+
+function SectorPlaybookBar() {
+  const [playbook, setPlaybook] = useState(null);
+
+  useEffect(() => {
+    cachedFetch('sector-playbook', fetchSectorPlaybook, 3600)
+      .then((res) => {
+        const text = res?.data?.playbook;
+        if (text) setPlaybook(text);
+      })
+      .catch(() => {});
+  }, []);
+
+  if (!playbook) return null;
+
+  return (
+    <div className="col-span-4 bg-teal-50 rounded-xl border border-teal-100 p-4">
+      <div className="flex items-start gap-2">
+        <span className="text-teal-500 text-xs mt-0.5 flex-shrink-0">{'\u2726'}</span>
+        <div>
+          <p className="text-[10px] text-teal-600 uppercase tracking-wider font-semibold mb-1">
+            AI Rotation Playbook
+          </p>
+          <p className="text-xs text-teal-800 leading-relaxed">{playbook}</p>
+        </div>
+      </div>
+    </div>
   );
 }
 

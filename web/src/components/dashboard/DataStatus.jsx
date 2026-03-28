@@ -1,4 +1,7 @@
+import { useState, useEffect } from 'react';
 import SkeletonLoader from '../shared/SkeletonLoader';
+import { fetchRegimeActions } from '../../lib/api';
+import { cachedFetch } from '../../lib/cache';
 
 // ─── Regime-Aware Actions ───
 
@@ -120,11 +123,38 @@ function RegimeActions({ regime, leading, weakening }) {
     }
   }
 
+  const [aiActions, setAiActions] = useState(null);
+
+  useEffect(() => {
+    cachedFetch('regime-actions', fetchRegimeActions, 3600)
+      .then((res) => {
+        const data = res?.data?.actions;
+        if (Array.isArray(data) && data.length > 0) setAiActions(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  const displayActions = aiActions
+    ? aiActions.map((a) => {
+        const type = a.action_type || a.type || 'neutral';
+        const styles = {
+          positive: { bg: 'bg-emerald-50', border: 'border-emerald-100', iconColor: 'text-emerald-600', icon: '\u25B2', titleColor: 'text-emerald-800', textColor: 'text-emerald-700' },
+          warning: { bg: 'bg-amber-50', border: 'border-amber-100', iconColor: 'text-amber-600', icon: '\u26A0', titleColor: 'text-amber-800', textColor: 'text-amber-700' },
+          neutral: { bg: 'bg-sky-50', border: 'border-sky-100', iconColor: 'text-sky-600', icon: '\u25CF', titleColor: 'text-sky-800', textColor: 'text-sky-700' },
+        };
+        const s = styles[type] || styles.neutral;
+        return { ...s, title: a.title, body: a.description };
+      })
+    : actions;
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5">
-      <p className="section-title mb-3">Regime-Aware Actions</p>
+      <div className="flex items-center justify-between mb-3">
+        <p className="section-title">Regime-Aware Actions</p>
+        {aiActions && <span className="text-[9px] text-teal-500">{'\u2726'} AI-powered</span>}
+      </div>
       <div className="space-y-3">
-        {actions.map((action, idx) => (
+        {displayActions.map((action, idx) => (
           <div key={idx} className={`p-3 rounded-lg ${action.bg} border ${action.border}`}>
             <div className="flex items-center gap-2 mb-1">
               <span className={`text-sm ${action.iconColor}`}>{action.icon}</span>

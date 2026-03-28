@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { formatAUM, formatPct } from '../../lib/format';
+import { fetchFundVerdict } from '../../lib/api';
 import { LENS_OPTIONS, LENS_CLASS_KEYS } from '../../lib/lens';
 import InfoIcon from '../shared/InfoIcon';
 
@@ -136,12 +138,8 @@ export default function HeroSection({ fundDetail, lensScores, mstarId, onCompare
               </div>
               <p className="text-sm text-slate-500">{fundDetail.amc_name}</p>
 
-              {/* Headline tag */}
-              {lensScores?.headline_tag && (
-                <p className="text-xs text-slate-400 italic leading-relaxed max-w-xl">
-                  &ldquo;{lensScores.headline_tag}&rdquo;
-                </p>
-              )}
+              {/* AI Verdict / Headline tag */}
+              <AiVerdict mstarId={mstarId} fallback={lensScores?.headline_tag} />
 
               {/* Meta row */}
               <div className="flex items-center gap-4 pt-1 flex-wrap">
@@ -282,5 +280,36 @@ export default function HeroSection({ fundDetail, lensScores, mstarId, onCompare
         </div>
       </div>
     </div>
+  );
+}
+
+function AiVerdict({ mstarId, fallback }) {
+  const [verdict, setVerdict] = useState(null);
+
+  useEffect(() => {
+    if (!mstarId) return;
+    let cancelled = false;
+    fetchFundVerdict(mstarId)
+      .then((res) => {
+        if (!cancelled) {
+          const text = res?.data?.verdict;
+          if (text) setVerdict(text);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [mstarId]);
+
+  const text = verdict || fallback;
+  if (!text) return null;
+
+  return (
+    <p className="text-xs text-slate-400 italic leading-relaxed max-w-xl">
+      {verdict ? (
+        <><span className="text-teal-500 not-italic">{'\u2726'}</span> {verdict}</>
+      ) : (
+        <>&ldquo;{fallback}&rdquo;</>
+      )}
+    </p>
   );
 }

@@ -145,6 +145,24 @@ export const fetchNarrative = (mstarId) =>
 export const fetchNiftyData = () =>
   apiFetch('/api/v1/market/nifty');
 
+// Claude AI APIs
+export const fetchMorningBriefing = () =>
+  apiFetch('/api/v1/claude/briefing');
+export const fetchStrategyInsights = (data) =>
+  apiFetch('/api/v1/claude/strategy-insights', { method: 'POST', body: JSON.stringify(data) });
+export const fetchSimulationExplainer = (data) =>
+  apiFetch('/api/v1/claude/simulation-explainer', { method: 'POST', body: JSON.stringify(data) });
+export const fetchSectorPlaybook = () =>
+  apiFetch('/api/v1/claude/sector-playbook');
+export const fetchRegimeActions = () =>
+  apiFetch('/api/v1/claude/regime-actions');
+export const fetchFundVerdict = (mstarId) =>
+  apiFetch(`/api/v1/claude/fund-verdict/${mstarId}`);
+export const parseStrategyQuery = (query) =>
+  apiFetch('/api/v1/claude/parse-query', { method: 'POST', body: JSON.stringify({ query }) });
+export const fetchClaudeUsage = () =>
+  apiFetch('/api/v1/claude/usage');
+
 // Ingestion triggers
 export const fetchDataFreshness = () =>
   apiFetch('/api/v1/ingestion/data-freshness');

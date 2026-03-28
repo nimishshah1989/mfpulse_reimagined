@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import { formatPct, formatCount } from '../../lib/format';
+import { fetchMorningBriefing } from '../../lib/api';
+import { cachedFetch } from '../../lib/cache';
 import {
   deriveBreadthIndicators,
   SentimentGauge,
@@ -220,45 +222,69 @@ export default function MorningBriefing({ regime, breadth, sentiment, nifty, uni
           <UniverseHeroStats universe={universe} />
         </div>
 
-        {/* One-liner insight */}
-        <div className="mt-5 pt-4 border-t border-white/10">
-          <p className="text-slate-300 text-sm leading-relaxed">
-            <span className={`font-semibold ${config.text}`}>{config.label} regime</span>
-            {breadthData.ema200 != null ? (
-              <>
-                {' '}
-                with{' '}
-                {breadthData.ema200 > 55
-                  ? 'improving'
-                  : breadthData.ema200 < 40
-                    ? 'narrow'
-                    : 'moderate'}{' '}
-                breadth. {Math.round(breadthData.ema200)}% of stocks above 200 EMA
-                {breadthData.ema200 > 55
-                  ? ' \u2014 SIP accumulation zone.'
-                  : breadthData.ema200 < 40
-                    ? ' \u2014 proceed with caution.'
-                    : '.'}
-              </>
-            ) : (
-              <>. Breadth data unavailable.</>
-            )}
-            {leadingSectors.length > 0 && (
-              <>
-                {' '}
-                <span className="text-sky-400">{leadingSectors[0]}</span>
-                {leadingSectors.length > 1 && (
-                  <>
-                    {' '}
-                    and <span className="text-sky-400">{leadingSectors[1]}</span>
-                  </>
-                )}
-                {' '}leading sector rotation.
-              </>
-            )}
-          </p>
-        </div>
+        {/* AI-powered briefing insight */}
+        <AiBriefingInsight
+          config={config}
+          breadthData={breadthData}
+          leadingSectors={leadingSectors}
+        />
       </div>
     </section>
+  );
+}
+
+function AiBriefingInsight({ config, breadthData, leadingSectors }) {
+  const [aiBriefing, setAiBriefing] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    cachedFetch('morning-briefing', fetchMorningBriefing, 3600)
+      .then((res) => {
+        if (!cancelled) {
+          const text = res?.data?.briefing || res?.briefing;
+          if (text) setAiBriefing(text);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  // AI briefing available — show it
+  if (aiBriefing) {
+    return (
+      <div className="mt-5 pt-4 border-t border-white/10">
+        <div className="flex items-start gap-2">
+          <span className="text-teal-400 text-xs mt-0.5 flex-shrink-0">{'\u2726'}</span>
+          <p className="text-slate-300 text-sm leading-relaxed">{aiBriefing}</p>
+        </div>
+        <p className="text-white/20 text-[9px] mt-2">AI-generated briefing</p>
+      </div>
+    );
+  }
+
+  // Fallback — static insight from data
+  return (
+    <div className="mt-5 pt-4 border-t border-white/10">
+      <p className="text-slate-300 text-sm leading-relaxed">
+        <span className={`font-semibold ${config.text}`}>{config.label} regime</span>
+        {breadthData.ema200 != null ? (
+          <>
+            {' '}with{' '}
+            {breadthData.ema200 > 55 ? 'improving' : breadthData.ema200 < 40 ? 'narrow' : 'moderate'}{' '}
+            breadth. {Math.round(breadthData.ema200)}% of stocks above 200 EMA
+            {breadthData.ema200 > 55 ? ' \u2014 SIP accumulation zone.' : breadthData.ema200 < 40 ? ' \u2014 proceed with caution.' : '.'}
+          </>
+        ) : (
+          <>. Breadth data unavailable.</>
+        )}
+        {leadingSectors.length > 0 && (
+          <>
+            {' '}<span className="text-sky-400">{leadingSectors[0]}</span>
+            {leadingSectors.length > 1 && <>{' '}and <span className="text-sky-400">{leadingSectors[1]}</span></>}
+            {' '}leading sector rotation.
+          </>
+        )}
+      </p>
+    </div>
   );
 }
