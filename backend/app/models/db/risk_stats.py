@@ -22,6 +22,7 @@ class RiskStatsMonthly(Base, UUIDPrimaryKey):
     sharpe_1y: Mapped[None] = _col()
     sharpe_3y: Mapped[None] = _col()
     sharpe_5y: Mapped[None] = _col()
+    sharpe_10y: Mapped[None] = _col()
 
     # Alpha
     alpha_3y: Mapped[None] = _col()
@@ -37,16 +38,19 @@ class RiskStatsMonthly(Base, UUIDPrimaryKey):
     std_dev_1y: Mapped[None] = _col()
     std_dev_3y: Mapped[None] = _col()
     std_dev_5y: Mapped[None] = _col()
+    std_dev_10y: Mapped[None] = _col()
 
     # Sortino
     sortino_1y: Mapped[None] = _col()
     sortino_3y: Mapped[None] = _col()
     sortino_5y: Mapped[None] = _col()
+    sortino_10y: Mapped[None] = _col()
 
     # Max Drawdown
     max_drawdown_1y: Mapped[None] = _col()
     max_drawdown_3y: Mapped[None] = _col()
     max_drawdown_5y: Mapped[None] = _col()
+    max_drawdown_10y: Mapped[None] = _col()
 
     # Treynor
     treynor_1y: Mapped[None] = _col()
@@ -76,6 +80,7 @@ class RiskStatsMonthly(Base, UUIDPrimaryKey):
     capture_down_1y: Mapped[None] = _col()
     capture_down_3y: Mapped[None] = _col()
     capture_down_5y: Mapped[None] = _col()
+    capture_down_10y: Mapped[None] = _col()
 
     # Correlation
     correlation_1y: Mapped[None] = _col()
@@ -86,21 +91,25 @@ class RiskStatsMonthly(Base, UUIDPrimaryKey):
     r_squared_1y: Mapped[None] = _col()
     r_squared_3y: Mapped[None] = _col()
     r_squared_5y: Mapped[None] = _col()
+    r_squared_10y: Mapped[None] = _col()
 
     # Kurtosis
     kurtosis_1y: Mapped[None] = _col()
     kurtosis_3y: Mapped[None] = _col()
     kurtosis_5y: Mapped[None] = _col()
+    kurtosis_10y: Mapped[None] = _col()
 
     # Skewness
     skewness_1y: Mapped[None] = _col()
     skewness_3y: Mapped[None] = _col()
     skewness_5y: Mapped[None] = _col()
+    skewness_10y: Mapped[None] = _col()
 
     # Mean
     mean_1y: Mapped[None] = _col()
     mean_3y: Mapped[None] = _col()
     mean_5y: Mapped[None] = _col()
+    mean_10y: Mapped[None] = _col()
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

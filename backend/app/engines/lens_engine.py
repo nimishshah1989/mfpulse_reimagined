@@ -417,6 +417,15 @@ class LensEngine:
                 result[fid] = score.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
         return result
 
+    @staticmethod
+    def _first_available(rs: dict, *keys) -> Optional[Decimal]:
+        """Return the first non-None value from a dict for the given keys."""
+        for k in keys:
+            v = rs.get(k)
+            if v is not None:
+                return v
+        return None
+
     def _compute_resilience_lens(
         self,
         fund_ids: list[str],
@@ -426,9 +435,12 @@ class LensEngine:
         """
         RESILIENCE LENS: How does it behave in bad markets?
 
-        Metrics: MaxDrawdown_3Y (inv), DownsideCapture_3Y (inv),
+        Metrics: MaxDrawdown (inv), DownsideCapture (inv),
                  Up/Down ratio (higher=better), worst CY return (higher=better).
         Equal weight across available metrics.
+
+        Uses fallback chain: 3Y → 5Y → 10Y for each metric since
+        Morningstar only returns MaxDrawdown and CaptureRatio at 10Y tenor.
         """
         dd_raw: dict[str, Optional[Decimal]] = {}
         dc_raw: dict[str, Optional[Decimal]] = {}
@@ -439,11 +451,21 @@ class LensEngine:
 
         for fid in fund_ids:
             rs = risk_stats.get(fid, {})
-            dd_raw[fid] = rs.get("max_drawdown_3y")
-            dc_raw[fid] = rs.get("capture_down_3y")
+            # Fallback chain: prefer 3Y, then 5Y, then 10Y
+            dd_raw[fid] = self._first_available(
+                rs, "max_drawdown_3y", "max_drawdown_5y", "max_drawdown_10y",
+            )
+            dc_raw[fid] = self._first_available(
+                rs, "capture_down_3y", "capture_down_5y", "capture_down_10y",
+            )
 
-            cup = rs.get("capture_up_3y")
-            cdn = rs.get("capture_down_3y")
+            # Up/Down capture ratio — same fallback chain
+            cup = self._first_available(
+                rs, "capture_up_3y", "capture_up_5y", "capture_up_10y",
+            )
+            cdn = self._first_available(
+                rs, "capture_down_3y", "capture_down_5y", "capture_down_10y",
+            )
             if cup is not None and cdn is not None and cdn != 0:
                 ud_ratio_raw[fid] = (cup / cdn).quantize(
                     Decimal("0.0001"), rounding=ROUND_HALF_UP,
