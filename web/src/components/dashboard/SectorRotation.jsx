@@ -161,7 +161,7 @@ function SectorTable({ sectors }) {
                 <td className="py-2 px-2 text-right font-mono tabular-nums text-slate-700">
                   {s.rs_score != null ? Number(s.rs_score).toFixed(0) : '--'}
                 </td>
-                <td className={`py-2 px-2 text-right font-mono tabular-nums ${mom >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                <td className={`py-2 px-2 text-right font-mono tabular-nums ${mom == null ? 'text-slate-400' : mom >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                   {momStr}
                 </td>
                 <td className="py-2 px-2 text-right font-mono tabular-nums text-slate-600">

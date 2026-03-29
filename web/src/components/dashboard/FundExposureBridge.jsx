@@ -76,7 +76,7 @@ export default function FundExposureBridge({ matrixData, sectors, loading }) {
     );
   }
 
-  const funds = matrixData?.data?.slice(0, 5) || [];
+  const funds = (matrixData || []).slice(0, 5);
   if (funds.length === 0) return null;
 
   const topSectors = deriveTopSectors(funds);
