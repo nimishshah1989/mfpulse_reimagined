@@ -8,6 +8,7 @@ import {
   fetchNiftyData,
   fetchDataFreshness,
   fetchUniverseData,
+  fetchMorningstarSectors,
   triggerNAVFetch,
   triggerLensCompute,
 } from '../lib/api';
@@ -44,7 +45,7 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [recomputing, setRecomputing] = useState(false);
 
-  // Phase 1: MarketPulse data (graceful degradation)
+  // Phase 1: MarketPulse + Morningstar data (graceful degradation)
   useEffect(() => {
     async function loadMarketPulse() {
       setMpStatus('loading');
@@ -54,6 +55,7 @@ export default function DashboardPage() {
         fetchSentiment(),
         fetchSectors('3M'),
         fetchNiftyData(),
+        fetchMorningstarSectors(),
       ]);
 
       const allFailed = results.every((r) => r.status === 'rejected');
@@ -65,7 +67,12 @@ export default function DashboardPage() {
       if (results[0].status === 'fulfilled') setRegime(results[0].value.data);
       if (results[1].status === 'fulfilled') setBreadth(results[1].value.data);
       if (results[2].status === 'fulfilled') setSentiment(results[2].value.data);
-      if (results[3].status === 'fulfilled') setSectors(results[3].value.data || []);
+      // Prefer Morningstar sectors, fallback to MarketPulse
+      if (results[5].status === 'fulfilled' && results[5].value.data?.length > 0) {
+        setSectors(results[5].value.data);
+      } else if (results[3].status === 'fulfilled') {
+        setSectors(results[3].value.data || []);
+      }
       if (results[4].status === 'fulfilled') setNifty(results[4].value.data);
       setMpStatus('ready');
     }
@@ -160,15 +167,15 @@ export default function DashboardPage() {
       {/* Section 2: Smart Buckets */}
       <SmartBuckets />
 
-      {/* Section 3: Two-column -- Sector Rotation (5:7) | Top Funds by Lens (7:5) */}
-      <div className="grid grid-cols-12 gap-6 animate-in" style={{ animationDelay: '0.2s' }}>
-        <div className="col-span-5">
+      {/* Section 3: Two-column -- Sector Rotation | Top Funds by Lens */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in" style={{ animationDelay: '0.2s' }}>
+        <div className="lg:col-span-5">
           <SectorSnapshot
             sectors={sectors}
             loading={isLoading}
           />
         </div>
-        <div className="col-span-7">
+        <div className="lg:col-span-7">
           <TopFundsByLens
             universe={universe}
             onFundClick={handleFundClick}
@@ -177,15 +184,15 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Section 4: Two-column -- Universe Health (7:5) | Regime Actions + Data Freshness (5:7) */}
-      <div className="grid grid-cols-12 gap-6 animate-in" style={{ animationDelay: '0.3s' }}>
-        <div className="col-span-7">
+      {/* Section 4: Two-column -- Universe Health | Regime Actions + Data Freshness */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in" style={{ animationDelay: '0.3s' }}>
+        <div className="lg:col-span-7">
           <UniverseHealth
             universe={universe}
             onNavigate={handleNavigate}
           />
         </div>
-        <div className="col-span-5">
+        <div className="lg:col-span-5">
           <DataStatus
             regime={regime}
             freshness={freshness}

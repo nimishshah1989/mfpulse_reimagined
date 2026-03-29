@@ -52,6 +52,30 @@ export function lensBgColor(score) {
   return '#FCEBEB';
 }
 
+/**
+ * Green-to-Red score spectrum per spec:
+ * 80-100 green, 60-79 teal, 40-59 amber, 20-39 light red, 0-19 deep red
+ */
+export function scoreColor(value) {
+  const v = Number(value);
+  if (isNaN(v)) return '#94a3b8';
+  if (v >= 80) return '#059669';
+  if (v >= 60) return '#0d9488';
+  if (v >= 40) return '#d97706';
+  if (v >= 20) return '#ef4444';
+  return '#dc2626';
+}
+
+export function scoreBgColor(value) {
+  const v = Number(value);
+  if (isNaN(v)) return '#f1f5f9';
+  if (v >= 80) return '#ecfdf5';
+  if (v >= 60) return '#f0fdfa';
+  if (v >= 40) return '#fffbeb';
+  if (v >= 20) return '#fef2f2';
+  return '#fef2f2';
+}
+
 export function momentumColor(momentum) {
   if (momentum >= 5) return '#085041';
   if (momentum >= 2) return '#0d9488';

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import InfoIcon from '../shared/InfoIcon';
 import SectionTitle from '../shared/SectionTitle';
 import SkeletonLoader from '../shared/SkeletonLoader';
@@ -80,6 +80,36 @@ function formatShortDate(dateStr) {
   return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 }
 
+function TemplateCard({ template: t, onLoadTemplate }) {
+  const [clicked, setClicked] = useState(false);
+  return (
+    <div
+      onClick={() => { setClicked(true); onLoadTemplate(t); }}
+      className={`bg-white rounded-xl border border-slate-200 p-4 cursor-pointer hover:border-teal-300 hover:shadow-md transition-all group ${clicked ? 'opacity-60 pointer-events-none' : ''}`}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-lg">
+          {clicked ? (
+            <svg className="animate-spin w-4 h-4 text-teal-500" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          ) : t.emoji}
+        </div>
+        <span className="text-sm font-semibold text-slate-700">{t.name}</span>
+      </div>
+      <p className="text-xs text-slate-500 leading-relaxed mb-3">{t.description}</p>
+      <div className="flex items-center gap-2">
+        {t.tags.map((tag, i) => (
+          <span key={i} className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${tag.bg} ${tag.text}`}>
+            {tag.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function StrategyList({
   strategies,
   loading,
@@ -143,28 +173,9 @@ export default function StrategyList({
         >
           Quick Start Templates
         </SectionTitle>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {TEMPLATES.map((t) => (
-            <div
-              key={t.id}
-              onClick={() => onLoadTemplate(t)}
-              className="bg-white rounded-xl border border-slate-200 p-4 cursor-pointer hover:border-teal-300 hover:shadow-md transition-all group"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-lg">
-                  {t.emoji}
-                </div>
-                <span className="text-sm font-semibold text-slate-700">{t.name}</span>
-              </div>
-              <p className="text-xs text-slate-500 leading-relaxed mb-3">{t.description}</p>
-              <div className="flex items-center gap-2">
-                {t.tags.map((tag, i) => (
-                  <span key={i} className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${tag.bg} ${tag.text}`}>
-                    {tag.label}
-                  </span>
-                ))}
-              </div>
-            </div>
+            <TemplateCard key={t.id} template={t} onLoadTemplate={onLoadTemplate} />
           ))}
         </div>
       </div>
@@ -246,7 +257,7 @@ export default function StrategyList({
 
                   {!isDraft && (
                     <>
-                      <div className="grid grid-cols-6 gap-4 mb-4">
+                      <div className="grid grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
                         <div>
                           <p className="text-xs text-slate-400">AUM</p>
                           <p className="text-sm font-semibold tabular-nums">

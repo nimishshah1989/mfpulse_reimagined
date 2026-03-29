@@ -33,7 +33,7 @@ const PRESETS = [
     countColor: 'text-sky-600',
     borderClass: 'border-slate-200',
     filter: (f) =>
-      f.efficiency_class === 'LEAN' && Number(f.expense_ratio) < 0.5,
+      f.efficiency_class === 'LEAN' && Number(f.net_expense_ratio) < 0.5,
   },
   {
     id: 'smallcap',
@@ -44,7 +44,7 @@ const PRESETS = [
     countColor: 'text-teal-600',
     borderClass: 'border-slate-200',
     filter: (f) =>
-      (f.broad_category || '').toLowerCase().includes('small') &&
+      (f.category_name || '').toLowerCase().includes('small') &&
       Number(f.return_score) >= 70,
   },
   {

@@ -109,7 +109,7 @@ export default function HeroSection({ fundDetail, lensScores, mstarId, onCompare
             )}
             {fundDetail.purchase_mode && (
               <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                {fundDetail.purchase_mode === 2 ? 'Direct' : fundDetail.purchase_mode === 1 ? 'Regular' : ''} Growth
+                {fundDetail.purchase_mode === 2 || fundDetail.purchase_mode === 'Direct' ? 'Direct' : fundDetail.purchase_mode === 1 || fundDetail.purchase_mode === 'Regular' ? 'Regular' : fundDetail.purchase_mode || ''} {'\u2022'} Growth
               </span>
             )}
           </div>

@@ -47,6 +47,17 @@ export function formatAUM(num) {
 }
 
 /**
+ * Convert raw AUM (absolute rupees) to Crores then format.
+ * Use this when the source value is in paisa/rupees (e.g. fund_holdings_snapshot.aum).
+ */
+export function formatAUMRaw(rawRupees) {
+  if (rawRupees == null) return '\u2014';
+  const n = Number(rawRupees);
+  if (isNaN(n)) return '\u2014';
+  return formatAUM(n / 10000000);
+}
+
+/**
  * Percentage display: +18.4% or −3.2%
  */
 export function formatPct(num, decimals = 1) {

@@ -164,35 +164,37 @@ function SectorRow({ sector }) {
 function RotationPlaybook({ sectors }) {
   if (!sectors || sectors.length === 0) return null;
 
-  const leading = sectors.filter((s) => toTitleCase(s.quadrant) === 'Leading');
-  const improving = sectors.filter((s) => toTitleCase(s.quadrant) === 'Improving');
-  const weakening = sectors.filter((s) => toTitleCase(s.quadrant) === 'Weakening');
+  const byQuadrant = (q) => sectors
+    .filter((s) => toTitleCase(s.quadrant) === q)
+    .sort((a, b) => (b.rs_score || 0) - (a.rs_score || 0))
+    .slice(0, 3)
+    .map((s) => s.display_name || s.sector_name || s.name)
+    .filter(Boolean);
 
-  const leadingNames = leading.map((s) => s.display_name || s.sector_name || s.name).filter(Boolean);
-  const improvingNames = improving.map((s) => s.display_name || s.sector_name || s.name).filter(Boolean);
-  const weakeningNames = weakening.map((s) => s.display_name || s.sector_name || s.name).filter(Boolean);
+  const leading = byQuadrant('Leading');
+  const improving = byQuadrant('Improving');
+  const weakening = byQuadrant('Weakening');
 
-  const parts = [];
-  if (leadingNames.length > 0) {
-    parts.push(`${leadingNames.join(' & ')} entering Leading quadrant \u2014 consider overweight.`);
-  }
-  if (improvingNames.length > 0) {
-    parts.push(`${improvingNames.join(' & ')} improving \u2014 early entry window.`);
-  }
-  if (weakeningNames.length > 0) {
-    parts.push(`${weakeningNames.join(' & ')} weakening \u2014 reduce exposure.`);
-  }
+  const entries = [];
+  if (leading.length > 0) entries.push({ color: 'text-emerald-700', label: 'Overweight', names: leading.join(', ') });
+  if (improving.length > 0) entries.push({ color: 'text-sky-700', label: 'Watch', names: improving.join(', ') });
+  if (weakening.length > 0) entries.push({ color: 'text-amber-700', label: 'Reduce', names: weakening.join(', ') });
 
-  if (parts.length === 0) return null;
+  if (entries.length === 0) return null;
 
   return (
     <div className="mt-4 p-3 rounded-lg bg-teal-50 border border-teal-100">
-      <p className="text-[10px] font-semibold text-teal-700 uppercase tracking-wider mb-1">
+      <p className="text-[10px] font-semibold text-teal-700 uppercase tracking-wider mb-2">
         Rotation Playbook
       </p>
-      <p className="text-xs text-teal-800 leading-relaxed">
-        {parts.join(' ')}
-      </p>
+      <div className="space-y-1.5">
+        {entries.map((e) => (
+          <div key={e.label} className="flex items-start gap-2">
+            <span className={`text-[10px] font-bold ${e.color} w-16 flex-shrink-0`}>{e.label}</span>
+            <span className="text-[11px] text-slate-700 leading-snug">{e.names}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -266,7 +266,7 @@ function getBreakdownComponent(lensKey, riskStats, fundDetail) {
  *   riskStats     object
  *   fundDetail    object
  */
-export default function LensCard({ name, lensKey, score, tier, categoryName, riskStats, fundDetail }) {
+export default function LensCard({ name, lensKey, score, tier, categoryName, riskStats, fundDetail, rankInfo }) {
   const [expanded, setExpanded] = useState(false);
   const meta = LENS_META[lensKey] || {};
   const displayScore = score != null ? Math.round(Number(score)) : null;
@@ -321,10 +321,15 @@ export default function LensCard({ name, lensKey, score, tier, categoryName, ris
             <div className="absolute top-0 left-1/2 h-full w-px bg-slate-300 opacity-50" />
           </div>
         </div>
-        <div className="w-20 text-right flex-shrink-0">
+        <div className="w-24 text-right flex-shrink-0">
           <span className={`text-sm font-bold font-mono tabular-nums ${color}`}>{displayScore}</span>
           {tier && (
             <span className={`text-[10px] font-semibold block ${color}`}>{tier}</span>
+          )}
+          {rankInfo && (
+            <span className="text-[9px] text-slate-400 block">
+              Rank {rankInfo.rank} of {rankInfo.total}
+            </span>
           )}
         </div>
       </div>

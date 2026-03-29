@@ -13,6 +13,7 @@ import RuleBuilder from '../components/simulation/RuleBuilder';
 import ModeComparison from '../components/simulation/ModeComparison';
 import ComparisonTable from '../components/simulation/ComparisonTable';
 import SignalLog from '../components/simulation/SignalLog';
+import NarrativeSummary from '../components/simulation/NarrativeSummary';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
 import dynamic from 'next/dynamic';
 
@@ -43,6 +44,18 @@ export default function SimulationPage() {
   // Loading
   const [fundLoading, setFundLoading] = useState(false);
 
+  // Templates
+  const [templates, setTemplates] = useState([]);
+  const [templateName, setTemplateName] = useState('');
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('mfpulse_sim_templates') || '[]');
+      setTemplates(saved);
+    } catch (e) { setTemplates([]); }
+  }, []);
+
   // Read ?fund= from URL
   useEffect(() => {
     if (router.isReady && router.query.fund) {
@@ -70,6 +83,10 @@ export default function SimulationPage() {
         ]);
         if (cancelled) return;
         setFundDetail(detail);
+        // Enrich fund object with detail data if it only had mstar_id (e.g. from URL)
+        if (detail && !fund.fund_name) {
+          setFund((prev) => ({ ...prev, ...detail }));
+        }
         setLensScores(lens);
       } catch (err) {
         if (!cancelled) setSimError(err.message);
@@ -114,6 +131,39 @@ export default function SimulationPage() {
       setSimulating(false);
     }
   }, [simulationPayload]);
+
+  const saveTemplate = useCallback(() => {
+    if (!templateName.trim() || !fund?.mstar_id) return;
+    const template = {
+      id: Date.now(),
+      name: templateName.trim(),
+      fund_mstar_id: fund.mstar_id,
+      fund_name: fund.fund_name || fund.legal_name || fund.mstar_id,
+      config: { ...config },
+      rules: rules.map((r) => ({ ...r })),
+      period,
+      created_at: new Date().toISOString(),
+    };
+    const updated = [...templates, template];
+    localStorage.setItem('mfpulse_sim_templates', JSON.stringify(updated));
+    setTemplates(updated);
+    setTemplateName('');
+    setShowSaveTemplate(false);
+  }, [templateName, fund, config, rules, period, templates]);
+
+  const loadTemplate = useCallback((template) => {
+    setFund({ mstar_id: template.fund_mstar_id, fund_name: template.fund_name });
+    setConfig(template.config);
+    setRules(template.rules);
+    setPeriod(template.period);
+    setCompareResults(null);
+  }, []);
+
+  const deleteTemplate = useCallback((id) => {
+    const updated = templates.filter((t) => t.id !== id);
+    localStorage.setItem('mfpulse_sim_templates', JSON.stringify(updated));
+    setTemplates(updated);
+  }, [templates]);
 
   const handleFundSelect = useCallback((f) => {
     setFund(f);
@@ -164,13 +214,36 @@ export default function SimulationPage() {
   const hasResults = compareResults != null;
 
   return (
-    <div className="space-y-5 -m-6">
+    <div className="space-y-5">
       {/* Minimal top bar context */}
-      <div className="bg-white border-b border-slate-200/50 px-6 py-3">
+      <div className="mb-2">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">
-            Backtest investment strategies with real market data
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="text-sm text-slate-500">
+              Backtest investment strategies with real market data
+            </p>
+            {templates.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-400">Templates:</span>
+                {templates.map((t) => (
+                  <div key={t.id} className="flex items-center gap-1">
+                    <button
+                      onClick={() => loadTemplate(t)}
+                      className="px-2 py-1 text-[10px] font-medium text-slate-600 bg-slate-100 rounded hover:bg-slate-200 transition-colors"
+                    >
+                      {t.name}
+                    </button>
+                    <button
+                      onClick={() => deleteTemplate(t.id)}
+                      className="text-[10px] text-slate-400 hover:text-red-500"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {hasResults && (
               <button
@@ -181,11 +254,19 @@ export default function SimulationPage() {
                 {simulating ? 'Simulating...' : 'Re-simulate'}
               </button>
             )}
+            {hasResults && (
+              <button
+                onClick={() => setShowSaveTemplate(!showSaveTemplate)}
+                className="px-3 py-1.5 text-[10px] font-semibold text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-50 transition-colors"
+              >
+                Save Template
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      <main className="px-6 space-y-5">
+      <main className="space-y-5">
         {/* ==================== SECTION 1: Fund + Config (3-column top) ==================== */}
         <div className="grid grid-cols-12 gap-5 animate-in">
           {/* Fund Picker (col-span-4) */}
@@ -252,6 +333,32 @@ export default function SimulationPage() {
           </div>
         )}
 
+        {showSaveTemplate && (
+          <div className="bg-white border border-teal-200 rounded-lg p-4 flex items-center gap-3">
+            <input
+              type="text"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="Template name..."
+              className="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none"
+              onKeyDown={(e) => { if (e.key === 'Enter') saveTemplate(); }}
+            />
+            <button
+              onClick={saveTemplate}
+              disabled={!templateName.trim()}
+              className="px-4 py-1.5 text-xs font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => setShowSaveTemplate(false)}
+              className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
         {/* ==================== SECTION 2: 4 Mode Comparison Cards + Table ==================== */}
         {hasResults && (
           <section className="animate-in" style={{ animationDelay: '0.1s' }}>
@@ -261,6 +368,16 @@ export default function SimulationPage() {
               marketpulseOnline={marketpulseOnline}
               period={period}
             />
+
+            {/* Narrative Summary */}
+            <div className="mt-5">
+              <NarrativeSummary
+                results={compareResults}
+                fund={fund}
+                config={config}
+                period={period}
+              />
+            </div>
 
             {/* Detailed Comparison Table */}
             <div className="bg-white rounded-xl border border-slate-200 p-5 mt-5">

@@ -9,6 +9,7 @@ import {
   fetchPeers,
   fetchFundRisk,
   fetchSectors,
+  fetchAssetAllocation,
 } from '../lib/api';
 import { LENS_OPTIONS, LENS_CLASS_KEYS } from '../lib/lens';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
@@ -26,6 +27,10 @@ import AssetAllocation from '../components/fund360/AssetAllocation';
 import RiskProfile from '../components/fund360/RiskProfile';
 import PeerPositioning from '../components/fund360/PeerPositioning';
 import CompareMode from '../components/fund360/CompareMode';
+import RadarChart from '../components/fund360/RadarChart';
+import IntelligenceCards from '../components/fund360/IntelligenceCards';
+import PeerScatter from '../components/fund360/PeerScatter';
+import PortfolioMetrics from '../components/fund360/PortfolioMetrics';
 
 /* ---- Section wrapper matching mockup white cards ---- */
 function SectionCard({ title, subtitle, badge, children, className = '' }) {
@@ -64,6 +69,7 @@ export default function Fund360Page() {
   const [peers, setPeers] = useState(null);
   const [riskStats, setRiskStats] = useState(null);
   const [sectorQuadrants, setSectorQuadrants] = useState(null);
+  const [holdingsSnapshot, setHoldingsSnapshot] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [compareOpen, setCompareOpen] = useState(false);
@@ -126,10 +132,11 @@ export default function Fund360Page() {
     if (!mstarId) return;
     let cancelled = false;
     async function loadSecondary() {
-      const [pRes, rRes, sRes] = await Promise.allSettled([
+      const [pRes, rRes, sRes, aRes] = await Promise.allSettled([
         fetchPeers(mstarId),
         fetchFundRisk(mstarId),
         fetchSectors('3M'),
+        fetchAssetAllocation(mstarId),
       ]);
       if (cancelled) return;
       if (pRes.status === 'fulfilled') {
@@ -151,6 +158,9 @@ export default function Fund360Page() {
           setSectorQuadrants(qMap);
         }
       }
+      if (aRes.status === 'fulfilled') {
+        setHoldingsSnapshot(aRes.value?.data || aRes.value || null);
+      }
     }
     loadSecondary();
     return () => { cancelled = true; };
@@ -166,6 +176,21 @@ export default function Fund360Page() {
     });
     return avgs;
   }, [peers]);
+
+  // Compute approximate rank info from percentile scores + peer count
+  const rankInfoMap = useMemo(() => {
+    if (!lensScores || !peers?.length) return {};
+    const total = peers.length + 1; // include the fund itself
+    const map = {};
+    LENS_OPTIONS.forEach((lens) => {
+      const score = lensScores[lens.key];
+      if (score != null) {
+        const rank = Math.max(1, Math.round(total * (1 - Number(score) / 100)));
+        map[lens.key] = { rank, total };
+      }
+    });
+    return map;
+  }, [lensScores, peers]);
 
   const categoryReturns = useMemo(() => {
     if (fundDetail?.category_returns) return fundDetail.category_returns;
@@ -184,7 +209,7 @@ export default function Fund360Page() {
   /* ---- Loading state ---- */
   if (loading) {
     return (
-      <div className="-m-5 max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <SkeletonLoader className="h-48 rounded-2xl" />
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <SkeletonLoader className="lg:col-span-2 h-72 rounded-2xl" />
@@ -212,7 +237,7 @@ export default function Fund360Page() {
   const combinedRiskStats = riskStats || fundDetail.risk_stats || null;
 
   return (
-    <div className="-m-5 max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* SECTION 1: Hero */}
       <HeroSection
         fundDetail={fundDetail}
@@ -224,14 +249,27 @@ export default function Fund360Page() {
       {/* SECTION 2: Six-Lens Radar + Lens Breakdown */}
       {lensScores && (
         <div className="animate-in grid grid-cols-1 lg:grid-cols-5 gap-4" style={{ animationDelay: '0.1s' }}>
-          {/* Narrative / Verdict (2 cols) */}
+          {/* Narrative / Radar (2 cols) */}
           <div className="lg:col-span-2 space-y-4">
             <NarrativeCard
               mstarId={mstarId}
               headlineTag={lensScores?.headline_tag}
             />
-            <SectionCard title="Fund DNA -- Six Lenses">
-              <RiskProfile riskStats={combinedRiskStats} />
+            <SectionCard title="Fund DNA — Six Lenses">
+              <RadarChart
+                funds={[{
+                  label: fundDetail.fund_name || 'Fund',
+                  scores: {
+                    return_score: Number(lensScores.return_score) || 0,
+                    risk_score: Number(lensScores.risk_score) || 0,
+                    consistency_score: Number(lensScores.consistency_score) || 0,
+                    alpha_score: Number(lensScores.alpha_score) || 0,
+                    efficiency_score: Number(lensScores.efficiency_score) || 0,
+                    resilience_score: Number(lensScores.resilience_score) || 0,
+                  },
+                }]}
+                size={280}
+              />
             </SectionCard>
           </div>
 
@@ -254,12 +292,20 @@ export default function Fund360Page() {
                     categoryName={fundDetail.category_name}
                     riskStats={combinedRiskStats}
                     fundDetail={fundDetail}
+                    rankInfo={rankInfoMap[lens.key]}
                   />
                 );
               })}
             </div>
           </SectionCard>
         </div>
+      )}
+
+      {/* SECTION 2b: Intelligence Cards */}
+      {lensScores && (
+        <SectionCard title="Lens Intelligence" subtitle="What each score means for this fund">
+          <IntelligenceCards lensScores={lensScores} />
+        </SectionCard>
       )}
 
       {/* SECTION 3: NAV Performance Chart */}
@@ -286,6 +332,13 @@ export default function Fund360Page() {
       <SectionCard title="Risk Profile">
         <RiskProfile riskStats={combinedRiskStats} />
       </SectionCard>
+
+      {/* SECTION 5b: Portfolio Metrics */}
+      {holdingsSnapshot && (
+        <SectionCard title="Portfolio Metrics" subtitle="From latest holdings snapshot">
+          <PortfolioMetrics holdingsData={holdingsSnapshot} />
+        </SectionCard>
+      )}
 
       {/* SECTION 6: Holdings + Sector + Asset */}
       <div className="animate-in grid grid-cols-1 lg:grid-cols-3 gap-4" style={{ animationDelay: '0.3s' }}>
@@ -314,13 +367,23 @@ export default function Fund360Page() {
       </SectionCard>
 
       {/* SECTION 8: Peer Comparison */}
-      <SectionCard title="Peer Comparison">
-        <PeerPositioning
-          scores={lensScores}
-          peerAvgs={peerAvgs}
-          peers={peers}
-        />
-      </SectionCard>
+      <div className="animate-in grid grid-cols-1 lg:grid-cols-5 gap-4" style={{ animationDelay: '0.5s' }}>
+        <SectionCard title="Peer Positioning" className="lg:col-span-3">
+          <PeerPositioning
+            scores={lensScores}
+            peerAvgs={peerAvgs}
+            peers={peers}
+          />
+        </SectionCard>
+        <SectionCard title="Peer Scatter" subtitle="Risk vs Return in category" className="lg:col-span-2">
+          <PeerScatter
+            fund={fundDetail}
+            lensScores={lensScores}
+            peers={peers}
+            fundDetail={fundDetail}
+          />
+        </SectionCard>
+      </div>
 
       {/* Compare Mode Panel */}
       {compareOpen && lensScores && (

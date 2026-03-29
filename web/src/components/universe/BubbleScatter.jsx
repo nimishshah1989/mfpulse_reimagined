@@ -40,20 +40,23 @@ export default function BubbleScatter({
     if (!isReturnX) return [0, 100];
     const vals = data.map((d) => Number(d[xAxis])).filter((v) => !isNaN(v));
     if (vals.length === 0) return [0, 100];
-    const min = Math.min(...vals);
-    const max = Math.max(...vals);
-    const pad = (max - min) * 0.1 || 5;
-    return [Math.floor(min - pad), Math.ceil(max + pad)];
+    const sorted = [...vals].sort((a, b) => a - b);
+    const p2 = sorted[Math.floor(sorted.length * 0.02)] ?? sorted[0];
+    const p98 = sorted[Math.floor(sorted.length * 0.98)] ?? sorted[sorted.length - 1];
+    const pad = (p98 - p2) * 0.1 || 5;
+    return [Math.floor(p2 - pad), Math.ceil(p98 + pad)];
   }, [data, xAxis, isReturnX]);
 
   const yDomain = useMemo(() => {
     if (!isReturnY) return [0, 100];
     const vals = data.map((d) => Number(d[yAxis])).filter((v) => !isNaN(v));
     if (vals.length === 0) return [-10, 50];
-    const min = Math.min(...vals);
-    const max = Math.max(...vals);
-    const pad = (max - min) * 0.1 || 5;
-    return [Math.floor(min - pad), Math.ceil(max + pad)];
+    // Use 2nd/98th percentile to clip outliers
+    const sorted = [...vals].sort((a, b) => a - b);
+    const p2 = sorted[Math.floor(sorted.length * 0.02)] ?? sorted[0];
+    const p98 = sorted[Math.floor(sorted.length * 0.98)] ?? sorted[sorted.length - 1];
+    const pad = (p98 - p2) * 0.1 || 5;
+    return [Math.floor(p2 - pad), Math.ceil(p98 + pad)];
   }, [data, yAxis, isReturnY]);
 
   const aumScale = useMemo(

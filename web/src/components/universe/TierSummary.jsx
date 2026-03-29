@@ -75,7 +75,7 @@ export default function TierSummary({
   const bottomPct = total > 0 ? ((bottomTier.count / total) * 100).toFixed(0) : 0;
 
   return (
-    <div className="col-span-2 space-y-3">
+    <div className="hidden lg:block col-span-2 space-y-3">
       {/* Summary stats */}
       <div className="bg-white rounded-xl border border-slate-200 p-4">
         <p className="section-title mb-3">Visible Funds</p>

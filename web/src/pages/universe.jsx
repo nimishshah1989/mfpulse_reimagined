@@ -11,6 +11,7 @@ import HorizontalFilterBar, { AUM_RANGES } from '../components/universe/Horizont
 import TierSummary from '../components/universe/TierSummary';
 import IntelligencePanel from '../components/universe/IntelligencePanel';
 import FundCard from '../components/universe/FundCard';
+import { parseNLQuery, applyNLFilters } from '../lib/nl-search';
 
 const BubbleScatter = dynamic(
   () => import('../components/universe/BubbleScatter'),
@@ -55,6 +56,9 @@ export default function UniversePage() {
   const [hoverFund, setHoverFund] = useState(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [nlFilters, setNLFilters] = useState(null);
+
   const chartContainerRef = useRef(null);
   const [chartWidth, setChartWidth] = useState(800);
   const [chartHeight, setChartHeight] = useState(560);
@@ -90,6 +94,12 @@ export default function UniversePage() {
     return () => observer.disconnect();
   }, [loading]);
 
+  const handleSearch = useCallback((query) => {
+    setSearchQuery(query);
+    const parsed = parseNLQuery(query);
+    setNLFilters(parsed);
+  }, []);
+
   // Apply preset filters
   const handlePresetClick = useCallback((presetId) => {
     if (presetId === activePreset) {
@@ -105,7 +115,18 @@ export default function UniversePage() {
 
   // Apply all filters (including preset)
   const filteredFunds = useMemo(() => {
-    let result = allFunds;
+    // Pre-filter: exclude junk funds (AUM < 10Cr or age < 3 years)
+    const THREE_YEARS_MS = 3 * 365.25 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    let result = allFunds.filter((fund) => {
+      const aumCr = (Number(fund.aum) || 0) / 10000000;
+      if (fund.aum != null && aumCr < 10) return false;
+      if (fund.inception_date) {
+        const age = now - new Date(fund.inception_date).getTime();
+        if (age < THREE_YEARS_MS) return false;
+      }
+      return true;
+    });
 
     // Standard filters
     result = result.filter((fund) => {
@@ -131,8 +152,13 @@ export default function UniversePage() {
       }
     }
 
+    // NL search filter
+    if (nlFilters) {
+      result = applyNLFilters(result, nlFilters);
+    }
+
     return result;
-  }, [allFunds, filters, activePreset]);
+  }, [allFunds, filters, activePreset, nlFilters]);
 
   // Tag funds with tier display for selected tier highlighting
   const taggedFunds = useMemo(() => {
@@ -260,6 +286,43 @@ export default function UniversePage() {
 
   return (
     <div className="max-w-[1400px] mx-auto px-1 space-y-4">
+      {/* NL Search Bar */}
+      <div className="animate-in">
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder='Search: "high alpha small cap funds", "return > 20%", "technology sector"...'
+            className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none placeholder:text-slate-400"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => handleSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              ×
+            </button>
+          )}
+        </div>
+        {nlFilters && (
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <span className="text-[10px] text-slate-400">Active filters:</span>
+            {nlFilters.sectors.map((s) => (
+              <span key={s} className="text-[10px] px-2 py-0.5 bg-teal-50 text-teal-700 rounded-full">{s}</span>
+            ))}
+            {nlFilters.categories.map((c) => (
+              <span key={c} className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">{c}</span>
+            ))}
+            {nlFilters.numericFilters.map((nf, i) => (
+              <span key={i} className="text-[10px] px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full">
+                {nf.field} {nf.operator === 'gt' ? '>' : '<'} {nf.value}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Section 1: Smart Screener Presets */}
       <SmartPresets
         allFunds={allFunds}
@@ -283,7 +346,7 @@ export default function UniversePage() {
       />
 
       {/* Section 3: Main 3-Column Layout (2:7:3) */}
-      <div className="grid grid-cols-12 gap-4 animate-in" style={{ animationDelay: '0.1s' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 animate-in" style={{ animationDelay: '0.1s' }}>
         {/* LEFT: Stats sidebar */}
         <TierSummary
           funds={taggedFunds}
@@ -295,11 +358,19 @@ export default function UniversePage() {
         />
 
         {/* CENTER: Bubble Chart */}
-        <div className="col-span-7">
+        <div className="col-span-12 lg:col-span-7">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+              Fund Universe
+            </p>
+            <span className="text-xs font-bold text-teal-600 tabular-nums">
+              {taggedFunds.length.toLocaleString('en-IN')} funds
+            </span>
+          </div>
           <div
             ref={chartContainerRef}
             className="bg-white rounded-xl border border-slate-200 overflow-hidden relative"
-            style={{ height: 560 }}
+            style={{ height: Math.min(560, typeof window !== 'undefined' ? window.innerHeight - 240 : 560) }}
           >
             {taggedFunds.length === 0 ? (
               <div className="flex items-center justify-center h-full">

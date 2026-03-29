@@ -88,6 +88,16 @@ export const fetchBreadth = (lookback) =>
 export const fetchSentiment = () =>
   apiFetch('/api/v1/market/sentiment');
 
+// Morningstar Sector Rotation APIs
+export const fetchMorningstarSectors = () =>
+  apiFetch('/api/v1/sectors/rotation');
+export const fetchSectorHistory = (months) =>
+  apiFetch(`/api/v1/sectors/history?months=${months || 6}`);
+export const fetchSectorFundExposure = (sector, limit) =>
+  apiFetch(`/api/v1/sectors/fund-exposure?sector=${encodeURIComponent(sector)}&limit=${limit || 20}`);
+export const triggerSectorCompute = () =>
+  apiFetch('/api/v1/sectors/compute', { method: 'POST' });
+
 // Simulation APIs
 export const runSimulation = (params) =>
   apiFetch('/api/v1/simulate', {

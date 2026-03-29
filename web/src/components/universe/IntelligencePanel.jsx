@@ -141,7 +141,7 @@ export default function IntelligencePanel({
   const yLabel = yKey.includes('return_1y') ? '1Y' : yKey.includes('return_3y') ? '3Y' : yKey.includes('return_5y') ? '5Y' : '';
 
   return (
-    <div className="col-span-3 space-y-3">
+    <div className="hidden lg:block col-span-3 space-y-3">
       {/* Market Context */}
       <div className="bg-white rounded-xl border border-slate-200 p-4">
         <div className="flex items-center gap-1 mb-3">
@@ -167,7 +167,7 @@ export default function IntelligencePanel({
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-slate-600">Leading</span>
                   <span className="text-[11px] font-semibold text-emerald-600">
-                    {regime.leading_sectors.slice(0, 3).join(', ')}
+                    {regime.leading_sectors.slice(0, 3).map(s => typeof s === 'string' ? s : s.sector || s.sector_name || s.display_name || s.name || JSON.stringify(s)).filter(Boolean).join(', ')}
                   </span>
                 </div>
               )}

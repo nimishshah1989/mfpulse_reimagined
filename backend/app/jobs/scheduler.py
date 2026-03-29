@@ -24,6 +24,7 @@ VALID_JOBS = frozenset({
     "expire_overrides",
     "fetch_nav",
     "fetch_full",
+    "sector_rotation",
 })
 
 # Job schedule descriptions
@@ -36,6 +37,7 @@ JOB_SCHEDULES = {
     "expire_overrides": "Daily midnight IST",
     "fetch_nav": "Daily 9:30 PM IST (API)",
     "fetch_full": "Weekly Sun 11:00 PM IST (API)",
+    "sector_rotation": "Monthly 8th 10:00 AM IST",
 }
 
 
@@ -118,6 +120,14 @@ class JobScheduler:
             replace_existing=True,
         )
 
+        # Monthly 8th 10 AM IST — compute sector rotation from holdings
+        self._scheduler.add_job(
+            lambda: self._run_with_audit("sector_rotation", self.job_compute_sector_rotation),
+            CronTrigger(day=8, hour=10, minute=0),
+            id="sector_rotation",
+            replace_existing=True,
+        )
+
         self._scheduler.start()
         logger.info("Job scheduler started with %d jobs", len(VALID_JOBS))
 
@@ -141,6 +151,7 @@ class JobScheduler:
             "expire_overrides": self.job_expire_overrides,
             "fetch_nav": self.job_fetch_nav,
             "fetch_full": self.job_fetch_full,
+            "sector_rotation": self.job_compute_sector_rotation,
         }
 
         func = job_map[job_name]
@@ -307,6 +318,17 @@ class JobScheduler:
             results = fetcher.fetch_nav_only()
             for r in results:
                 logger.info("Fetch %s: %s (%d funds)", r.api_name, r.status, r.fund_count)
+        finally:
+            db.close()
+
+    def job_compute_sector_rotation(self) -> None:
+        """Compute sector rotation from latest Morningstar holdings."""
+        from app.services.sector_rotation import SectorRotationService
+        db = self._db_session_factory()
+        try:
+            svc = SectorRotationService(db)
+            results = svc.compute_current()
+            logger.info("Sector rotation computed: %d sectors", len(results))
         finally:
             db.close()
 

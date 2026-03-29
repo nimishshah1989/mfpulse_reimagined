@@ -1,0 +1,50 @@
+"""Sector rotation API endpoints — Morningstar-derived sector intelligence."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.services.sector_rotation import SectorRotationService
+
+router = APIRouter(prefix="/sectors", tags=["Sectors"])
+
+
+@router.get("/rotation")
+def get_sector_rotation(db: Session = Depends(get_db)):
+    """Current sector rotation — weights, momentum, quadrant for all 11 Morningstar sectors."""
+    svc = SectorRotationService(db)
+    data = svc.get_current_rotation()
+    return {"success": True, "data": data, "meta": {"count": len(data)}, "error": None}
+
+
+@router.get("/history")
+def get_sector_history(
+    months: int = Query(default=6, ge=1, le=24),
+    db: Session = Depends(get_db),
+):
+    """Sector rotation history for rotation chart."""
+    svc = SectorRotationService(db)
+    data = svc.get_history(months=months)
+    return {"success": True, "data": data, "meta": {"months": months, "count": len(data)}, "error": None}
+
+
+@router.get("/fund-exposure")
+def get_fund_exposure_by_sector(
+    sector: str = Query(..., description="Sector name, e.g. 'Technology'"),
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """Top funds by allocation to a specific Morningstar sector."""
+    svc = SectorRotationService(db)
+    data = svc.get_fund_exposure_by_sector(sector, limit=limit)
+    return {"success": True, "data": data, "meta": {"sector": sector, "count": len(data)}, "error": None}
+
+
+@router.post("/compute")
+def trigger_sector_computation(db: Session = Depends(get_db)):
+    """Manually trigger sector rotation computation from latest holdings data."""
+    svc = SectorRotationService(db)
+    data = svc.compute_current()
+    return {"success": True, "data": data, "meta": {"count": len(data)}, "error": None}

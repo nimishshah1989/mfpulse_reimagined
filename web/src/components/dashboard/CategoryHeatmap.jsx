@@ -76,11 +76,15 @@ export default function CategoryHeatmap({ universe, loading }) {
   const categories = useMemo(() => {
     if (!universe || universe.length === 0) return [];
 
+    // Exclude low-signal categories
+    const EXCLUDED_CATEGORIES = ['Overnight Fund', 'Liquid Fund', 'Money Market Fund'];
+
     // Group by category_name
     const grouped = {};
     universe.forEach((f) => {
       const cat = f.category_name;
       if (!cat) return;
+      if (EXCLUDED_CATEGORIES.some((ex) => cat.toLowerCase().includes(ex.toLowerCase()))) return;
       if (!grouped[cat]) grouped[cat] = { funds: [], sum: 0, count: 0 };
       grouped[cat].funds.push(f);
       const ret = f[period];

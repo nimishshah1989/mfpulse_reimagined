@@ -6,6 +6,7 @@ import {
   fetchMarketRegime,
   fetchFunds,
   fetchSectorExposure,
+  fetchMorningstarSectors,
 } from '../lib/api';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
 import EmptyState from '../components/shared/EmptyState';
@@ -59,19 +60,32 @@ export default function SectorsPage() {
 
   const loadMarketPulse = useCallback(async (p) => {
     setMpLoading(true);
-    const [sectorsRes, breadthRes, sentimentRes, regimeRes] =
+    const [mstarRes, sectorsRes, breadthRes, sentimentRes, regimeRes] =
       await Promise.allSettled([
+        fetchMorningstarSectors(),
         fetchSectors(p),
         fetchBreadth('1y'),
         fetchSentiment(),
         fetchMarketRegime(),
       ]);
 
+    const toTitleCase = (str) =>
+      str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : str;
+
     let anySuccess = false;
-    if (sectorsRes.status === 'fulfilled') {
+
+    // Prefer Morningstar sectors, fallback to MarketPulse
+    if (mstarRes.status === 'fulfilled' && mstarRes.value.data?.length > 0) {
+      const raw = mstarRes.value.data;
+      const normalized = (Array.isArray(raw) ? raw : []).map((s) => ({
+        ...s,
+        sector_name: s.sector_name || s.display_name || s.name || 'Unknown',
+        quadrant: toTitleCase(s.quadrant),
+      }));
+      setSectorData(normalized);
+      anySuccess = true;
+    } else if (sectorsRes.status === 'fulfilled') {
       const raw = sectorsRes.value.data || [];
-      const toTitleCase = (str) =>
-        str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : str;
       const normalized = (Array.isArray(raw) ? raw : []).map((s) => ({
         ...s,
         sector_name: s.sector_name || s.display_name || s.name || 'Unknown',
@@ -190,9 +204,9 @@ export default function SectorsPage() {
   }
 
   return (
-    <div className="space-y-6 -m-6">
+    <div className="space-y-6">
       {/* Header with period pills */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
+      <div className="flex items-center justify-between mb-2">
         <p className="text-sm text-slate-500">
           Which sectors are winning and which funds capture them
         </p>
@@ -209,9 +223,9 @@ export default function SectorsPage() {
         </div>
       </div>
 
-      {/* MarketPulse offline banner */}
+      {/* MarketPulse offline banner -- keep flat */}
       {!mpOnline && (
-        <div className="mx-6 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 flex items-center justify-between">
+        <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 flex items-center justify-between">
           <p className="text-sm text-amber-700">
             MarketPulse offline — sector compass data unavailable
           </p>
@@ -224,7 +238,7 @@ export default function SectorsPage() {
         </div>
       )}
 
-      <div className="px-6 space-y-6">
+      <div className="space-y-6">
         {/* Market Context Bar */}
         <MarketContextPanel
           regime={regimeData}

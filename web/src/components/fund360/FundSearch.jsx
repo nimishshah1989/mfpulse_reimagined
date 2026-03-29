@@ -39,14 +39,14 @@ export default function FundSearch({ onSelect }) {
   const [activeBucket, setActiveBucket] = useState(null);
   const [bucketFundIds, setBucketFundIds] = useState([]);
   const [universe, setUniverse] = useState([]);
-  const [purchaseMode, setPurchaseMode] = useState(1);
+  const [purchaseMode, setPurchaseMode] = useState(2);
 
   useEffect(() => {
     Promise.allSettled([fetchCategories(), fetchAMCs()]).then(([catRes, amcRes]) => {
       if (catRes.status === 'fulfilled') setCategories(catRes.value.data || []);
       if (amcRes.status === 'fulfilled') setAmcs(amcRes.value.data || []);
     });
-    fetchFunds({ limit: 20, sort: 'return_1y', order: 'desc', purchase_mode: 1 })
+    fetchFunds({ limit: 50, sort: 'return_1y', order: 'desc', purchase_mode: 2, broad_category: 'Equity' })
       .then((res) => setTopFunds(res.data || []))
       .catch(() => {})
       .finally(() => setTopLoading(false));
@@ -68,7 +68,7 @@ export default function FundSearch({ onSelect }) {
   }, [query, selectedCategory, selectedAmc, selectedBroad, purchaseMode]);
 
   useEffect(() => {
-    const params = { limit: 40 };
+    const params = { limit: 100 };
     if (purchaseMode > 0) params.purchase_mode = purchaseMode;
     if (query.length >= 2) params.search = query;
     if (selectedCategory) params.category = selectedCategory;
@@ -103,7 +103,7 @@ export default function FundSearch({ onSelect }) {
     setSelectedCategory('');
     setSelectedAmc('');
     setSelectedBroad('All');
-    setPurchaseMode(1);
+    setPurchaseMode(2);
   };
 
   let displayFunds;
@@ -116,25 +116,34 @@ export default function FundSearch({ onSelect }) {
   } else if (results.length > 0) {
     displayFunds = results;
     displayLabel = `${results.length} funds found`;
-  } else if (!query && !selectedCategory && !selectedAmc && selectedBroad === 'All' && topFunds.length > 0) {
-    displayFunds = topFunds;
-    displayLabel = 'Top performers by 1Y return';
+  } else if (!query && !selectedCategory && !selectedAmc && selectedBroad === 'All') {
+    // Show top performing Direct equity funds by default
+    const defaultFunds = universe.length > 0
+      ? universe
+          .filter((f) => f.purchase_mode === 'Direct' && (f.broad_category === 'Equity' || !f.broad_category))
+          .sort((a, b) => (Number(b.return_1y) || 0) - (Number(a.return_1y) || 0))
+          .slice(0, 50)
+      : topFunds;
+    displayFunds = defaultFunds;
+    displayLabel = defaultFunds.length > 0
+      ? `Top ${defaultFunds.length} Direct Equity funds by 1Y return`
+      : '0 funds found';
   } else {
     displayFunds = [];
     displayLabel = '0 funds found';
   }
 
   return (
-    <div className="space-y-6 -m-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-br from-white via-white to-teal-50/20 border-b border-slate-200 px-6 py-6">
+      <div className="mb-4">
         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Fund 360{'\u00B0'}</h2>
         <p className="text-sm text-slate-500 mt-1">
           Explore, filter, and deep-dive into any Indian mutual fund
         </p>
       </div>
 
-      <div className="px-6 space-y-6">
+      <div className="space-y-6">
         {/* Smart Buckets */}
         <SmartBuckets
           activeBucket={activeBucket}
@@ -234,7 +243,7 @@ export default function FundSearch({ onSelect }) {
             ))}
           </select>
 
-          {(selectedCategory || selectedAmc || selectedBroad !== 'All' || query || activeBucket || purchaseMode !== 1) && (
+          {(selectedCategory || selectedAmc || selectedBroad !== 'All' || query || activeBucket || purchaseMode !== 2) && (
             <button
               type="button"
               onClick={() => {
@@ -244,7 +253,7 @@ export default function FundSearch({ onSelect }) {
                 setSelectedAmc('');
                 setActiveBucket(null);
                 setBucketFundIds([]);
-                setPurchaseMode(1);
+                setPurchaseMode(2);
               }}
               className="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors"
             >
