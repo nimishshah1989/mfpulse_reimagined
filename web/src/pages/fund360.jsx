@@ -31,6 +31,7 @@ import RadarChart from '../components/fund360/RadarChart';
 import IntelligenceCards from '../components/fund360/IntelligenceCards';
 import PeerScatter from '../components/fund360/PeerScatter';
 import PortfolioMetrics from '../components/fund360/PortfolioMetrics';
+import CreditQuality from '../components/fund360/CreditQuality';
 
 /* ---- Section wrapper matching mockup white cards ---- */
 function SectionCard({ title, subtitle, badge, children, className = '' }) {
@@ -269,6 +270,7 @@ export default function Fund360Page() {
                   },
                 }]}
                 size={280}
+                categoryAvg={peerAvgs}
               />
             </SectionCard>
           </div>
@@ -301,13 +303,6 @@ export default function Fund360Page() {
         </div>
       )}
 
-      {/* SECTION 2b: Intelligence Cards */}
-      {lensScores && (
-        <SectionCard title="Lens Intelligence" subtitle="What each score means for this fund">
-          <IntelligenceCards lensScores={lensScores} />
-        </SectionCard>
-      )}
-
       {/* SECTION 3: NAV Performance Chart */}
       <SectionCard title="Performance">
         <PerformanceChart
@@ -328,26 +323,27 @@ export default function Fund360Page() {
         </SectionCard>
       )}
 
-      {/* SECTION 5: Risk Profile Stats Grid */}
+      {/* SECTION 5: Returns vs Category */}
+      <SectionCard title="Returns vs Category">
+        <ReturnsBars
+          fundReturns={fundReturns}
+          categoryReturns={categoryReturns}
+        />
+      </SectionCard>
+
+      {/* SECTION 6: Risk Profile Stats Grid */}
       <SectionCard title="Risk Profile">
         <RiskProfile riskStats={combinedRiskStats} />
       </SectionCard>
 
-      {/* SECTION 5b: Portfolio Metrics */}
-      {holdingsSnapshot && (
-        <SectionCard title="Portfolio Metrics" subtitle="From latest holdings snapshot">
-          <PortfolioMetrics holdingsData={holdingsSnapshot} />
-        </SectionCard>
-      )}
-
-      {/* SECTION 6: Holdings + Sector + Asset */}
+      {/* SECTION 7: Holdings + Sector + Asset + Portfolio + Credit */}
       <div className="animate-in grid grid-cols-1 lg:grid-cols-3 gap-4" style={{ animationDelay: '0.3s' }}>
         {/* Holdings (2 cols) */}
         <SectionCard title="Top Holdings" className="lg:col-span-2">
           <HoldingsTable holdings={holdings} sectorQuadrants={sectorQuadrants} />
         </SectionCard>
 
-        {/* Sector + Asset (1 col) */}
+        {/* Sector + Asset + Credit (1 col) */}
         <div className="space-y-4">
           <SectionCard title="Sector Allocation">
             <SectorAllocation sectors={sectors} sectorQuadrants={sectorQuadrants} />
@@ -355,16 +351,21 @@ export default function Fund360Page() {
           <SectionCard title="Asset Allocation">
             <AssetAllocation mstarId={mstarId} />
           </SectionCard>
+          <SectionCard title="Credit Quality">
+            <CreditQuality
+              creditQuality={holdingsSnapshot?.credit_quality}
+              categoryName={fundDetail.category_name}
+            />
+          </SectionCard>
         </div>
       </div>
 
-      {/* SECTION 7: Returns vs Category */}
-      <SectionCard title="Returns vs Category">
-        <ReturnsBars
-          fundReturns={fundReturns}
-          categoryReturns={categoryReturns}
-        />
-      </SectionCard>
+      {/* SECTION 7b: Portfolio Metrics */}
+      {holdingsSnapshot && (
+        <SectionCard title="Portfolio Metrics" subtitle="From latest holdings snapshot">
+          <PortfolioMetrics holdingsData={holdingsSnapshot} />
+        </SectionCard>
+      )}
 
       {/* SECTION 8: Peer Comparison */}
       <div className="animate-in grid grid-cols-1 lg:grid-cols-5 gap-4" style={{ animationDelay: '0.5s' }}>
@@ -384,6 +385,11 @@ export default function Fund360Page() {
           />
         </SectionCard>
       </div>
+
+      {/* SECTION 9: Fund Intelligence */}
+      <SectionCard title="Fund Intelligence" subtitle="Actionable insights for this fund">
+        <IntelligenceCards mstarId={mstarId} />
+      </SectionCard>
 
       {/* Compare Mode Panel */}
       {compareOpen && lensScores && (

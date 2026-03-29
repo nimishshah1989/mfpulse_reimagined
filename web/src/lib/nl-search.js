@@ -60,6 +60,18 @@ const LENS_KEYWORDS = {
   'low risk': 'risk_score',
 };
 
+const TIER_KEYWORDS = {
+  'leader': { class: 'return_class', value: 'LEADER' },
+  'fortress': { class: 'resilience_class', value: 'FORTRESS' },
+  'alpha machine': { class: 'alpha_class', value: 'ALPHA_MACHINE' },
+  'rock solid': { class: 'consistency_class', value: 'ROCK_SOLID' },
+  'sturdy': { class: 'resilience_class', value: 'STURDY' },
+  'lean': { class: 'efficiency_class', value: 'LEAN' },
+  'bloated': { class: 'efficiency_class', value: 'BLOATED' },
+  'erratic': { class: 'consistency_class', value: 'ERRATIC' },
+  'vulnerable': { class: 'resilience_class', value: 'VULNERABLE' },
+};
+
 // Numeric pattern: "alpha > 80", "sharpe > 1.5", "return > 15%", "drawdown < 15%"
 const NUMERIC_PATTERN = /(\w[\w\s]*?)\s*(>|<|>=|<=|above|below|over|under)\s*(\d+\.?\d*)\s*%?/gi;
 
@@ -78,6 +90,7 @@ export function parseNLQuery(query) {
     lensFilters: [],
     numericFilters: [],
     categories: [],
+    tierFilters: [],
     keywords: [],
     raw: query,
   };
@@ -100,6 +113,13 @@ export function parseNLQuery(query) {
   for (const [keyword, lensKey] of Object.entries(LENS_KEYWORDS)) {
     if (lower.includes(keyword)) {
       result.lensFilters.push({ key: lensKey, keyword });
+    }
+  }
+
+  // Match tier keywords
+  for (const [keyword, tier] of Object.entries(TIER_KEYWORDS)) {
+    if (lower.includes(keyword)) {
+      result.tierFilters.push(tier);
     }
   }
 
@@ -154,7 +174,7 @@ export function parseNLQuery(query) {
   const words = lower.split(/\s+/).filter((w) => w.length > 2 && !stopWords.has(w));
   result.keywords = words;
 
-  const hasFilters = result.sectors.length + result.quadrants.length + result.lensFilters.length + result.numericFilters.length + result.categories.length > 0;
+  const hasFilters = result.sectors.length + result.quadrants.length + result.lensFilters.length + result.numericFilters.length + result.categories.length + result.tierFilters.length > 0;
   return hasFilters ? result : null;
 }
 
@@ -184,6 +204,13 @@ export function applyNLFilters(funds, filters) {
       if (nf.operator === 'gte') return val >= nf.value;
       if (nf.operator === 'lte') return val <= nf.value;
       return true;
+    });
+  }
+
+  // Tier filters
+  if (filters.tierFilters?.length > 0) {
+    result = result.filter((f) => {
+      return filters.tierFilters.every((tf) => f[tf.class] === tf.value);
     });
   }
 

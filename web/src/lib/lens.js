@@ -60,7 +60,7 @@ export function scoreColor(value) {
   const v = Number(value);
   if (isNaN(v)) return '#94a3b8';
   if (v >= 80) return '#059669';
-  if (v >= 60) return '#0d9488';
+  if (v >= 60) return '#10b981';
   if (v >= 40) return '#d97706';
   if (v >= 20) return '#ef4444';
   return '#dc2626';

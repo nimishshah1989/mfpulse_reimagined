@@ -154,6 +154,41 @@ def list_amcs(db: Session = Depends(get_db)) -> dict:
     }
 
 
+@router.post("/search/natural")
+def natural_language_search(
+    body: dict,
+    limit: int = Query(default=50, le=200),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Rule-based NL query parser — backend authoritative version."""
+    from app.services.nl_search_service import NLSearchService
+
+    query_text = body.get("query", "")
+    svc = NLSearchService(db)
+    result = svc.search(query_text, limit=limit)
+    return {
+        "success": True,
+        "data": result,
+        "meta": {"timestamp": Meta().timestamp, "count": result["count"]},
+        "error": None,
+    }
+
+
+@router.get("/{mstar_id}/intelligence")
+def get_fund_intelligence(mstar_id: str, db: Session = Depends(get_db)) -> dict:
+    """3 intelligence cards: Regime Signal, Better Alternatives, SIP Intelligence."""
+    from app.services.fund_intelligence import FundIntelligenceService
+
+    svc = FundIntelligenceService(db)
+    data = svc.get_intelligence(mstar_id)
+    return {
+        "success": True,
+        "data": data,
+        "meta": {"timestamp": Meta().timestamp},
+        "error": None,
+    }
+
+
 @router.get("/{mstar_id}/asset-allocation")
 def get_asset_allocation(
     mstar_id: str,

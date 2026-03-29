@@ -56,12 +56,20 @@ export default function SimulationPage() {
     } catch (e) { setTemplates([]); }
   }, []);
 
-  // Read ?fund= from URL
+  // Read ?fund=, ?period=, ?sip= from URL
   useEffect(() => {
-    if (router.isReady && router.query.fund) {
+    if (!router.isReady) return;
+    if (router.query.fund) {
       setFund({ mstar_id: router.query.fund });
     }
-  }, [router.isReady, router.query.fund]);
+    if (router.query.period) {
+      setPeriod(router.query.period);
+    }
+    if (router.query.sip) {
+      const sipVal = Number(router.query.sip);
+      if (sipVal > 0) setConfig((prev) => ({ ...prev, sip_amount: sipVal }));
+    }
+  }, [router.isReady, router.query.fund, router.query.period, router.query.sip]);
 
   // Load default rules on mount
   useEffect(() => {
@@ -245,6 +253,24 @@ export default function SimulationPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {hasResults && fund?.mstar_id && (
+              <button
+                onClick={() => {
+                  const params = new URLSearchParams({
+                    fund: fund.mstar_id,
+                    period,
+                    sip: String(config.sip_amount || 25000),
+                  });
+                  const url = `${window.location.origin}/simulation?${params}`;
+                  navigator.clipboard.writeText(url).then(() => {
+                    alert('Share link copied to clipboard!');
+                  });
+                }}
+                className="px-3 py-1.5 text-[10px] font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                Share
+              </button>
+            )}
             {hasResults && (
               <button
                 onClick={runSimulation}

@@ -13,6 +13,8 @@ from app.models.db.rank_monthly import RankMonthly
 from app.models.db.holdings import FundHoldingsSnapshot
 from app.models.db.category_returns import CategoryReturnsDaily
 from app.models.db.fund_master import FundMaster
+from app.models.db.lens_scores import FundLensScores
+from app.models.db.sector_exposure import FundSectorExposure
 
 
 class FreshnessRepository:
@@ -32,6 +34,8 @@ class FreshnessRepository:
             "rank_monthly": (RankMonthly, RankMonthly.as_of_date),
             "fund_holdings_snapshot": (FundHoldingsSnapshot, FundHoldingsSnapshot.portfolio_date),
             "category_returns_daily": (CategoryReturnsDaily, CategoryReturnsDaily.as_of_date),
+            "fund_lens_scores": (FundLensScores, FundLensScores.computed_date),
+            "fund_sector_exposure": (FundSectorExposure, FundSectorExposure.portfolio_date),
         }
 
         for table_name, (model, date_col) in queries.items():

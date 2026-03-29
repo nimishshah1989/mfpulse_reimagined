@@ -25,9 +25,9 @@ function vertex(cx, cy, radius, score, i) {
   };
 }
 
-export default function RadarChart({ funds = [], size = 320 }) {
+export default function RadarChart({ funds = [], size = 320, categoryAvg = null }) {
   const svgRef = useRef(null);
-  const legendHeight = funds.length > 1 ? 32 : 0;
+  const legendHeight = (funds.length > 1 || categoryAvg) ? 32 : 0;
   const totalHeight = size + legendHeight;
   const cx = size / 2;
   const cy = size / 2;
@@ -77,6 +77,29 @@ export default function RadarChart({ funds = [], size = 320 }) {
         .text(axis.label);
     });
 
+    // Category average overlay (dashed gray polygon)
+    if (categoryAvg) {
+      const avgPts = AXES.map((axis, i) => {
+        const score = categoryAvg[axis.key] ?? 0;
+        return vertex(cx, cy, radius, score, i);
+      });
+      const avgStr = avgPts.map((p) => `${p.x},${p.y}`).join(' ');
+      chart.append('polygon')
+        .attr('points', avgStr)
+        .attr('fill', 'none')
+        .attr('stroke', '#94a3b8')
+        .attr('stroke-width', 1.5)
+        .attr('stroke-dasharray', '6,3')
+        .attr('opacity', 0.7);
+
+      avgPts.forEach((p) => {
+        chart.append('circle')
+          .attr('cx', p.x).attr('cy', p.y).attr('r', 2.5)
+          .attr('fill', '#94a3b8')
+          .attr('opacity', 0.7);
+      });
+    }
+
     // Fund polygons + dots
     funds.forEach((fund, fi) => {
       const color = COLORS[fi % COLORS.length];
@@ -118,25 +141,41 @@ export default function RadarChart({ funds = [], size = 320 }) {
       });
     });
 
-    // Legend (only if >1 fund)
-    if (funds.length > 1) {
+    // Legend
+    if (funds.length > 1 || categoryAvg) {
       const legend = svg.append('g')
         .attr('transform', `translate(${cx}, ${size + 8})`);
-      const spacing = 120;
-      const startX = -((funds.length - 1) * spacing) / 2;
-
+      const items = [];
       funds.forEach((fund, fi) => {
+        items.push({ label: fund.label, color: COLORS[fi % COLORS.length], dashed: false });
+      });
+      if (categoryAvg) {
+        items.push({ label: 'Category Avg', color: '#94a3b8', dashed: true });
+      }
+      const spacing = 120;
+      const startX = -((items.length - 1) * spacing) / 2;
+
+      items.forEach((item, idx) => {
         const g = legend.append('g')
-          .attr('transform', `translate(${startX + fi * spacing}, 0)`);
-        g.append('rect')
-          .attr('x', -8).attr('y', -6)
-          .attr('width', 12).attr('height', 12)
-          .attr('rx', 2)
-          .attr('fill', COLORS[fi % COLORS.length]);
+          .attr('transform', `translate(${startX + idx * spacing}, 0)`);
+        if (item.dashed) {
+          g.append('line')
+            .attr('x1', -8).attr('y1', 0)
+            .attr('x2', 4).attr('y2', 0)
+            .attr('stroke', item.color)
+            .attr('stroke-width', 1.5)
+            .attr('stroke-dasharray', '4,2');
+        } else {
+          g.append('rect')
+            .attr('x', -8).attr('y', -6)
+            .attr('width', 12).attr('height', 12)
+            .attr('rx', 2)
+            .attr('fill', item.color);
+        }
         g.append('text')
           .attr('x', 10).attr('y', 4)
           .attr('class', 'text-xs fill-slate-600')
-          .text(fund.label);
+          .text(item.label);
       });
     }
   }, [funds, size, cx, cy, radius]);

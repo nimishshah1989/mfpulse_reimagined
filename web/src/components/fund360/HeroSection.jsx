@@ -63,7 +63,7 @@ export default function HeroSection({ fundDetail, lensScores, mstarId, onCompare
   const aumCr = aumRaw != null ? Number(aumRaw) / 10000000 : null;
 
   // NAV
-  const nav = fundReturns.nav ?? fundDetail.nav;
+  const nav = fundReturns.nav ?? fundDetail.nav ?? fundDetail.latest_nav;
   const navDate = fundReturns.nav_date ?? fundDetail.nav_date;
   const navChange = fundReturns.return_1d ?? fundDetail.return_1d;
   const nav52High = fundReturns.nav_52wk_high ?? fundDetail.nav_52wk_high;

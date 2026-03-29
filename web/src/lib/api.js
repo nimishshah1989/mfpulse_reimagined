@@ -97,6 +97,12 @@ export const fetchSectorFundExposure = (sector, limit) =>
   apiFetch(`/api/v1/sectors/fund-exposure?sector=${encodeURIComponent(sector)}&limit=${limit || 20}`);
 export const triggerSectorCompute = () =>
   apiFetch('/api/v1/sectors/compute', { method: 'POST' });
+export const fetchSectorDrillDown = (sector, minPct, limit) =>
+  apiFetch(`/api/v1/sectors/drill/${encodeURIComponent(sector)}?min_pct=${minPct || 5}&limit=${limit || 50}`);
+export const fetchFundExposureMatrix = (limit) =>
+  apiFetch(`/api/v1/sectors/fund-exposure-matrix?limit=${limit || 20}`);
+export const triggerSectorBackfill = (months) =>
+  apiFetch(`/api/v1/sectors/backfill?months=${months || 6}`, { method: 'POST' });
 
 // Simulation APIs
 export const runSimulation = (params) =>
@@ -172,6 +178,21 @@ export const parseStrategyQuery = (query) =>
   apiFetch('/api/v1/claude/parse-query', { method: 'POST', body: JSON.stringify({ query }) });
 export const fetchClaudeUsage = () =>
   apiFetch('/api/v1/claude/usage');
+
+// Dashboard APIs
+export const fetchSmartBuckets = () =>
+  apiFetch('/api/v1/dashboard/smart-buckets');
+
+// Fund intelligence
+export const fetchFundIntelligence = (mstarId) =>
+  apiFetch(`/api/v1/funds/${mstarId}/intelligence`);
+
+// NL search (backend authoritative)
+export const searchFundsNL = (query) =>
+  apiFetch('/api/v1/funds/search/natural', {
+    method: 'POST',
+    body: JSON.stringify({ query }),
+  });
 
 // Ingestion triggers
 export const fetchDataFreshness = () =>

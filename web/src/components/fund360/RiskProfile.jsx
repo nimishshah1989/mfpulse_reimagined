@@ -58,8 +58,8 @@ export default function RiskProfile({ riskStats }) {
       label: 'Beta (3Y)',
       value: riskStats.beta_3y ?? riskStats.beta,
       format: fmtNum,
-      sublabel: Number(riskStats.beta_3y ?? riskStats.beta) < 1 ? 'Below market' : 'Above market',
-      sublabelColor: Number(riskStats.beta_3y ?? riskStats.beta) < 1 ? 'text-emerald-600' : 'text-amber-600',
+      sublabel: (riskStats.beta_3y ?? riskStats.beta) != null ? (Number(riskStats.beta_3y ?? riskStats.beta) < 1 ? 'Below market' : 'Above market') : null,
+      sublabelColor: (riskStats.beta_3y ?? riskStats.beta) != null ? (Number(riskStats.beta_3y ?? riskStats.beta) < 1 ? 'text-emerald-600' : 'text-amber-600') : '',
     },
     {
       label: 'Alpha (3Y)',
@@ -92,8 +92,8 @@ export default function RiskProfile({ riskStats }) {
       label: 'Capture Down',
       value: riskStats.downside_capture_3y ?? riskStats.downside_capture,
       format: fmtPct0,
-      sublabelColor: Number(riskStats.downside_capture_3y ?? riskStats.downside_capture) < 90 ? 'text-emerald-600' : 'text-amber-600',
-      sublabel: Number(riskStats.downside_capture_3y ?? riskStats.downside_capture) < 90 ? 'Falls less' : null,
+      sublabelColor: (riskStats.downside_capture_3y ?? riskStats.downside_capture) != null && Number(riskStats.downside_capture_3y ?? riskStats.downside_capture) < 90 ? 'text-emerald-600' : 'text-amber-600',
+      sublabel: (riskStats.downside_capture_3y ?? riskStats.downside_capture) != null ? (Number(riskStats.downside_capture_3y ?? riskStats.downside_capture) < 90 ? 'Falls less' : null) : null,
     },
     {
       label: 'R-Squared (3Y)',

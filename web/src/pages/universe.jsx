@@ -100,6 +100,15 @@ export default function UniversePage() {
     setNLFilters(parsed);
   }, []);
 
+  useEffect(() => {
+    if (!router.isReady) return;
+    const q = router.query.q;
+    if (q && typeof q === 'string') {
+      handleSearch(q);
+      setSearchQuery(q);
+    }
+  }, [router.isReady, router.query.q]);
+
   // Apply preset filters
   const handlePresetClick = useCallback((presetId) => {
     if (presetId === activePreset) {
@@ -121,6 +130,7 @@ export default function UniversePage() {
     let result = allFunds.filter((fund) => {
       const aumCr = (Number(fund.aum) || 0) / 10000000;
       if (fund.aum != null && aumCr < 10) return false;
+      if (fund.fund_name?.toLowerCase().includes('segregated')) return false;
       if (fund.inception_date) {
         const age = now - new Date(fund.inception_date).getTime();
         if (age < THREE_YEARS_MS) return false;
@@ -398,6 +408,17 @@ export default function UniversePage() {
               />
             )}
           </div>
+          {/* Chart Guide */}
+          <details className="mt-2 text-[10px] text-slate-400">
+            <summary className="cursor-pointer hover:text-slate-600 font-medium">Chart Guide</summary>
+            <ul className="mt-1 space-y-0.5 pl-3 list-disc">
+              <li>Click a bubble to see fund details</li>
+              <li>Double-click to open Fund 360 view</li>
+              <li>Scroll to zoom in/out</li>
+              <li>Drag to pan across the chart</li>
+              <li>Click tier labels (left) to spotlight a group</li>
+            </ul>
+          </details>
         </div>
 
         {/* RIGHT: Intelligence Panel */}

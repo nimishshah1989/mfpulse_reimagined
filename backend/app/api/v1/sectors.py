@@ -42,9 +42,44 @@ def get_fund_exposure_by_sector(
     return {"success": True, "data": data, "meta": {"sector": sector, "count": len(data)}, "error": None}
 
 
+@router.get("/drill/{sector_name}")
+def get_sector_drill_down(
+    sector_name: str,
+    min_pct: float = Query(default=5.0, ge=0, le=100),
+    limit: int = Query(default=50, ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    """Drill into a sector — funds with significant exposure, enriched with lens scores + returns."""
+    svc = SectorRotationService(db)
+    data = svc.get_sector_drill_down(sector_name, min_pct=min_pct, limit=limit)
+    return {"success": True, "data": data, "meta": {"sector": sector_name, "count": len(data)}, "error": None}
+
+
+@router.get("/fund-exposure-matrix")
+def get_fund_exposure_matrix(
+    limit: int = Query(default=20, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    """Top N funds by AUM with all 11 sector exposures — single batch query."""
+    svc = SectorRotationService(db)
+    data = svc.get_fund_exposure_matrix(limit=limit)
+    return {"success": True, "data": data, "meta": {"count": len(data)}, "error": None}
+
+
 @router.post("/compute")
 def trigger_sector_computation(db: Session = Depends(get_db)):
     """Manually trigger sector rotation computation from latest holdings data."""
     svc = SectorRotationService(db)
     data = svc.compute_current()
+    return {"success": True, "data": data, "meta": {"count": len(data)}, "error": None}
+
+
+@router.post("/backfill")
+def trigger_sector_backfill(
+    months: int = Query(default=6, ge=1, le=24),
+    db: Session = Depends(get_db),
+):
+    """Backfill sector rotation history for the last N months of portfolio dates."""
+    svc = SectorRotationService(db)
+    data = svc.backfill_history(months=months)
     return {"success": True, "data": data, "meta": {"count": len(data)}, "error": None}

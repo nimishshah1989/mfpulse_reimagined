@@ -5,7 +5,6 @@ import {
   fetchSentiment,
   fetchMarketRegime,
   fetchFunds,
-  fetchSectorExposure,
   fetchMorningstarSectors,
 } from '../lib/api';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
@@ -74,7 +73,7 @@ export default function SectorsPage() {
 
     let anySuccess = false;
 
-    // Prefer Morningstar sectors, fallback to MarketPulse
+    // Use Morningstar sectors only — no Nifty fallback
     if (mstarRes.status === 'fulfilled' && mstarRes.value.data?.length > 0) {
       const raw = mstarRes.value.data;
       const normalized = (Array.isArray(raw) ? raw : []).map((s) => ({
@@ -84,14 +83,9 @@ export default function SectorsPage() {
       }));
       setSectorData(normalized);
       anySuccess = true;
-    } else if (sectorsRes.status === 'fulfilled') {
-      const raw = sectorsRes.value.data || [];
-      const normalized = (Array.isArray(raw) ? raw : []).map((s) => ({
-        ...s,
-        sector_name: s.sector_name || s.display_name || s.name || 'Unknown',
-        quadrant: toTitleCase(s.quadrant),
-      }));
-      setSectorData(normalized);
+    } else {
+      // No fallback to Nifty indices — show computing message
+      setSectorData([]);
       anySuccess = true;
     }
     if (breadthRes.status === 'fulfilled') {
@@ -135,45 +129,11 @@ export default function SectorsPage() {
   }, []);
 
   const showFundQuadrant = useCallback(
-    async (sector) => {
+    (sector) => {
       setSelectedSector(sector);
       setView('drilldown');
-
-      if (exposureAvailable === null && funds.length > 0) {
-        setExposureLoading(true);
-        try {
-          const sample = funds.slice(0, 5);
-          const results = await Promise.allSettled(
-            sample.map((f) => fetchSectorExposure(f.mstar_id))
-          );
-          const hasData = results.some(
-            (r) =>
-              r.status === 'fulfilled' &&
-              r.value.data &&
-              r.value.data.length > 0
-          );
-          setExposureAvailable(hasData);
-          if (hasData) {
-            const newExposures = { ...sectorExposures };
-            results.forEach((r, i) => {
-              if (r.status === 'fulfilled' && r.value.data) {
-                const map = {};
-                r.value.data.forEach((s) => {
-                  map[s.sector_name] = s.allocation_pct;
-                });
-                newExposures[sample[i].mstar_id] = map;
-              }
-            });
-            setSectorExposures(newExposures);
-          }
-        } catch {
-          setExposureAvailable(false);
-        } finally {
-          setExposureLoading(false);
-        }
-      }
     },
-    [exposureAvailable, funds, sectorExposures]
+    []
   );
 
   const showCompass = useCallback(() => {
@@ -331,13 +291,19 @@ export default function SectorsPage() {
               {/* VIEW 1: Compass */}
               {view === 'compass' && (
                 <div className="view-fade">
-                  <CompassChart
-                    sectors={sectorData}
-                    selectedSector={selectedSector}
-                    onSectorClick={showFundQuadrant}
-                    width={compassWidth - 48}
-                    height={520}
-                  />
+                  {sectorData.length > 0 ? (
+                    <CompassChart
+                      sectors={sectorData}
+                      selectedSector={selectedSector}
+                      onSectorClick={showFundQuadrant}
+                      width={compassWidth - 48}
+                      height={520}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-[400px] text-sm text-slate-400">
+                      Sector rotation data computing... Check back after sector computation runs.
+                    </div>
+                  )}
                 </div>
               )}
 

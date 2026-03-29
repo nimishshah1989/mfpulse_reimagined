@@ -5,12 +5,18 @@ from __future__ import annotations
 import logging
 from datetime import date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
+from statistics import stdev
+from typing import Optional
 
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, text
 from sqlalchemy.orm import Session
 
+from app.models.db.fund_master import FundMaster
+from app.models.db.holdings import FundHoldingsSnapshot
+from app.models.db.nav_daily import NavDaily
 from app.models.db.sector_exposure import FundSectorExposure
 from app.models.db.sector_rotation import SectorRotationHistory
+from app.models.db.lens_scores import FundLensScores
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +33,6 @@ class SectorRotationService:
 
     def compute_current(self) -> list[dict]:
         """Compute current sector rotation from latest holdings and store in history."""
-        # Get the latest portfolio_date in fund_sector_exposure
         latest_date = self.db.query(func.max(FundSectorExposure.portfolio_date)).scalar()
         if not latest_date:
             logger.warning("No sector exposure data found")
@@ -39,9 +44,34 @@ class SectorRotationService:
         """Compute sector rotation for a specific date."""
         return self._compute_for_date(target_date)
 
+    def backfill_history(self, months: int = 6) -> list[dict]:
+        """Backfill sector rotation for all distinct portfolio dates in the last N months."""
+        cutoff = date.today() - timedelta(days=months * 31)
+        dates = (
+            self.db.query(FundSectorExposure.portfolio_date)
+            .filter(FundSectorExposure.portfolio_date >= cutoff)
+            .distinct()
+            .order_by(FundSectorExposure.portfolio_date.asc())
+            .all()
+        )
+        all_results = []
+        for (d,) in dates:
+            results = self._compute_for_date(d)
+            all_results.extend(results)
+        logger.info("Backfilled sector rotation for %d dates", len(dates))
+        return all_results
+
     def _compute_for_date(self, target_date: date) -> list[dict]:
-        """Core computation for a specific snapshot date."""
-        # Get sector weights for the target date
+        """Core computation for a specific snapshot date.
+
+        RS Score = (sector_weighted_return - avg_all_sectors_return) / std_dev
+        normalized to 0-100 scale. Uses AUM-weighted sector returns from
+        fund_sector_exposure × nav_daily.return_1y.
+        """
+        # Get AUM-weighted sector returns
+        sector_returns = self._get_sector_weighted_returns(target_date)
+
+        # Get sector weights for momentum calculation
         current_weights = self._get_sector_weights(target_date)
         if not current_weights:
             logger.warning("No sector weights for date %s", target_date)
@@ -54,8 +84,15 @@ class SectorRotationService:
         prev_1m_weights = self._get_sector_weights_nearest(prev_1m_date)
         prev_3m_weights = self._get_sector_weights_nearest(prev_3m_date)
 
-        # Compute RS score: weight relative to equal-weight baseline (100/11 ≈ 9.09%)
-        equal_weight = Decimal("9.0909")
+        # Compute RS score: relative performance approach
+        all_returns = [
+            sector_returns.get(s, {}).get("weighted_return", Decimal("0"))
+            for s in MORNINGSTAR_SECTORS
+        ]
+        all_returns_float = [float(r) for r in all_returns]
+        avg_return = sum(all_returns_float) / max(len(all_returns_float), 1)
+        std_return = stdev(all_returns_float) if len(all_returns_float) > 1 else Decimal("1")
+        std_return = max(std_return, 0.01)  # avoid division by zero
 
         results = []
         for sector in MORNINGSTAR_SECTORS:
@@ -69,10 +106,16 @@ class SectorRotationService:
             mom_1m = avg_wt - prev_1m_wt
             mom_3m = avg_wt - prev_3m_wt
 
-            # RS score: (actual_weight / equal_weight) * 50, clamped 0-100
-            rs = min(Decimal("100"), max(Decimal("0"),
-                (avg_wt / equal_weight * Decimal("50")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            )) if avg_wt > 0 else Decimal("0")
+            # RS score based on relative performance
+            sec_ret = sector_returns.get(sector, {})
+            weighted_ret = sec_ret.get("weighted_return", Decimal("0"))
+            total_aum = sec_ret.get("total_aum", Decimal("0"))
+
+            raw_rs = (float(weighted_ret) - avg_return) / std_return
+            # Normalize from z-score (-3 to +3 typically) to 0-100
+            rs = max(Decimal("0"), min(Decimal("100"),
+                Decimal(str(50 + raw_rs * 16.67)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            ))
 
             # Quadrant: based on RS (above/below 50) and momentum (positive/negative)
             quadrant = self._assign_quadrant(rs, mom_1m)
@@ -86,6 +129,8 @@ class SectorRotationService:
                 rs_score=rs,
                 quadrant=quadrant,
                 fund_count=fund_ct,
+                weighted_return=weighted_ret.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP),
+                total_aum_exposed=total_aum.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
             )
 
             # Upsert
@@ -103,6 +148,8 @@ class SectorRotationService:
                 existing.rs_score = entry.rs_score
                 existing.quadrant = entry.quadrant
                 existing.fund_count = entry.fund_count
+                existing.weighted_return = entry.weighted_return
+                existing.total_aum_exposed = entry.total_aum_exposed
             else:
                 self.db.add(entry)
 
@@ -115,6 +162,8 @@ class SectorRotationService:
                 "rs_score": float(rs),
                 "quadrant": quadrant,
                 "fund_count": fund_ct,
+                "weighted_return": float(weighted_ret),
+                "total_aum_exposed": float(total_aum),
             })
 
         self.db.commit()
@@ -179,6 +228,343 @@ class SectorRotationService:
             }
             for r in rows
         ]
+
+    def get_sector_drill_down(
+        self,
+        sector_name: str,
+        min_pct: float = 5.0,
+        limit: int = 50,
+    ) -> list[dict]:
+        """Get funds with >= min_pct exposure to a sector, enriched with lens + returns."""
+        latest_date = self.db.query(
+            func.max(FundSectorExposure.portfolio_date)
+        ).scalar()
+        if not latest_date:
+            return []
+
+        # Get latest lens scores date
+        latest_lens_date = self.db.query(
+            func.max(FundLensScores.computed_date)
+        ).scalar()
+
+        # Get latest nav date for returns
+        latest_nav_sub = (
+            self.db.query(
+                NavDaily.mstar_id,
+                func.max(NavDaily.nav_date).label("max_date"),
+            )
+            .group_by(NavDaily.mstar_id)
+            .subquery()
+        )
+
+        # Main query: sector exposure >= threshold
+        exposures = (
+            self.db.query(
+                FundSectorExposure.mstar_id,
+                FundSectorExposure.net_pct,
+            )
+            .filter(
+                FundSectorExposure.sector_name == sector_name,
+                FundSectorExposure.portfolio_date == latest_date,
+                FundSectorExposure.net_pct >= Decimal(str(min_pct)),
+            )
+            .order_by(FundSectorExposure.net_pct.desc())
+            .limit(limit)
+            .all()
+        )
+
+        if not exposures:
+            return []
+
+        mstar_ids = [e.mstar_id for e in exposures]
+        exposure_map = {e.mstar_id: float(e.net_pct) for e in exposures}
+
+        # Batch fetch fund master
+        funds = (
+            self.db.query(FundMaster)
+            .filter(FundMaster.mstar_id.in_(mstar_ids))
+            .all()
+        )
+        fund_map = {f.mstar_id: f for f in funds}
+
+        # Batch fetch lens scores
+        lens_map: dict[str, FundLensScores] = {}
+        if latest_lens_date:
+            lens_rows = (
+                self.db.query(FundLensScores)
+                .filter(
+                    FundLensScores.mstar_id.in_(mstar_ids),
+                    FundLensScores.computed_date == latest_lens_date,
+                )
+                .all()
+            )
+            lens_map = {r.mstar_id: r for r in lens_rows}
+
+        # Batch fetch latest returns
+        nav_rows = (
+            self.db.query(NavDaily)
+            .join(
+                latest_nav_sub,
+                (NavDaily.mstar_id == latest_nav_sub.c.mstar_id)
+                & (NavDaily.nav_date == latest_nav_sub.c.max_date),
+            )
+            .filter(NavDaily.mstar_id.in_(mstar_ids))
+            .all()
+        )
+        nav_map = {r.mstar_id: r for r in nav_rows}
+
+        # Batch fetch AUM
+        aum_sub = (
+            self.db.query(
+                FundHoldingsSnapshot.mstar_id,
+                func.max(FundHoldingsSnapshot.portfolio_date).label("max_date"),
+            )
+            .filter(
+                FundHoldingsSnapshot.mstar_id.in_(mstar_ids),
+                FundHoldingsSnapshot.aum.isnot(None),
+            )
+            .group_by(FundHoldingsSnapshot.mstar_id)
+            .subquery()
+        )
+        aum_rows = (
+            self.db.query(FundHoldingsSnapshot.mstar_id, FundHoldingsSnapshot.aum)
+            .join(
+                aum_sub,
+                (FundHoldingsSnapshot.mstar_id == aum_sub.c.mstar_id)
+                & (FundHoldingsSnapshot.portfolio_date == aum_sub.c.max_date),
+            )
+            .all()
+        )
+        aum_map = {r.mstar_id: r.aum for r in aum_rows}
+
+        result = []
+        for mid in mstar_ids:
+            fund = fund_map.get(mid)
+            if not fund:
+                continue
+            lens = lens_map.get(mid)
+            nav = nav_map.get(mid)
+            aum = aum_map.get(mid)
+
+            result.append({
+                "mstar_id": mid,
+                "fund_name": fund.fund_name,
+                "category_name": fund.category_name,
+                "amc_name": fund.amc_name,
+                "sector_exposure_pct": exposure_map.get(mid, 0),
+                "return_1y": float(nav.return_1y) if nav and nav.return_1y else None,
+                "return_3y": float(nav.return_3y) if nav and nav.return_3y else None,
+                "aum": float(aum) if aum else None,
+                "return_score": float(lens.return_score) if lens and lens.return_score else None,
+                "risk_score": float(lens.risk_score) if lens and lens.risk_score else None,
+                "alpha_score": float(lens.alpha_score) if lens and lens.alpha_score else None,
+                "consistency_score": float(lens.consistency_score) if lens and lens.consistency_score else None,
+            })
+
+        return result
+
+    def get_fund_exposure_matrix(self, limit: int = 20) -> list[dict]:
+        """Top N funds by AUM with all 11 sector exposures + 1Y return."""
+        latest_date = self.db.query(
+            func.max(FundSectorExposure.portfolio_date)
+        ).scalar()
+        if not latest_date:
+            return []
+
+        # Get top funds by AUM
+        aum_sub = (
+            self.db.query(
+                FundHoldingsSnapshot.mstar_id,
+                func.max(FundHoldingsSnapshot.portfolio_date).label("max_date"),
+            )
+            .filter(FundHoldingsSnapshot.aum.isnot(None))
+            .group_by(FundHoldingsSnapshot.mstar_id)
+            .subquery()
+        )
+        top_funds = (
+            self.db.query(
+                FundHoldingsSnapshot.mstar_id,
+                FundHoldingsSnapshot.aum,
+            )
+            .join(
+                aum_sub,
+                (FundHoldingsSnapshot.mstar_id == aum_sub.c.mstar_id)
+                & (FundHoldingsSnapshot.portfolio_date == aum_sub.c.max_date),
+            )
+            .order_by(FundHoldingsSnapshot.aum.desc())
+            .limit(limit)
+            .all()
+        )
+
+        if not top_funds:
+            return []
+
+        mstar_ids = [f.mstar_id for f in top_funds]
+        aum_map = {f.mstar_id: float(f.aum) for f in top_funds}
+
+        # Fetch fund names
+        funds = (
+            self.db.query(FundMaster.mstar_id, FundMaster.fund_name, FundMaster.category_name)
+            .filter(FundMaster.mstar_id.in_(mstar_ids))
+            .all()
+        )
+        name_map = {f.mstar_id: {"fund_name": f.fund_name, "category_name": f.category_name} for f in funds}
+
+        # Fetch all sector exposures for these funds
+        exposures = (
+            self.db.query(FundSectorExposure)
+            .filter(
+                FundSectorExposure.mstar_id.in_(mstar_ids),
+                FundSectorExposure.portfolio_date == latest_date,
+            )
+            .all()
+        )
+        # Build map: mstar_id -> {sector_name: net_pct}
+        expo_map: dict[str, dict[str, float]] = {}
+        for e in exposures:
+            if e.mstar_id not in expo_map:
+                expo_map[e.mstar_id] = {}
+            expo_map[e.mstar_id][e.sector_name] = float(e.net_pct) if e.net_pct else 0
+
+        # Fetch 1Y returns
+        latest_nav_sub = (
+            self.db.query(
+                NavDaily.mstar_id,
+                func.max(NavDaily.nav_date).label("max_date"),
+            )
+            .filter(NavDaily.mstar_id.in_(mstar_ids))
+            .group_by(NavDaily.mstar_id)
+            .subquery()
+        )
+        nav_rows = (
+            self.db.query(NavDaily.mstar_id, NavDaily.return_1y)
+            .join(
+                latest_nav_sub,
+                (NavDaily.mstar_id == latest_nav_sub.c.mstar_id)
+                & (NavDaily.nav_date == latest_nav_sub.c.max_date),
+            )
+            .all()
+        )
+        return_map = {r.mstar_id: float(r.return_1y) if r.return_1y else None for r in nav_rows}
+
+        result = []
+        for mid in mstar_ids:
+            info = name_map.get(mid, {})
+            sectors = expo_map.get(mid, {})
+            result.append({
+                "mstar_id": mid,
+                "fund_name": info.get("fund_name"),
+                "category_name": info.get("category_name"),
+                "aum": aum_map.get(mid),
+                "return_1y": return_map.get(mid),
+                "sectors": {s: sectors.get(s, 0) for s in MORNINGSTAR_SECTORS},
+            })
+
+        return result
+
+    def _get_sector_weighted_returns(self, target_date: date) -> dict:
+        """Compute AUM-weighted sector returns using sector exposure × fund 1Y return."""
+        # Get all sector exposures for the date
+        exposures = (
+            self.db.query(
+                FundSectorExposure.mstar_id,
+                FundSectorExposure.sector_name,
+                FundSectorExposure.net_pct,
+            )
+            .filter(
+                FundSectorExposure.portfolio_date == target_date,
+                FundSectorExposure.net_pct.isnot(None),
+                FundSectorExposure.sector_name.in_(MORNINGSTAR_SECTORS),
+            )
+            .all()
+        )
+
+        if not exposures:
+            return {}
+
+        mstar_ids = list({e.mstar_id for e in exposures})
+
+        # Get latest AUM per fund
+        aum_sub = (
+            self.db.query(
+                FundHoldingsSnapshot.mstar_id,
+                func.max(FundHoldingsSnapshot.portfolio_date).label("max_date"),
+            )
+            .filter(
+                FundHoldingsSnapshot.mstar_id.in_(mstar_ids),
+                FundHoldingsSnapshot.aum.isnot(None),
+            )
+            .group_by(FundHoldingsSnapshot.mstar_id)
+            .subquery()
+        )
+        aum_rows = (
+            self.db.query(FundHoldingsSnapshot.mstar_id, FundHoldingsSnapshot.aum)
+            .join(
+                aum_sub,
+                (FundHoldingsSnapshot.mstar_id == aum_sub.c.mstar_id)
+                & (FundHoldingsSnapshot.portfolio_date == aum_sub.c.max_date),
+            )
+            .all()
+        )
+        aum_map = {r.mstar_id: Decimal(str(r.aum)) for r in aum_rows if r.aum}
+
+        # Get latest 1Y returns
+        latest_nav_sub = (
+            self.db.query(
+                NavDaily.mstar_id,
+                func.max(NavDaily.nav_date).label("max_date"),
+            )
+            .filter(NavDaily.mstar_id.in_(mstar_ids))
+            .group_by(NavDaily.mstar_id)
+            .subquery()
+        )
+        nav_rows = (
+            self.db.query(NavDaily.mstar_id, NavDaily.return_1y)
+            .join(
+                latest_nav_sub,
+                (NavDaily.mstar_id == latest_nav_sub.c.mstar_id)
+                & (NavDaily.nav_date == latest_nav_sub.c.max_date),
+            )
+            .filter(NavDaily.return_1y.isnot(None))
+            .all()
+        )
+        return_map = {r.mstar_id: Decimal(str(r.return_1y)) for r in nav_rows}
+
+        # Compute AUM-weighted return per sector
+        sector_data: dict[str, dict] = {}
+        for e in exposures:
+            aum = aum_map.get(e.mstar_id, Decimal("0"))
+            ret = return_map.get(e.mstar_id)
+            if aum <= 0 or ret is None:
+                continue
+
+            sector = e.sector_name
+            if sector not in sector_data:
+                sector_data[sector] = {
+                    "total_aum_weight": Decimal("0"),
+                    "weighted_return_sum": Decimal("0"),
+                    "total_aum": Decimal("0"),
+                }
+
+            # Weight = AUM × sector_exposure_pct / 100
+            weight = aum * Decimal(str(e.net_pct)) / Decimal("100")
+            sector_data[sector]["total_aum_weight"] += weight
+            sector_data[sector]["weighted_return_sum"] += weight * ret
+            sector_data[sector]["total_aum"] += weight
+
+        result = {}
+        for sector, data in sector_data.items():
+            total_weight = data["total_aum_weight"]
+            if total_weight > 0:
+                weighted_ret = data["weighted_return_sum"] / total_weight
+            else:
+                weighted_ret = Decimal("0")
+            result[sector] = {
+                "weighted_return": weighted_ret,
+                "total_aum": data["total_aum"],
+            }
+
+        return result
 
     def _get_sector_weights(self, target_date: date) -> dict:
         """Get average sector weights for a specific date."""
@@ -252,4 +638,6 @@ class SectorRotationService:
             "rs_score": float(row.rs_score) if row.rs_score else 0,
             "quadrant": row.quadrant or "Lagging",
             "fund_count": row.fund_count or 0,
+            "weighted_return": float(row.weighted_return) if row.weighted_return else 0,
+            "total_aum_exposed": float(row.total_aum_exposed) if row.total_aum_exposed else 0,
         }

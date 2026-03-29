@@ -20,6 +20,8 @@ class SectorRotationHistory(Base, UUIDPrimaryKey):
     rs_score: Mapped[Decimal | None] = mapped_column(Numeric(8, 4), nullable=True)
     quadrant: Mapped[str | None] = mapped_column(String(20), nullable=True)
     fund_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    weighted_return: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    total_aum_exposed: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
