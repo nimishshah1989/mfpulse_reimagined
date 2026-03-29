@@ -188,13 +188,16 @@ class LensService:
                 "category_avg_returns": {},
             }
 
-        # Latest NAV per fund (for returns)
+        # Latest NAV per fund that has return data (skip NAV-only rows)
         latest_nav_sub = (
             self.db.query(
                 NavDaily.mstar_id,
                 func.max(NavDaily.nav_date).label("max_date"),
             )
-            .filter(NavDaily.mstar_id.in_(fund_ids))
+            .filter(
+                NavDaily.mstar_id.in_(fund_ids),
+                NavDaily.return_1y.isnot(None) | NavDaily.return_3y.isnot(None),
+            )
             .group_by(NavDaily.mstar_id)
             .subquery()
         )
