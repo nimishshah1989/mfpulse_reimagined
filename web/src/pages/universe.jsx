@@ -128,11 +128,11 @@ export default function UniversePage() {
     const THREE_YEARS_MS = 3 * 365.25 * 24 * 60 * 60 * 1000;
     const now = Date.now();
     let result = allFunds.filter((fund) => {
-      // Exclude tiny funds (AUM < 10Cr) but keep null-AUM funds (data not yet available)
-      if (fund.aum != null) {
-        const aumCr = Number(fund.aum) / 10000000;
-        if (aumCr < 10) return false;
-      }
+      // Only show funds with AUM > 0 (active funds with holdings data)
+      const aumVal = Number(fund.aum) || 0;
+      if (aumVal <= 0) return false;
+      const aumCr = aumVal / 10000000;
+      if (aumCr < 10) return false;
       if (fund.fund_name?.toLowerCase().includes('segregated')) return false;
       if (fund.inception_date) {
         const age = now - new Date(fund.inception_date).getTime();

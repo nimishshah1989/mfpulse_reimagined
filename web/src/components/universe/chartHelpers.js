@@ -28,8 +28,8 @@ export function getBubbleBorder(score) {
 export function getRadius(aumRaw, aumScale, fund) {
   const aumCr = (Number(aumRaw) || 0) / AUM_CR_DIVISOR;
   if (aumCr > 0) return aumScale(aumCr);
-  // Fallback: size by return_score when AUM is missing (51% of funds)
-  const score = Number(fund?.return_score) || Number(fund?.efficiency_score) || 50;
+  // Fallback for edge cases — size by score
+  const score = Number(fund?.return_score) || 50;
   return FALLBACK_MIN + (score / 100) * (FALLBACK_MAX - FALLBACK_MIN);
 }
 
