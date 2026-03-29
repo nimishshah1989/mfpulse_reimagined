@@ -1,7 +1,7 @@
 """System tables: audit trail, ingestion log, engine config."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
@@ -24,7 +24,7 @@ class AuditTrail(Base, UUIDPrimaryKey):
     action: Mapped[str] = mapped_column(String(50), nullable=False)
     entity_type: Mapped[Optional[str]] = mapped_column(String(50))
     entity_id: Mapped[Optional[str]] = mapped_column(String(100))
-    details: Mapped[None] = mapped_column(JSONB, nullable=True)
+    details: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
 
 
 class IngestionLog(Base, UUIDPrimaryKey):
@@ -49,6 +49,6 @@ class EngineConfig(Base, UUIDPrimaryKey, TimestampMixin):
     __tablename__ = "engine_config"
 
     config_key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
-    config_value: Mapped[None] = mapped_column(JSONB, nullable=False)
+    config_value: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
     updated_by: Mapped[Optional[str]] = mapped_column(String(100))

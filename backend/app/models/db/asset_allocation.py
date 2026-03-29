@@ -1,6 +1,8 @@
 """Fund asset allocation table."""
 
 from datetime import date, datetime
+from decimal import Decimal
+from typing import Optional
 
 from sqlalchemy import Date, DateTime, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -14,14 +16,14 @@ class FundAssetAllocation(Base, UUIDPrimaryKey):
     mstar_id: Mapped[str] = mapped_column(String(20), nullable=False)
     portfolio_date: Mapped[date] = mapped_column(Date, nullable=False)
 
-    equity_net: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
-    bond_net: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
-    cash_net: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
-    other_net: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
+    equity_net: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    bond_net: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    cash_net: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    other_net: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
 
-    india_large_cap_pct: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
-    india_mid_cap_pct: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
-    india_small_cap_pct: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
+    india_large_cap_pct: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    india_mid_cap_pct: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    india_small_cap_pct: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

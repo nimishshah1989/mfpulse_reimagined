@@ -1,6 +1,7 @@
 """Category returns daily table."""
 
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy import Date, DateTime, Numeric, String, UniqueConstraint
@@ -17,20 +18,20 @@ class CategoryReturnsDaily(Base, UUIDPrimaryKey):
     as_of_date: Mapped[date] = mapped_column(Date, nullable=False)
 
     # Returns
-    cat_return_2y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
-    cat_return_3y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
-    cat_return_4y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
-    cat_return_5y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
-    cat_return_7y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
-    cat_return_10y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
+    cat_return_2y: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 5), nullable=True)
+    cat_return_3y: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 5), nullable=True)
+    cat_return_4y: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 5), nullable=True)
+    cat_return_5y: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 5), nullable=True)
+    cat_return_7y: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 5), nullable=True)
+    cat_return_10y: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 5), nullable=True)
 
     # Cumulative returns
-    cat_cumulative_2y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
-    cat_cumulative_3y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
-    cat_cumulative_4y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
-    cat_cumulative_5y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
-    cat_cumulative_7y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
-    cat_cumulative_10y: Mapped[None] = mapped_column(Numeric(12, 5), nullable=True)
+    cat_cumulative_2y: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 5), nullable=True)
+    cat_cumulative_3y: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 5), nullable=True)
+    cat_cumulative_4y: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 5), nullable=True)
+    cat_cumulative_5y: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 5), nullable=True)
+    cat_cumulative_7y: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 5), nullable=True)
+    cat_cumulative_10y: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 5), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

@@ -1,6 +1,7 @@
 """Fund lens scores and classification tables."""
 
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy import Date, DateTime, Integer, Numeric, String, UniqueConstraint
@@ -17,15 +18,15 @@ class FundLensScores(Base, UUIDPrimaryKey):
     category_name: Mapped[Optional[str]] = mapped_column(String(200))
 
     # Six lens scores (0-100 percentile)
-    return_score: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
-    risk_score: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
-    consistency_score: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
-    alpha_score: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
-    efficiency_score: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
-    resilience_score: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
+    return_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    risk_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    consistency_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    alpha_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    efficiency_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    resilience_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
 
     # Data quality
-    data_completeness_pct: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
+    data_completeness_pct: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
     available_horizons: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # Engine metadata

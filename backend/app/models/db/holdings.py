@@ -1,7 +1,9 @@
 """Fund holdings snapshot and detail tables."""
 
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional
+from uuid import UUID
 
 from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
@@ -26,26 +28,26 @@ class FundHoldingsSnapshot(Base, UUIDPrimaryKey):
     bond_style_box: Mapped[Optional[str]] = mapped_column(String(50))
 
     # Portfolio metrics
-    aum: Mapped[None] = mapped_column(Numeric(16, 2), nullable=True)
-    avg_market_cap: Mapped[None] = mapped_column(Numeric(16, 2), nullable=True)
-    pe_ratio: Mapped[None] = mapped_column(Numeric(10, 4), nullable=True)
-    pb_ratio: Mapped[None] = mapped_column(Numeric(10, 4), nullable=True)
-    pc_ratio: Mapped[None] = mapped_column(Numeric(10, 4), nullable=True)
-    ps_ratio: Mapped[None] = mapped_column(Numeric(10, 4), nullable=True)
-    roe_ttm: Mapped[None] = mapped_column(Numeric(10, 4), nullable=True)
-    roa_ttm: Mapped[None] = mapped_column(Numeric(10, 4), nullable=True)
-    net_margin_ttm: Mapped[None] = mapped_column(Numeric(10, 4), nullable=True)
+    aum: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 2), nullable=True)
+    avg_market_cap: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 2), nullable=True)
+    pe_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), nullable=True)
+    pb_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), nullable=True)
+    pc_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), nullable=True)
+    ps_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), nullable=True)
+    roe_ttm: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), nullable=True)
+    roa_ttm: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), nullable=True)
+    net_margin_ttm: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), nullable=True)
 
     # Bond metrics
-    ytm: Mapped[None] = mapped_column(Numeric(10, 4), nullable=True)
-    avg_eff_maturity: Mapped[None] = mapped_column(Numeric(10, 4), nullable=True)
-    modified_duration: Mapped[None] = mapped_column(Numeric(10, 4), nullable=True)
+    ytm: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), nullable=True)
+    avg_eff_maturity: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), nullable=True)
+    modified_duration: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), nullable=True)
     avg_credit_quality: Mapped[Optional[str]] = mapped_column(String(20))
 
     # Other
-    prospective_div_yield: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
-    turnover_ratio: Mapped[None] = mapped_column(Numeric(12, 4), nullable=True)
-    est_fund_net_flow: Mapped[None] = mapped_column(Numeric(16, 2), nullable=True)
+    prospective_div_yield: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    turnover_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), nullable=True)
+    est_fund_net_flow: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 2), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -61,7 +63,7 @@ class FundHoldingsSnapshot(Base, UUIDPrimaryKey):
 class FundHoldingDetail(Base, UUIDPrimaryKey):
     __tablename__ = "fund_holding_detail"
 
-    snapshot_id: Mapped[None] = mapped_column(
+    snapshot_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("fund_holdings_snapshot.id"),
         nullable=False,
@@ -69,16 +71,16 @@ class FundHoldingDetail(Base, UUIDPrimaryKey):
     holding_name: Mapped[str] = mapped_column(String(300), nullable=False)
     isin: Mapped[Optional[str]] = mapped_column(String(12))
     holding_type: Mapped[Optional[str]] = mapped_column(String(20))
-    weighting_pct: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
-    num_shares: Mapped[None] = mapped_column(Numeric(16, 4), nullable=True)
-    market_value: Mapped[None] = mapped_column(Numeric(16, 2), nullable=True)
+    weighting_pct: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    num_shares: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 4), nullable=True)
+    market_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 2), nullable=True)
     global_sector: Mapped[Optional[str]] = mapped_column(String(100))
     country: Mapped[Optional[str]] = mapped_column(String(50))
     currency: Mapped[Optional[str]] = mapped_column(String(50))
-    coupon: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
+    coupon: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
     maturity_date: Mapped[Optional[date]] = mapped_column(Date)
     credit_quality: Mapped[Optional[str]] = mapped_column(String(20))
-    share_change: Mapped[None] = mapped_column(Numeric(16, 4), nullable=True)
+    share_change: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 4), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

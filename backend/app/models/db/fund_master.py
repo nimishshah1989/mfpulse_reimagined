@@ -1,6 +1,7 @@
 """Fund master table — weekly Morningstar OperationsMasterFile feed."""
 
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy import Boolean, Date, DateTime, Index, Integer, Numeric, String, Text
@@ -40,9 +41,9 @@ class FundMaster(Base, UUIDPrimaryKey, TimestampMixin):
     sip_available: Mapped[Optional[bool]] = mapped_column(Boolean)
 
     # Costs & ratios
-    net_expense_ratio: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
-    gross_expense_ratio: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
-    turnover_ratio: Mapped[None] = mapped_column(Numeric(8, 4), nullable=True)
+    net_expense_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    gross_expense_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    turnover_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
 
     # Risk labels
     indian_risk_level: Mapped[Optional[str]] = mapped_column(String(50))
@@ -75,7 +76,7 @@ class FundMaster(Base, UUIDPrimaryKey, TimestampMixin):
 
     # Access restrictions
     closed_to_investors: Mapped[Optional[date]] = mapped_column(Date)
-    lock_in_period: Mapped[None] = mapped_column(Numeric(8, 2), nullable=True)
+    lock_in_period: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 2), nullable=True)
     distribution_status: Mapped[Optional[str]] = mapped_column(String(50))
 
     # Termination
