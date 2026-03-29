@@ -230,6 +230,12 @@ class DashboardService:
         if not latest_class or not latest_lens:
             return _empty_archetypes()
 
+        if latest_class != latest_lens:
+            logger.warning(
+                "Archetype data mismatch: classification_date=%s lens_date=%s",
+                latest_class, latest_lens,
+            )
+
         classes = {
             c.mstar_id: c
             for c in self.db.query(FundClassification)
@@ -270,12 +276,12 @@ ARCHETYPE_DEFS = [
     {"archetype_id": "alpha-fragile", "name": "Alpha but Fragile",
      "lens_pattern": ["LEADER", "HIGH_RISK", "MIXED", "ALPHA_MACHINE", "FAIR", "VULNERABLE"],
      "description": "High alpha & return but poor risk control. Great in bull runs, painful in corrections."},
-    {"archetype_id": "defensive", "name": "Defensive Anchor",
-     "lens_pattern": ["AVERAGE", "LOW_RISK", "CONSISTENT", "NEUTRAL", "FAIR", "FORTRESS"],
-     "description": "Low risk, high resilience, moderate returns. Portfolio stabilizers."},
     {"archetype_id": "compounder", "name": "Consistent Compounder",
      "lens_pattern": ["STRONG", "MODERATE", "ROCK_SOLID", "POSITIVE", "LEAN", "STURDY"],
      "description": "Rock-solid consistency with good efficiency. Reliable SIP candidates."},
+    {"archetype_id": "defensive", "name": "Defensive Anchor",
+     "lens_pattern": ["AVERAGE", "LOW_RISK", "CONSISTENT", "NEUTRAL", "FAIR", "FORTRESS"],
+     "description": "Low risk, high resilience, moderate returns. Portfolio stabilizers."},
     {"archetype_id": "high-return-high-risk", "name": "High Return High Risk",
      "lens_pattern": ["LEADER", "HIGH_RISK", "ERRATIC", "POSITIVE", "FAIR", "VULNERABLE"],
      "description": "Strong returns but volatile & erratic. For high-risk-appetite investors only."},
@@ -294,7 +300,7 @@ ARCHETYPE_DEFS = [
 ]
 
 
-def _classify_archetype(c, s) -> str:
+def _classify_archetype(c: FundClassification, s: FundLensScores) -> str:
     """Classify a fund into one of 9 archetypes based on lens tiers."""
     top_tiers = {"LEADER", "STRONG", "LOW_RISK", "ROCK_SOLID", "CONSISTENT",
                  "ALPHA_MACHINE", "POSITIVE", "LEAN", "FAIR", "FORTRESS", "STURDY"}
@@ -330,12 +336,12 @@ def _classify_archetype(c, s) -> str:
     # Alpha but Fragile: strong return/alpha + weak risk/resilience
     if ret in ("LEADER", "STRONG") and alpha in ("ALPHA_MACHINE", "POSITIVE") and resil in ("VULNERABLE", "FRAGILE"):
         return "alpha-fragile"
-    # Defensive: low risk + fortress resilience + good return
-    if risk in ("LOW_RISK",) and resil in ("FORTRESS", "STURDY") and ret not in ("WEAK",):
-        return "defensive"
     # Consistent Compounder: top consistency + good return
     if cons in ("ROCK_SOLID", "CONSISTENT") and ret in ("LEADER", "STRONG"):
         return "compounder"
+    # Defensive: low risk + fortress resilience + good return
+    if risk in ("LOW_RISK",) and resil in ("FORTRESS", "STURDY") and ret not in ("WEAK",):
+        return "defensive"
     # High Return High Risk
     if ret in ("LEADER", "STRONG") and risk in ("HIGH_RISK", "ELEVATED"):
         return "high-return-high-risk"
