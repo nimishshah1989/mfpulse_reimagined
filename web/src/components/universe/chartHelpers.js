@@ -1,9 +1,11 @@
 import { LENS_LABELS } from '../../lib/lens';
 
 const AUM_CR_DIVISOR = 10000000;
-const MIN_RADIUS = 4;
-const MAX_RADIUS = 36;
-const MAX_AUM_DOMAIN = 25000;
+const MIN_RADIUS = 5;
+const MAX_RADIUS = 40;
+const MAX_AUM_DOMAIN = 50000;
+const FALLBACK_MIN = 6;
+const FALLBACK_MAX = 18;
 
 export { AUM_CR_DIVISOR, MIN_RADIUS, MAX_RADIUS, MAX_AUM_DOMAIN };
 
@@ -23,9 +25,12 @@ export function getBubbleBorder(score) {
   return 'rgba(239,68,68,0.5)';
 }
 
-export function getRadius(aumRaw, aumScale) {
+export function getRadius(aumRaw, aumScale, fund) {
   const aumCr = (Number(aumRaw) || 0) / AUM_CR_DIVISOR;
-  return aumCr > 0 ? aumScale(aumCr) : MIN_RADIUS;
+  if (aumCr > 0) return aumScale(aumCr);
+  // Fallback: size by return_score when AUM is missing (51% of funds)
+  const score = Number(fund?.return_score) || Number(fund?.efficiency_score) || 50;
+  return FALLBACK_MIN + (score / 100) * (FALLBACK_MAX - FALLBACK_MIN);
 }
 
 export function findClosestPoint(qt, mx, my, xScale, yScale, transformK) {

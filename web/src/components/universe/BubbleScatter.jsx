@@ -79,7 +79,7 @@ export default function BubbleScatter({
       id: d.mstar_id,
       x: Number(d[xAxis]) || 0,
       y: Number(d[yAxis]) || 0,
-      r: getRadius(d.aum, aumScale),
+      r: getRadius(d.aum, aumScale, d),
       colorScore: Number(d[cKey]) || 0,
       fund: d,
     }));
