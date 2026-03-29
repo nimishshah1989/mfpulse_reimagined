@@ -24,7 +24,7 @@ const BubbleScatter = dynamic(
 );
 
 const DEFAULT_FILTERS = {
-  purchaseMode: 'Direct',
+  purchaseMode: 'Both',
   categories: [],
   amcs: [],
   aumRange: 'Any AUM',

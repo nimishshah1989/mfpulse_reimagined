@@ -339,13 +339,23 @@ export default function Fund360Page() {
         </SectionCard>
       )}
 
-      {/* SECTION 5: Returns vs Category */}
-      <SectionCard title="Returns vs Category">
-        <ReturnsBars
-          fundReturns={fundReturns}
-          categoryReturns={categoryReturns}
-        />
-      </SectionCard>
+      {/* SECTION 5: Returns vs Category + Peer Scatter side by side */}
+      <div className="animate-in grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SectionCard title="Returns vs Category">
+          <ReturnsBars
+            fundReturns={fundReturns}
+            categoryReturns={categoryReturns}
+          />
+        </SectionCard>
+        <SectionCard title="Peer Scatter" subtitle="Risk vs Return in category">
+          <PeerScatter
+            fund={fundDetail}
+            lensScores={lensScores}
+            peers={peers}
+            fundDetail={fundDetail}
+          />
+        </SectionCard>
+      </div>
 
       {/* SECTION 6: Risk Profile Stats Grid */}
       <SectionCard title="Risk Profile">
@@ -383,24 +393,14 @@ export default function Fund360Page() {
         </SectionCard>
       )}
 
-      {/* SECTION 8: Peer Comparison */}
-      <div className="animate-in grid grid-cols-1 lg:grid-cols-5 gap-4" style={{ animationDelay: '0.5s' }}>
-        <SectionCard title="Peer Positioning" className="lg:col-span-3">
-          <PeerPositioning
-            scores={lensScores}
-            peerAvgs={peerAvgs}
-            peers={peers}
-          />
-        </SectionCard>
-        <SectionCard title="Peer Scatter" subtitle="Risk vs Return in category" className="lg:col-span-2">
-          <PeerScatter
-            fund={fundDetail}
-            lensScores={lensScores}
-            peers={peers}
-            fundDetail={fundDetail}
-          />
-        </SectionCard>
-      </div>
+      {/* SECTION 8: Peer Positioning */}
+      <SectionCard title="Peer Positioning">
+        <PeerPositioning
+          scores={lensScores}
+          peerAvgs={peerAvgs}
+          peers={peers}
+        />
+      </SectionCard>
 
       {/* SECTION 9: Fund Intelligence */}
       <SectionCard title="Fund Intelligence" subtitle="Actionable insights for this fund">

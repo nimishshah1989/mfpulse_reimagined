@@ -17,6 +17,14 @@ const PURCHASE_MODES = [
   { label: 'Direct', value: 2 },
   { label: 'Both', value: 0 },
 ];
+const SORT_OPTIONS = [
+  { label: '1Y Return ↓', value: 'return_1y_desc' },
+  { label: '1Y Return ↑', value: 'return_1y_asc' },
+  { label: 'AUM ↓', value: 'aum_desc' },
+  { label: 'Fund Name A-Z', value: 'name_asc' },
+  { label: 'Return Score ↓', value: 'return_score_desc' },
+  { label: 'Alpha Score ↓', value: 'alpha_score_desc' },
+];
 
 /**
  * FundSearch -- the explorer page shown when no fund is selected.
@@ -39,20 +47,21 @@ export default function FundSearch({ onSelect }) {
   const [activeBucket, setActiveBucket] = useState(null);
   const [bucketFundIds, setBucketFundIds] = useState([]);
   const [universe, setUniverse] = useState([]);
-  const [purchaseMode, setPurchaseMode] = useState(2);
+  const [purchaseMode, setPurchaseMode] = useState(0); // Default: Both
+  const [sortBy, setSortBy] = useState('return_1y_desc');
 
   useEffect(() => {
     Promise.allSettled([fetchCategories(), fetchAMCs()]).then(([catRes, amcRes]) => {
       if (catRes.status === 'fulfilled') setCategories(catRes.value.data || []);
       if (amcRes.status === 'fulfilled') setAmcs(amcRes.value.data || []);
     });
-    fetchFunds({ limit: 50, sort: 'return_1y', order: 'desc', purchase_mode: 2, broad_category: 'Equity' })
-      .then((res) => setTopFunds(res.data || []))
-      .catch(() => {})
-      .finally(() => setTopLoading(false));
+    setTopLoading(true);
     cachedFetch('universe', fetchUniverseData, 600)
-      .then(setUniverse)
-      .catch(() => {});
+      .then((data) => {
+        setUniverse(data);
+        setTopLoading(false);
+      })
+      .catch(() => setTopLoading(false));
   }, []);
 
   const filteredCategories =
@@ -67,35 +76,6 @@ export default function FundSearch({ onSelect }) {
     }
   }, [query, selectedCategory, selectedAmc, selectedBroad, purchaseMode]);
 
-  useEffect(() => {
-    const params = { limit: 100 };
-    if (purchaseMode > 0) params.purchase_mode = purchaseMode;
-    if (query.length >= 2) params.search = query;
-    if (selectedCategory) params.category = selectedCategory;
-    if (selectedAmc) params.amc = selectedAmc;
-    if (selectedBroad !== 'All') params.broad_category = selectedBroad;
-
-    const hasFilter =
-      query.length >= 2 || selectedCategory || selectedAmc || selectedBroad !== 'All';
-    if (!hasFilter) {
-      setResults([]);
-      return;
-    }
-
-    setLoading(true);
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetchFunds(params);
-        setResults(res.data || []);
-      } catch {
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [query, selectedCategory, selectedAmc, selectedBroad, purchaseMode]);
-
   const handleBucketSelect = (bucketId, fundIds) => {
     setActiveBucket(bucketId);
     setBucketFundIds(fundIds || []);
@@ -106,31 +86,54 @@ export default function FundSearch({ onSelect }) {
     setPurchaseMode(2);
   };
 
+  // Client-side filtering from universe data
+  const sortFn = (a, b) => {
+    switch (sortBy) {
+      case 'return_1y_desc': return (Number(b.return_1y) || -999) - (Number(a.return_1y) || -999);
+      case 'return_1y_asc': return (Number(a.return_1y) || -999) - (Number(b.return_1y) || -999);
+      case 'aum_desc': return (Number(b.aum) || 0) - (Number(a.aum) || 0);
+      case 'name_asc': return (a.fund_name || '').localeCompare(b.fund_name || '');
+      case 'return_score_desc': return (Number(b.return_score) || 0) - (Number(a.return_score) || 0);
+      case 'alpha_score_desc': return (Number(b.alpha_score) || 0) - (Number(a.alpha_score) || 0);
+      default: return 0;
+    }
+  };
+
   let displayFunds;
   let displayLabel;
 
   if (activeBucket && bucketFundIds.length > 0) {
     const idSet = new Set(bucketFundIds);
-    displayFunds = universe.filter((f) => idSet.has(f.mstar_id));
+    displayFunds = universe.filter((f) => idSet.has(f.mstar_id)).sort(sortFn);
     displayLabel = `${displayFunds.length} funds in bucket`;
-  } else if (results.length > 0) {
-    displayFunds = results;
-    displayLabel = `${results.length} funds found`;
-  } else if (!query && !selectedCategory && !selectedAmc && selectedBroad === 'All') {
-    // Show top performing Direct equity funds by default
-    const defaultFunds = universe.length > 0
-      ? universe
-          .filter((f) => f.purchase_mode === 'Direct' && (f.broad_category === 'Equity' || !f.broad_category))
-          .sort((a, b) => (Number(b.return_1y) || 0) - (Number(a.return_1y) || 0))
-          .slice(0, 50)
-      : topFunds;
-    displayFunds = defaultFunds;
-    displayLabel = defaultFunds.length > 0
-      ? `Top ${defaultFunds.length} Direct Equity funds by 1Y return`
-      : '0 funds found';
   } else {
-    displayFunds = [];
-    displayLabel = '0 funds found';
+    let filtered = [...universe];
+    if (purchaseMode > 0) {
+      const modeStr = purchaseMode === 1 ? 'Regular' : 'Direct';
+      filtered = filtered.filter((f) => f.purchase_mode === modeStr);
+    }
+    if (selectedBroad !== 'All') {
+      filtered = filtered.filter((f) => f.broad_category === selectedBroad);
+    }
+    if (selectedCategory) {
+      filtered = filtered.filter((f) => f.category_name === selectedCategory);
+    }
+    if (selectedAmc) {
+      filtered = filtered.filter((f) => f.amc_name === selectedAmc);
+    }
+    if (query.length >= 2) {
+      const q = query.toLowerCase();
+      filtered = filtered.filter((f) =>
+        (f.fund_name || '').toLowerCase().includes(q) ||
+        (f.amc_name || '').toLowerCase().includes(q) ||
+        (f.mstar_id || '').toLowerCase().includes(q)
+      );
+    }
+    displayFunds = filtered.sort(sortFn).slice(0, 200);
+    const totalMatches = filtered.length;
+    displayLabel = totalMatches > 200
+      ? `Showing 200 of ${totalMatches.toLocaleString('en-IN')} funds`
+      : `${totalMatches.toLocaleString('en-IN')} funds`;
   }
 
   return (
@@ -243,7 +246,19 @@ export default function FundSearch({ onSelect }) {
             ))}
           </select>
 
-          {(selectedCategory || selectedAmc || selectedBroad !== 'All' || query || activeBucket || purchaseMode !== 2) && (
+          <div className="w-px h-6 bg-slate-200" />
+
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-[140px]"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>Sort: {opt.label}</option>
+            ))}
+          </select>
+
+          {(selectedCategory || selectedAmc || selectedBroad !== 'All' || query || activeBucket || purchaseMode !== 0 || sortBy !== 'return_1y_desc') && (
             <button
               type="button"
               onClick={() => {
@@ -253,7 +268,8 @@ export default function FundSearch({ onSelect }) {
                 setSelectedAmc('');
                 setActiveBucket(null);
                 setBucketFundIds([]);
-                setPurchaseMode(2);
+                setPurchaseMode(0);
+                setSortBy('return_1y_desc');
               }}
               className="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors"
             >

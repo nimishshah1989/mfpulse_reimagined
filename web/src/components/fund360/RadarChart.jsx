@@ -31,7 +31,7 @@ export default function RadarChart({ funds = [], size = 320, categoryAvg = null 
   const totalHeight = size + legendHeight;
   const cx = size / 2;
   const cy = size / 2;
-  const radius = size / 2 - 40;
+  const radius = size / 2 - 50;
 
   useEffect(() => {
     if (!svgRef.current || funds.length === 0) return;
@@ -66,7 +66,7 @@ export default function RadarChart({ funds = [], size = 320, categoryAvg = null 
     // Axis labels
     AXES.forEach((axis, i) => {
       const a = angleFor(i);
-      const labelR = radius + 22;
+      const labelR = radius + 30;
       const lx = cx + labelR * Math.cos(a);
       const ly = cy + labelR * Math.sin(a);
       chart.append('text')
@@ -130,14 +130,18 @@ export default function RadarChart({ funds = [], size = 320, categoryAvg = null 
           .text(`${fund.label} - ${AXES[i].label}: ${score}`);
 
         const a = angleFor(i);
-        const offsetX = Math.cos(a) * 14;
-        const offsetY = Math.sin(a) * 14;
+        const dist = 18;
+        const offsetX = Math.cos(a) * dist;
+        const offsetY = Math.sin(a) * dist;
+        // Dynamic text-anchor to prevent overlap at edges
+        const anchor = Math.abs(Math.cos(a)) < 0.3 ? 'middle'
+          : Math.cos(a) > 0 ? 'start' : 'end';
         chart.append('text')
           .attr('x', p.x + offsetX)
           .attr('y', p.y + offsetY)
-          .attr('text-anchor', 'middle')
+          .attr('text-anchor', anchor)
           .attr('dominant-baseline', 'middle')
-          .attr('class', 'font-mono text-xs fill-slate-700')
+          .attr('class', 'font-mono text-[10px] font-bold fill-slate-700')
           .text(score);
       });
     });

@@ -232,15 +232,15 @@ function DataFreshness({ freshness, onRefreshNav, onRecomputeLens, refreshing, r
     <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
       <p className="section-title mb-3">Data Freshness</p>
       <div className="space-y-2.5">
-        <FreshnessRow label="NAV Data" dateStr={freshness.nav_last_date} />
-        <FreshnessRow label="Lens Scores" dateStr={freshness.lens_computed_at} />
+        <FreshnessRow label="NAV Data" dateStr={freshness.nav_last_date || freshness.latest_dates?.nav_daily} />
+        <FreshnessRow label="Lens Scores" dateStr={freshness.lens_computed_at || freshness.latest_dates?.fund_lens_scores} />
         <FreshnessRow
           label="Holdings"
-          dateStr={freshness.holdings_last_date || freshness.risk_stats_last_date}
+          dateStr={freshness.holdings_last_date || freshness.latest_dates?.fund_holdings_snapshot}
           statusLabel="Monthly"
         />
-        <FreshnessRow label="Risk Stats" dateStr={freshness.risk_stats_last_date} statusLabel="Monthly" />
-        <FreshnessRow label="MarketPulse" dateStr={freshness.market_pulse_at} statusLabel="Live" />
+        <FreshnessRow label="Risk Stats" dateStr={freshness.risk_stats_last_date || freshness.latest_dates?.risk_stats_monthly} statusLabel="Monthly" />
+        <FreshnessRow label="Sectors" dateStr={freshness.latest_dates?.fund_sector_exposure} statusLabel="Monthly" />
       </div>
 
       {/* Actions */}

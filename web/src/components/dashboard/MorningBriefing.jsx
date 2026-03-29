@@ -205,8 +205,8 @@ export default function MorningBriefing({ regime, breadth, sentiment, nifty, uni
               Market Breadth
             </p>
             <div className="space-y-2 mt-1">
-              <BreadthBar label="Above 200 EMA" pct={breadthData.ema200} color="bg-emerald-500" />
-              <BreadthBar label="Above 50 EMA" pct={breadthData.ema50} color="bg-sky-500" />
+              <BreadthBar label="Breadth (Monthly)" pct={breadthData.ema200} color="bg-emerald-500" />
+              <BreadthBar label="Breadth (Daily)" pct={breadthData.ema50} color="bg-sky-500" />
               {breadthData.adRatio != null && (
                 <div className="flex justify-between text-[10px]">
                   <span className="text-slate-400">A/D Ratio</span>

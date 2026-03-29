@@ -17,10 +17,15 @@ const PERIOD_LABELS = {
   '3y': '3Y', '5y': '5Y', since_inception: 'MAX',
 };
 
-function formatAxisDate(dateStr) {
+function formatAxisDate(dateStr, period) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  // For short periods (1m, 3m), show day + month
+  if (period === '1m' || period === '3m') {
+    return `${d.getDate()} ${months[d.getMonth()]}`;
+  }
+  // For 6m/1y, show month + year
   return `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
 }
 
@@ -150,7 +155,7 @@ export default function PerformanceChart({ mstarId, initialData = [], fundReturn
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis
                   dataKey="date"
-                  tickFormatter={formatAxisDate}
+                  tickFormatter={(d) => formatAxisDate(d, period)}
                   tick={{ fontSize: 10, fill: '#94a3b8' }}
                   axisLine={false}
                   tickLine={false}

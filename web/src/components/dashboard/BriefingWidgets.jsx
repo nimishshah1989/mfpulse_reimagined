@@ -21,39 +21,31 @@ export function sentimentZoneColor(zone) {
 
 // ─── Breadth data extraction ───
 
+function extractPct(indicator) {
+  if (!indicator?.current) return null;
+  if (indicator.current.pct != null) return indicator.current.pct;
+  const { count, total } = indicator.current;
+  if (count != null && total != null && total > 0) return (count / total) * 100;
+  return null;
+}
+
 export function deriveBreadthIndicators(breadth) {
-  if (!breadth) return { ema200: null, ema50: null, adRatio: null };
+  if (!breadth) return { ema200: null, ema50: null, adRatio: null, rsi40: null, monthlyRsi50: null };
   const indicators = breadth.indicators || breadth;
 
-  let ema200 = null;
-  let ema50 = null;
-  let adRatio = null;
-
-  const e200 = indicators.ema200 || indicators.ema_200;
-  if (e200?.current?.pct != null) ema200 = e200.current.pct;
-  else if (e200?.current) {
-    const { count, total } = e200.current;
-    if (count != null && total != null && total > 0) ema200 = (count / total) * 100;
-  }
+  // Try EMA first, fall back to RSI-based indicators
+  let ema200 = extractPct(indicators.ema200 || indicators.ema_200);
   if (ema200 == null && breadth.pct_above_ema200 != null) ema200 = breadth.pct_above_ema200;
+  // Fall back to monthly RSI > 50 as a breadth proxy
+  if (ema200 == null) ema200 = extractPct(indicators.monthly_rsi_50);
 
-  const e50 = indicators.ema50;
-  if (e50?.current?.pct != null) ema50 = e50.current.pct;
-  else if (e50?.current) {
-    const { count, total } = e50.current;
-    if (count != null && total != null && total > 0) ema50 = (count / total) * 100;
-  }
+  let ema50 = extractPct(indicators.ema50);
+  if (ema50 == null) ema50 = extractPct(indicators.ema21);
+  if (ema50 == null && breadth.pct_above_21ema != null) ema50 = breadth.pct_above_21ema;
+  // Fall back to RSI daily > 40 as breadth proxy
+  if (ema50 == null) ema50 = extractPct(indicators.rsi_daily_40);
 
-  if (ema50 == null) {
-    const e21 = indicators.ema21;
-    if (e21?.current?.pct != null) ema50 = e21.current.pct;
-    else if (e21?.current) {
-      const { count, total } = e21.current;
-      if (count != null && total != null && total > 0) ema50 = (count / total) * 100;
-    }
-    if (ema50 == null && breadth.pct_above_21ema != null) ema50 = breadth.pct_above_21ema;
-  }
-
+  let adRatio = null;
   if (breadth.advance_decline != null) adRatio = breadth.advance_decline;
   else if (indicators.advance_decline?.current?.ratio != null) {
     adRatio = indicators.advance_decline.current.ratio;

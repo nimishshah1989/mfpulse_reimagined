@@ -152,32 +152,28 @@ export function drawChart(ctx, params) {
   ctx.restore(); // zoom
   ctx.restore(); // clip
 
-  // Quadrant labels — centered in each quadrant, subtle matching colors
-  ctx.font = '600 11px Inter, sans-serif';
+  // Quadrant labels — centered in each quadrant
+  ctx.font = '700 13px Inter, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // SWEET SPOT — top-left (emerald at 0.15 opacity)
-  ctx.fillStyle = 'rgba(5, 150, 105, 0.15)';
+  ctx.fillStyle = 'rgba(5, 150, 105, 0.35)';
   ctx.fillText('SWEET SPOT', xMid / 2, yMid / 2);
 
-  // HIGH RISK HIGH RETURN — top-right (amber at 0.15 opacity)
-  ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
+  ctx.fillStyle = 'rgba(245, 158, 11, 0.35)';
   ctx.fillText('HIGH RISK HIGH RETURN', xMid + (innerW - xMid) / 2, yMid / 2);
 
-  // CONSERVATIVE — bottom-left (sky at 0.15 opacity)
-  ctx.fillStyle = 'rgba(14, 165, 233, 0.15)';
+  ctx.fillStyle = 'rgba(14, 165, 233, 0.35)';
   ctx.fillText('CONSERVATIVE', xMid / 2, yMid + (innerH - yMid) / 2);
 
-  // AVOID — bottom-right (red at 0.15 opacity)
-  ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.35)';
   ctx.fillText('AVOID', xMid + (innerW - xMid) / 2, yMid + (innerH - yMid) / 2);
 
   ctx.textBaseline = 'alphabetic';
 
   // Axis labels
-  ctx.fillStyle = '#64748b';
-  ctx.font = '600 10px Inter, sans-serif';
+  ctx.fillStyle = '#475569';
+  ctx.font = '600 12px Inter, sans-serif';
   ctx.textAlign = 'center';
   const xLabel = isReturnX
     ? 'Risk (Std Dev 3Y %) \u2014 Lower is Better  \u2192'
@@ -225,8 +221,8 @@ function drawGridLines(ctx, xScale, yScale, innerW, innerH, xDomain, yDomain, is
 }
 
 function drawTicks(ctx, xScale, yScale, innerW, innerH, xDomain, yDomain, isReturnX, isReturnY) {
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '9px Inter, sans-serif';
+  ctx.fillStyle = '#64748b';
+  ctx.font = '10px Inter, sans-serif';
   ctx.textAlign = 'center';
   if (!isReturnX) {
     for (const v of [0, 25, 50, 75, 100]) {

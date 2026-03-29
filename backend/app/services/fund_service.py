@@ -255,8 +255,17 @@ class FundService:
         all_scores = lens_repo.get_all_scores_batch(active_ids)
         all_classes = lens_repo.get_all_classifications_batch(active_ids)
 
+        # Filter to funds with minimum data quality: must have at least return_score OR 1Y return
+        quality_funds = []
+        for f in active_funds:
+            mid = f.mstar_id
+            has_score = all_scores.get(mid, {}).get("return_score") is not None
+            has_return = nav_map.get(mid, {}).get("return_1y") is not None
+            if has_score or has_return:
+                quality_funds.append(f)
+
         result = []
-        for fund in active_funds:
+        for fund in quality_funds:
             mid = fund.mstar_id
             nav = nav_map.get(mid, {})
             scores = all_scores.get(mid, {})
