@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { cachedFetch } from '../../lib/cache';
 import { fetchUniverseData } from '../../lib/api';
-import { formatPct, formatAUM } from '../../lib/format';
+import { formatPct, formatAUMRaw } from '../../lib/format';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import SectionTitle from '../shared/SectionTitle';
 
@@ -53,7 +53,7 @@ const BUCKET_DEFINITIONS = [
     id: 'fortress',
     name: 'Fortress Funds',
     description: 'Resilience + Consistency top',
-    icon: '\u2609', // sun
+    icon: '\u25C9', // circled dot
     iconBg: 'bg-teal-50',
     iconColor: 'text-teal-600',
     countColor: 'text-teal-600',
@@ -107,7 +107,7 @@ function BucketCard({ bucket, count, topFund, onClick }) {
   return (
     <div
       onClick={onClick}
-      className={`bucket-card w-52 bg-white rounded-xl border ${borderClass} p-4 cursor-pointer flex-shrink-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200`}
+      className={`bucket-card w-[190px] bg-white rounded-xl border ${borderClass} p-3.5 cursor-pointer flex-shrink-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200`}
     >
       {/* Icon + name header */}
       <div className="flex items-center gap-2 mb-3">
@@ -122,7 +122,7 @@ function BucketCard({ bucket, count, topFund, onClick }) {
 
       {/* Count */}
       <div className="flex items-baseline gap-1 mb-2">
-        <span className={`text-xl font-bold ${bucket.countColor} tabular-nums`}>{count}</span>
+        <span className={`text-xl font-extrabold ${bucket.countColor} tabular-nums`}>{count}</span>
         <span className="text-[10px] text-slate-400">funds</span>
       </div>
 
@@ -141,7 +141,7 @@ function BucketCard({ bucket, count, topFund, onClick }) {
               )}
               {topFund.aum != null && (
                 <p className="text-[10px] text-slate-400 tabular-nums">
-                  {formatAUM(Number(topFund.aum) / 10000000)}
+                  {formatAUMRaw(topFund.aum)}
                 </p>
               )}
             </div>
@@ -194,7 +194,7 @@ export default function SmartBuckets() {
         </SectionTitle>
         <div className="flex gap-3 overflow-hidden">
           {[0, 1, 2, 3, 4, 5].map((i) => (
-            <SkeletonLoader key={i} className="h-40 w-52 rounded-xl flex-shrink-0" />
+            <SkeletonLoader key={i} className="h-40 w-[190px] rounded-xl flex-shrink-0" />
           ))}
         </div>
       </div>
@@ -217,7 +217,7 @@ export default function SmartBuckets() {
       >
         SMART BUCKETS
       </SectionTitle>
-      <div className="scroll-x">
+      <div className="overflow-x-auto">
         <div className="flex gap-3 pb-1" style={{ minWidth: 'max-content' }}>
           {BUCKET_DEFINITIONS.map((bucket) => (
             <BucketCard
