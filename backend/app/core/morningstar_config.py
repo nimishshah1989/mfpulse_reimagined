@@ -39,6 +39,8 @@ APIS = [
     MorningstarAPI("Portfolio Summary",    "ryt74bh4koatkf2w", "holdings_snapshot",      "HOLDINGS_FIELD_MAP"),
     # Fund holdings detail (individual stock/bond holdings per fund)
     MorningstarAPI("Fund Holdings Detail", "fq9mxhk7xeb20f3b", "holdings_detail",       "HOLDING_DETAIL_FIELD_MAP"),
+    # Extended risk stats (MaxDrawdown, Capture, Sortino at 1Y/3Y/5Y/10Y + category comparisons)
+    MorningstarAPI("Extended Risk Stats", "x7jihr9d49jb9f6d", "risk_stats_monthly",      "RISK_STATS_FIELD_MAP"),
 ]
 
 # Short name → API object mapping for single-API fetch endpoint
@@ -54,6 +56,7 @@ API_NAME_MAP: dict[str, MorningstarAPI] = {
     "holdings": APIS[8],
     "portfolio_summary": APIS[9],
     "holdings_detail": APIS[10],
+    "extended_risk": APIS[11],
 }
 
 # Prefixes found in API responses — stripped during parsing
