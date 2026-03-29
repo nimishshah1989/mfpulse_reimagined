@@ -221,82 +221,141 @@ export default function SimulationPage() {
 
   const hasResults = compareResults != null;
 
+  const STRATEGY_PRESETS = [
+    {
+      label: 'Conservative SIP',
+      desc: 'Steady monthly investment, no signals',
+      icon: '\u25B2',
+      iconBg: 'bg-emerald-100 text-emerald-600',
+      apply: () => {
+        setConfig({ ...config, sipAmount: 10000, lumpsumAmount: 0, lumpsumDeployPct: 25, sipDay: 5 });
+        setRules(rules.map((r) => ({ ...r, active: false })));
+        setPeriod('7Y');
+      },
+    },
+    {
+      label: 'Signal-Enhanced SIP',
+      desc: 'SIP + deploy on market dips',
+      icon: '\u26A1',
+      iconBg: 'bg-teal-100 text-teal-600',
+      apply: () => {
+        setConfig({ ...config, sipAmount: 10000, lumpsumAmount: 500000, lumpsumDeployPct: 25, sipDay: 5 });
+        setRules(rules.map((r) => ({ ...r, active: true })));
+        setPeriod('7Y');
+      },
+    },
+    {
+      label: 'Aggressive Hybrid',
+      desc: 'Max SIP + large lumpsum reserve',
+      icon: '\u25C6',
+      iconBg: 'bg-violet-100 text-violet-600',
+      apply: () => {
+        setConfig({ ...config, sipAmount: 25000, lumpsumAmount: 1000000, lumpsumDeployPct: 33, sipDay: 1 });
+        setRules(rules.map((r) => ({ ...r, active: true })));
+        setPeriod('10Y');
+      },
+    },
+  ];
+
   return (
     <div className="space-y-5">
-      {/* Minimal top bar context */}
-      <div className="mb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <p className="text-sm text-slate-500">
-              Backtest investment strategies with real market data
-            </p>
+      {/* ===== HERO SECTION ===== */}
+      <section className="gradient-hero rounded-2xl overflow-hidden animate-in">
+        <div className="px-8 pt-6 pb-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-slate-400 text-xs font-medium tracking-wide uppercase">
+                Strategy Simulator
+              </p>
+              <p className="text-white/50 text-[11px] mt-0.5">
+                Backtest SIP, lumpsum, and signal-enhanced strategies with real NAV data
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {hasResults && fund?.mstar_id && (
+                <button
+                  onClick={() => {
+                    const params = new URLSearchParams({
+                      fund: fund.mstar_id,
+                      period,
+                      sip: String(config.sipAmount || 10000),
+                    });
+                    const url = `${window.location.origin}/simulation?${params}`;
+                    navigator.clipboard.writeText(url).then(() => {
+                      alert('Share link copied!');
+                    });
+                  }}
+                  className="px-3 py-1.5 text-[10px] font-semibold text-white/60 border border-white/20 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                  Share
+                </button>
+              )}
+              {hasResults && (
+                <button
+                  onClick={runSimulation}
+                  disabled={simulating || !simulationPayload}
+                  className="px-4 py-1.5 text-[10px] font-semibold text-white bg-teal-500 rounded-lg hover:bg-teal-400 disabled:opacity-50 transition-colors"
+                >
+                  {simulating ? 'Simulating...' : 'Re-simulate'}
+                </button>
+              )}
+              {hasResults && (
+                <button
+                  onClick={() => setShowSaveTemplate(!showSaveTemplate)}
+                  className="px-3 py-1.5 text-[10px] font-semibold text-teal-300 border border-teal-500/40 rounded-lg hover:bg-teal-500/10 transition-colors"
+                >
+                  Save Template
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Strategy presets + saved templates */}
+          <div className="flex items-center gap-3">
+            {STRATEGY_PRESETS.map((preset) => (
+              <button
+                key={preset.label}
+                onClick={preset.apply}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
+              >
+                <span className={`w-6 h-6 rounded-md flex items-center justify-center text-xs ${preset.iconBg}`}>
+                  {preset.icon}
+                </span>
+                <div className="text-left">
+                  <p className="text-[10px] font-semibold text-white/80 group-hover:text-white">{preset.label}</p>
+                  <p className="text-[9px] text-slate-500">{preset.desc}</p>
+                </div>
+              </button>
+            ))}
             {templates.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400">Templates:</span>
+              <div className="flex items-center gap-2 ml-2 pl-2 border-l border-white/10">
+                <span className="text-[9px] text-slate-500">Saved:</span>
                 {templates.map((t) => (
                   <div key={t.id} className="flex items-center gap-1">
                     <button
                       onClick={() => loadTemplate(t)}
-                      className="px-2 py-1 text-[10px] font-medium text-slate-600 bg-slate-100 rounded hover:bg-slate-200 transition-colors"
+                      className="px-2 py-1 text-[9px] font-medium text-slate-300 bg-white/5 rounded hover:bg-white/10 transition-colors"
                     >
                       {t.name}
                     </button>
                     <button
                       onClick={() => deleteTemplate(t.id)}
-                      className="text-[10px] text-slate-400 hover:text-red-500"
+                      className="text-[9px] text-slate-600 hover:text-red-400"
                     >
-                      ×
+                      {'\u00D7'}
                     </button>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            {hasResults && fund?.mstar_id && (
-              <button
-                onClick={() => {
-                  const params = new URLSearchParams({
-                    fund: fund.mstar_id,
-                    period,
-                    sip: String(config.sip_amount || 25000),
-                  });
-                  const url = `${window.location.origin}/simulation?${params}`;
-                  navigator.clipboard.writeText(url).then(() => {
-                    alert('Share link copied to clipboard!');
-                  });
-                }}
-                className="px-3 py-1.5 text-[10px] font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-              >
-                Share
-              </button>
-            )}
-            {hasResults && (
-              <button
-                onClick={runSimulation}
-                disabled={simulating || !simulationPayload}
-                className="px-3 py-1.5 text-[10px] font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors"
-              >
-                {simulating ? 'Simulating...' : 'Re-simulate'}
-              </button>
-            )}
-            {hasResults && (
-              <button
-                onClick={() => setShowSaveTemplate(!showSaveTemplate)}
-                className="px-3 py-1.5 text-[10px] font-semibold text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-50 transition-colors"
-              >
-                Save Template
-              </button>
-            )}
-          </div>
         </div>
-      </div>
+      </section>
 
       <main className="space-y-5">
-        {/* ==================== SECTION 1: Fund + Config (3-column top) ==================== */}
-        <div className="grid grid-cols-12 gap-5 animate-in">
-          {/* Fund Picker (col-span-4) */}
-          <div className="col-span-4">
+        {/* ===== SECTION 1: Fund + Config (5:4:3 layout) ===== */}
+        <div className="grid grid-cols-12 gap-4 animate-in">
+          <div className="col-span-5">
             <FundPicker
               selectedFund={fundDetail || fund}
               lensScores={lensScores}
@@ -304,8 +363,6 @@ export default function SimulationPage() {
               onClear={handleClear}
             />
           </div>
-
-          {/* Simulation Config (col-span-4) */}
           <div className="col-span-4">
             <SimulationConfig
               config={config}
@@ -315,9 +372,7 @@ export default function SimulationPage() {
               disabled={simulating}
             />
           </div>
-
-          {/* Signal Rules (col-span-4) */}
-          <div className="col-span-4">
+          <div className="col-span-3">
             <RuleBuilder
               rules={rules}
               onRulesChange={setRules}
@@ -326,20 +381,20 @@ export default function SimulationPage() {
           </div>
         </div>
 
-        {/* Run button when no results yet */}
+        {/* Run button */}
         {fund && !hasResults && !simulating && (
           <div className="flex justify-center">
             <button
               onClick={runSimulation}
               disabled={!simulationPayload}
-              className="px-6 py-3 text-sm font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors shadow-sm"
+              className="px-8 py-3 text-sm font-semibold text-white bg-teal-600 rounded-xl hover:bg-teal-700 disabled:opacity-50 transition-all shadow-lg shadow-teal-600/20"
             >
               Run Simulation
             </button>
           </div>
         )}
 
-        {/* Loading skeleton */}
+        {/* Loading */}
         {simulating && !hasResults && (
           <div className="space-y-5">
             <SkeletonLoader variant="card" className="h-64 rounded-xl" />
@@ -349,43 +404,45 @@ export default function SimulationPage() {
 
         {/* Warnings */}
         {!marketpulseOnline && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-xs text-amber-800">
-            Signal data unavailable {'\u2014'} MarketPulse is offline. SIP+Signal and Hybrid modes running as Pure SIP.
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800 flex items-center gap-2">
+            <span className="text-amber-500">{'\u26A0'}</span>
+            Signal data unavailable {'\u2014'} MarketPulse offline. Signal modes running as Pure SIP.
           </div>
         )}
         {simError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-xs text-red-700">
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-700 flex items-center gap-2">
+            <span className="text-red-500">{'\u2716'}</span>
             Simulation error: {simError}
           </div>
         )}
 
         {showSaveTemplate && (
-          <div className="bg-white border border-teal-200 rounded-lg p-4 flex items-center gap-3">
+          <div className="bg-white border border-teal-200 rounded-xl p-4 flex items-center gap-3 shadow-sm">
             <input
               type="text"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
               placeholder="Template name..."
-              className="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none"
+              className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none"
               onKeyDown={(e) => { if (e.key === 'Enter') saveTemplate(); }}
             />
             <button
               onClick={saveTemplate}
               disabled={!templateName.trim()}
-              className="px-4 py-1.5 text-xs font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors"
             >
               Save
             </button>
             <button
               onClick={() => setShowSaveTemplate(false)}
-              className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700"
+              className="px-3 py-2 text-xs text-slate-500 hover:text-slate-700"
             >
               Cancel
             </button>
           </div>
         )}
 
-        {/* ==================== SECTION 2: 4 Mode Comparison Cards + Table ==================== */}
+        {/* ===== SECTION 2: Mode Comparison + Narrative + Table ===== */}
         {hasResults && (
           <section className="animate-in" style={{ animationDelay: '0.1s' }}>
             <ModeComparison
@@ -395,8 +452,7 @@ export default function SimulationPage() {
               period={period}
             />
 
-            {/* Narrative Summary */}
-            <div className="mt-5">
+            <div className="mt-4">
               <NarrativeSummary
                 results={compareResults}
                 fund={fund}
@@ -405,17 +461,24 @@ export default function SimulationPage() {
               />
             </div>
 
-            {/* Detailed Comparison Table */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5 mt-5">
+            <div className="bg-white rounded-xl border border-slate-200 p-5 mt-4 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <p className="section-title">Detailed Metrics</p>
+                <button
+                  onClick={handleExport}
+                  className="text-[10px] text-teal-600 font-medium hover:text-teal-700"
+                >
+                  Export CSV
+                </button>
+              </div>
               <ComparisonTable results={compareResults} />
             </div>
           </section>
         )}
 
-        {/* ==================== SECTION 3: Equity Curve + Signal Log (8:4 layout) ==================== */}
+        {/* ===== SECTION 3: Equity Curve + Signal Log ===== */}
         {hasResults && (
-          <div className="grid grid-cols-12 gap-5 animate-in" style={{ animationDelay: '0.2s' }}>
-            {/* Main chart (8 cols) */}
+          <div className="grid grid-cols-12 gap-4 animate-in" style={{ animationDelay: '0.2s' }}>
             <div className="col-span-8">
               <EquityCurve
                 results={compareResults}
@@ -423,8 +486,6 @@ export default function SimulationPage() {
                 isLoading={simulating}
               />
             </div>
-
-            {/* Signal Log + Actions (4 cols) */}
             <div className="col-span-4">
               <SignalLog
                 cashflowEvents={cashflowEvents}

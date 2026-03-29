@@ -120,22 +120,27 @@ function WhySignalsWon({ results, fund }) {
   if (Number(boost) <= 0 || bestMode === 'SIP') return null;
 
   return (
-    <div className="bg-teal-50 rounded-xl border border-teal-100 p-3">
-      <p className="text-[10px] font-semibold text-teal-700 mb-1">
-        {aiExplainer ? <>{'\u2726'} </> : null}Why {bestLabel} Won
-      </p>
-      <p className="text-[9px] text-teal-600 leading-relaxed">
-        {aiExplainer || (
-          <>
-            Signal rules deployed extra capital during market corrections {'\u2014'} exactly when NAVs were lowest.
-            This &ldquo;buy the dip&rdquo; effect compounded over time to produce +{boost}% XIRR boost over Pure SIP
-            {bestSummary.max_drawdown_pct != null && sipSummary.max_drawdown_pct != null &&
-              Math.abs(bestSummary.max_drawdown_pct) < Math.abs(sipSummary.max_drawdown_pct)
-              ? ' while actually reducing max drawdown.'
-              : '.'}
-          </>
-        )}
-      </p>
+    <div className="bg-gradient-to-r from-teal-50 to-emerald-50 rounded-xl border border-teal-100 p-3 shadow-sm">
+      <div className="flex items-start gap-2">
+        <span className="text-teal-500 text-xs mt-0.5 flex-shrink-0">{aiExplainer ? '\u2726' : '\u2728'}</span>
+        <div>
+          <p className="text-[10px] font-semibold text-teal-700 mb-0.5">
+            Why {bestLabel} Won
+          </p>
+          <p className="text-[9px] text-teal-600 leading-relaxed">
+            {aiExplainer || (
+              <>
+                Signal rules deployed extra capital during corrections {'\u2014'} exactly when NAVs were lowest.
+                +{boost}% XIRR boost over Pure SIP
+                {bestSummary.max_drawdown_pct != null && sipSummary.max_drawdown_pct != null &&
+                  Math.abs(bestSummary.max_drawdown_pct) < Math.abs(sipSummary.max_drawdown_pct)
+                  ? ' with lower drawdown.'
+                  : '.'}
+              </>
+            )}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -169,49 +174,59 @@ export default function SignalLog({
 
   return (
     <div className="space-y-4">
+      {/* Why Signals Won — show first for context */}
+      <WhySignalsWon results={results} fund={fund} />
+
       {/* Signal Event Log */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
-        <p className="section-title mb-3">Signal Event Log</p>
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <p className="section-title">Signal Event Log</p>
+          {signalEvents.length > 0 && (
+            <span className="text-[9px] text-slate-400 tabular-nums">
+              {signalEvents.length} deployment{signalEvents.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
         {signalEvents.length > 0 ? (
-          <div className="space-y-2 max-h-[200px] overflow-y-auto">
+          <div className="space-y-1.5 max-h-[220px] overflow-y-auto">
             {signalEvents.map((event, i) => (
               <SignalEventItem key={i} event={event} latestNav={latestNav} />
             ))}
           </div>
         ) : (
-          <p className="text-[10px] text-slate-400 text-center py-4">
-            No signal deployments in this period
-          </p>
+          <div className="text-center py-5">
+            <p className="text-[10px] text-slate-400">No signal deployments</p>
+            <p className="text-[9px] text-slate-300 mt-0.5">Signals may not have triggered in this period</p>
+          </div>
         )}
       </div>
 
       {/* Action Buttons */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-2">
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-2">
         <button
           onClick={handleSaveStrategy}
-          className="w-full py-2.5 text-xs font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors"
+          className="w-full py-2.5 text-xs font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors shadow-sm shadow-teal-600/20"
         >
-          Save as Strategy Template
+          Save as Strategy
         </button>
-        <button
-          onClick={onExport}
-          className="w-full py-2 text-xs font-medium text-teal-700 bg-teal-50 rounded-lg hover:bg-teal-100 transition-colors border border-teal-200"
-        >
-          Export Results (CSV)
-        </button>
-        <button
-          onClick={() => {
-            const url = window.location.href;
-            navigator.clipboard?.writeText(url).catch(() => {});
-          }}
-          className="w-full py-2 text-xs font-medium text-slate-600 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200"
-        >
-          Share Backtest Link
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={onExport}
+            className="py-2 text-[10px] font-medium text-teal-700 bg-teal-50 rounded-lg hover:bg-teal-100 transition-colors border border-teal-200"
+          >
+            Export CSV
+          </button>
+          <button
+            onClick={() => {
+              const url = window.location.href;
+              navigator.clipboard?.writeText(url).catch(() => {});
+            }}
+            className="py-2 text-[10px] font-medium text-slate-600 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200"
+          >
+            Share Link
+          </button>
+        </div>
       </div>
-
-      {/* Why Signals Won explanation */}
-      <WhySignalsWon results={results} fund={fund} />
     </div>
   );
 }

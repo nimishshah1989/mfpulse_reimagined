@@ -157,21 +157,26 @@ export default function EquityCurve({ results, cashflowEvents, isLoading }) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 animate-in">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <p className="section-title">Equity Curve + Signal Events</p>
-          <InfoIcon tip="The teal line shows portfolio value over time. Orange diamonds mark signal-triggered deployments. The gray dashed line shows Pure SIP for comparison." />
+    <div className="bg-white rounded-xl border border-slate-200 p-5 animate-in shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="section-title">Equity Curve</p>
+            <InfoIcon tip="Portfolio value over time for each mode. Orange diamonds mark signal-triggered deployments. Solid line = best mode, dashed = others." />
+          </div>
+          <p className="text-[10px] text-slate-400 mt-0.5">
+            Portfolio growth across all 4 investment modes
+          </p>
         </div>
         <div className="flex gap-3 text-[10px] flex-wrap">
           {MODES_TO_SHOW.map((mode) => (
-            <div key={mode} className="flex items-center gap-1">
+            <div key={mode} className="flex items-center gap-1.5">
               <span className="w-3 h-0.5 rounded" style={{ backgroundColor: MODE_COLORS[mode] }} />
               <span className="text-slate-500">{MODE_LABELS[mode]}</span>
             </div>
           ))}
-          <div className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 bg-amber-500 rounded-sm rotate-45" />
             <span className="text-slate-500">Signal Deploy</span>
           </div>
         </div>

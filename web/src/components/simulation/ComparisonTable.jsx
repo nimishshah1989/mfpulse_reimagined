@@ -150,7 +150,7 @@ export default function ComparisonTable({ results }) {
   );
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto -mx-1">
       <table className="w-full text-[11px]">
         <thead>
           <tr className="text-[9px] text-slate-400 uppercase tracking-wider border-b border-slate-100">

@@ -102,10 +102,15 @@ export default function NarrativeSummary({ results, fund, config, period }) {
   if (!narrative) return null;
 
   return (
-    <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
-      <div className="flex items-start gap-2">
-        <span className="text-teal-500 text-sm mt-0.5">✦</span>
-        <p className="text-sm text-teal-900 leading-relaxed">{narrative}</p>
+    <div className="bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200/60 rounded-xl p-4 shadow-sm">
+      <div className="flex items-start gap-2.5">
+        <span className="text-teal-500 text-sm mt-0.5 flex-shrink-0">{'\u2726'}</span>
+        <div>
+          <p className="text-[10px] font-semibold text-teal-700 uppercase tracking-wider mb-1">
+            Simulation Insight
+          </p>
+          <p className="text-xs text-teal-900 leading-relaxed">{narrative}</p>
+        </div>
       </div>
     </div>
   );

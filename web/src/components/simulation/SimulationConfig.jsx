@@ -42,7 +42,7 @@ export default function SimulationConfig({
   }
 
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 p-5 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
+    <div className={`bg-white rounded-xl border border-slate-200 p-5 shadow-sm ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       <p className="section-title mb-3">Simulation Config</p>
       <div className="space-y-3">
         {/* SIP Amount + Lumpsum Reserve */}

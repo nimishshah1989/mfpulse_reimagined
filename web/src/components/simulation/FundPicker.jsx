@@ -47,14 +47,14 @@ function FundIdentityCard({ fund, lensScores, onClear }) {
   const planType = parts[1] || '';
 
   return (
-    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+    <div className="p-3 bg-gradient-to-b from-slate-50 to-white rounded-lg border border-slate-200/80">
       <div className="flex items-start justify-between mb-2">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-slate-800 truncate">{shortName}</p>
           <p className="text-[10px] text-slate-400 truncate">
-            {planType && `${planType} · `}
+            {planType && `${planType} \u00B7 `}
             {fund.category_name || ''}
-            {fund.amc_name ? ` · ${fund.amc_name}` : ''}
+            {fund.amc_name ? ` \u00B7 ${fund.amc_name}` : ''}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -62,13 +62,13 @@ function FundIdentityCard({ fund, lensScores, onClear }) {
             href={`/fund360?id=${fund.mstar_id}`}
             className="text-[10px] text-teal-600 font-medium hover:underline"
           >
-            360 View &rarr;
+            360 View {'\u2192'}
           </a>
           <button
             onClick={onClear}
-            className="w-5 h-5 flex items-center justify-center rounded-full bg-slate-200 text-slate-500 hover:bg-slate-300 text-[10px]"
+            className="w-5 h-5 flex items-center justify-center rounded-full bg-slate-200 text-slate-500 hover:bg-red-100 hover:text-red-500 text-[10px] transition-colors"
           >
-            x
+            {'\u00D7'}
           </button>
         </div>
       </div>
@@ -163,8 +163,16 @@ export default function FundPicker({
   }, []);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5">
-      <p className="section-title mb-3">Select Fund</p>
+    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <p className="section-title">Select Fund</p>
+        {selectedFund && (
+          <span className="text-[9px] text-emerald-500 font-medium flex items-center gap-1">
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+            Ready
+          </span>
+        )}
+      </div>
 
       <div ref={wrapperRef} className="relative mb-4">
         <input
@@ -172,7 +180,7 @@ export default function FundPicker({
           value={selectedFund ? '' : query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name, ISIN, or AMC..."
-          className="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400"
+          className="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/30 transition-shadow"
           disabled={!!selectedFund}
         />
         <svg
@@ -251,8 +259,14 @@ export default function FundPicker({
       )}
 
       {!selectedFund && (
-        <div className="p-4 text-center text-[11px] text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">
-          Search and select a fund to begin simulation
+        <div className="p-5 text-center bg-gradient-to-b from-slate-50 to-white rounded-lg border border-dashed border-slate-200">
+          <div className="w-10 h-10 mx-auto mb-2 rounded-xl bg-teal-50 flex items-center justify-center">
+            <svg className="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+          </div>
+          <p className="text-[11px] text-slate-500 font-medium">Search and select a fund</p>
+          <p className="text-[9px] text-slate-400 mt-0.5">Type at least 2 characters to search</p>
         </div>
       )}
     </div>

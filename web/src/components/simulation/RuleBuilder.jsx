@@ -226,7 +226,7 @@ export default function RuleBuilder({ rules, onRulesChange, disabled }) {
   }, [rules, onRulesChange]);
 
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 p-5 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
+    <div className={`bg-white rounded-xl border border-slate-200 p-5 shadow-sm ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1">
           <p className="section-title">Signal Rules</p>
@@ -239,7 +239,14 @@ export default function RuleBuilder({ rules, onRulesChange, disabled }) {
           + Add Rule
         </button>
       </div>
-      <div className="space-y-2">
+      {rules.length > 0 && (
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-[9px] text-slate-400">
+            {rules.filter((r) => r.active !== false).length} active / {rules.length} total
+          </span>
+        </div>
+      )}
+      <div className="space-y-2 max-h-[220px] overflow-y-auto">
         {rules.map((rule, i) => (
           editingIdx === i ? (
             <RuleEditor
@@ -260,9 +267,14 @@ export default function RuleBuilder({ rules, onRulesChange, disabled }) {
           )
         ))}
         {rules.length === 0 && (
-          <p className="text-[10px] text-slate-400 text-center py-3">
-            No signal rules configured. Add a rule to enable signal-based deployments.
-          </p>
+          <div className="text-center py-4">
+            <p className="text-[10px] text-slate-400">
+              No signal rules configured
+            </p>
+            <p className="text-[9px] text-slate-300 mt-0.5">
+              Add rules to enable signal-based top-ups
+            </p>
+          </div>
         )}
       </div>
     </div>

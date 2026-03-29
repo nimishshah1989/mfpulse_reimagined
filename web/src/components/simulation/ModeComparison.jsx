@@ -214,13 +214,18 @@ export default function ModeComparison({ results, isLoading, marketpulseOnline, 
   const periodLabel = period === 'max' ? 'Max' : period?.replace('Y', ' Year');
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 animate-in">
+    <div className="bg-white rounded-xl border border-slate-200 p-5 animate-in shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <p className="section-title">
-            Mode Comparison {periodLabel ? `\u2014 ${periodLabel} Backtest` : ''}
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="section-title">
+              Mode Comparison {periodLabel ? `\u2014 ${periodLabel} Backtest` : ''}
+            </p>
+            <InfoIcon tip="Compares 4 investment modes over the same period and fund. 'SIP + Signals' uses your signal rules to deploy extra capital during market stress. XIRR is the true time-weighted return accounting for all cash flows." />
+          </div>
+          <p className="text-[10px] text-slate-400 mt-0.5">
+            Which investment mode delivered the best risk-adjusted returns
           </p>
-          <InfoIcon tip="Compares 4 investment modes over the same period and fund. 'SIP + Signals' uses your signal rules to deploy extra capital during market stress. XIRR is the true time-weighted return accounting for all cash flows." />
         </div>
       </div>
 
