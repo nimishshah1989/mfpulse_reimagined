@@ -4,21 +4,34 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from decimal import Decimal
-from typing import Optional
+from decimal import Decimal, ROUND_HALF_UP
 
-from sqlalchemy import func, text
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.db.fund_master import FundMaster
 from app.models.db.sector_exposure import FundSectorExposure
+from app.models.db.sector_rotation import SectorRotationHistory
 
 logger = logging.getLogger(__name__)
+
+HUNDRED = Decimal("100")
+ONE_DECIMAL = Decimal("0.1")
+
+MIN_FUNDS_PER_CATEGORY = 5
 
 # Excluded categories (not investment-relevant)
 EXCLUDED_CATEGORIES = {
     "Overnight Fund", "Liquid Fund", "Money Market Fund",
     "Index Fund", "Fund of Funds", "Equity - Other",
+}
+
+QUADRANT_ALIASES: dict[str, str] = {
+    "LEADING": "Leading",
+    "IMPROVING": "Improving",
+    "WEAKENING": "Weakening",
+    "WORSENING": "Weakening",
+    "LAGGING": "Lagging",
 }
 
 
@@ -44,12 +57,17 @@ class CategoryAlignmentService:
 
     def _get_sector_quadrants(self) -> dict[str, str]:
         """Get sector_name -> quadrant mapping from latest rotation snapshot."""
-        rows = self.db.execute(text("""
-            SELECT sector_name, quadrant
-            FROM sector_rotation_history
-            WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM sector_rotation_history)
-        """)).fetchall()
-        return {r[0]: r[1] for r in rows}
+        latest_date = self.db.query(
+            func.max(SectorRotationHistory.snapshot_date)
+        ).scalar()
+        if not latest_date:
+            return {}
+        rows = (
+            self.db.query(SectorRotationHistory.sector_name, SectorRotationHistory.quadrant)
+            .filter(SectorRotationHistory.snapshot_date == latest_date)
+            .all()
+        )
+        return {r.sector_name: r.quadrant for r in rows if r.quadrant}
 
     def _compute_alignment(self, quadrant_map: dict[str, str]) -> list[dict]:
         """Compute per-category exposure across quadrant zones."""
@@ -95,14 +113,10 @@ class CategoryAlignmentService:
             quadrant = quadrant_map.get(sector_name)
             if not quadrant:
                 continue
-            # Normalize quadrant name (API may return LEADING/Leading/etc)
-            q_normalized = quadrant.capitalize()
-            if q_normalized not in ("Leading", "Improving", "Weakening", "Lagging"):
-                # Handle alternate names: WORSENING -> Weakening
-                if q_normalized in ("Worsening",):
-                    q_normalized = "Weakening"
-                else:
-                    continue
+            # Normalize quadrant name (API may return LEADING/Leading/WORSENING/etc)
+            q_normalized = QUADRANT_ALIASES.get(quadrant.strip().upper())
+            if not q_normalized:
+                continue
             pct = Decimal(str(net_pct))
             cat_data[cat_name][q_normalized] += pct
             cat_data[cat_name]["total"] += pct
@@ -117,13 +131,13 @@ class CategoryAlignmentService:
 
         result = []
         for cat_name, data in cat_data.items():
-            total = float(data["total"]) if data["total"] else 1.0
+            total = data["total"] if data["total"] else Decimal("1")
             if total <= 0:
                 continue
-            leading_pct = round(float(data["Leading"]) / total * 100, 1)
-            improving_pct = round(float(data["Improving"]) / total * 100, 1)
-            weakening_pct = round(float(data["Weakening"]) / total * 100, 1)
-            lagging_pct = round(100.0 - leading_pct - improving_pct - weakening_pct, 1)
+            leading_pct = float((data["Leading"] / total * HUNDRED).quantize(ONE_DECIMAL, rounding=ROUND_HALF_UP))
+            improving_pct = float((data["Improving"] / total * HUNDRED).quantize(ONE_DECIMAL, rounding=ROUND_HALF_UP))
+            weakening_pct = float((data["Weakening"] / total * HUNDRED).quantize(ONE_DECIMAL, rounding=ROUND_HALF_UP))
+            lagging_pct = float((data["Lagging"] / total * HUNDRED).quantize(ONE_DECIMAL, rounding=ROUND_HALF_UP))
 
             result.append({
                 "category_name": cat_name,
@@ -137,4 +151,4 @@ class CategoryAlignmentService:
             })
 
         # Only return categories with enough data
-        return [r for r in result if r["fund_count"] >= 5]
+        return [r for r in result if r["fund_count"] >= MIN_FUNDS_PER_CATEGORY]
