@@ -86,10 +86,11 @@ export default function RadarChart({ funds = [], size = 320, categoryAvg = null 
       const avgStr = avgPts.map((p) => `${p.x},${p.y}`).join(' ');
       chart.append('polygon')
         .attr('points', avgStr)
-        .attr('fill', 'none')
+        .attr('fill', '#94a3b8')
+        .attr('fill-opacity', 0.05)
         .attr('stroke', '#94a3b8')
         .attr('stroke-width', 1.5)
-        .attr('stroke-dasharray', '6,3')
+        .attr('stroke-dasharray', '4 4')
         .attr('opacity', 0.7);
 
       avgPts.forEach((p) => {

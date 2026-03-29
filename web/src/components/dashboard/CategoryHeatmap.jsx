@@ -100,6 +100,7 @@ export default function CategoryHeatmap({ universe, loading }) {
         fundCount: data.funds.length,
         avgReturn: data.count > 0 ? data.sum / data.count : null,
       }))
+      .filter((cat) => cat.fundCount > 0 && cat.avgReturn != null)
       .sort((a, b) => (b.fundCount || 0) - (a.fundCount || 0));
   }, [universe, period]);
 

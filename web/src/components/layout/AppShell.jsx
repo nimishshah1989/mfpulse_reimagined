@@ -115,7 +115,7 @@ export default function AppShell({ children, activeTab, onTabChange }) {
                   }
                 }}
                 placeholder="Search funds..."
-                className="w-48 px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:ring-1 focus:ring-teal-400 focus:border-teal-400 outline-none placeholder:text-slate-400"
+                className="w-48 px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:ring-2 focus:ring-teal-600/30 focus:border-teal-600 outline-none placeholder:text-slate-400 transition-colors"
               />
               <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />

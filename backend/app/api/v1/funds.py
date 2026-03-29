@@ -346,16 +346,9 @@ def _enrich_with_lens(funds: list[dict], lens_repo: LensRepository) -> list[dict
     if not mstar_ids:
         return funds
 
-    # Batch fetch lens scores
-    scores_map: dict[str, dict] = {}
-    class_map: dict[str, dict] = {}
-    for mid in mstar_ids:
-        scores = lens_repo.get_latest_scores(mid)
-        if scores:
-            scores_map[mid] = scores
-        cls = lens_repo.get_latest_classification(mid)
-        if cls:
-            class_map[mid] = cls
+    # Bulk fetch lens scores and classifications — single query each instead of N+1
+    scores_map = lens_repo.get_all_scores_batch(mstar_ids)
+    class_map = lens_repo.get_all_classifications_batch(mstar_ids)
 
     enriched = []
     for fund in funds:
