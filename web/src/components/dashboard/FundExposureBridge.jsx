@@ -1,6 +1,6 @@
 import SkeletonLoader from '../shared/SkeletonLoader';
 import SectionTitle from '../shared/SectionTitle';
-import { formatAUMRaw, formatPct } from '../lib/format';
+import { formatAUMRaw, formatPct } from '../../lib/format';
 
 const SECTOR_ABBREV = {
   Technology: 'Tech',

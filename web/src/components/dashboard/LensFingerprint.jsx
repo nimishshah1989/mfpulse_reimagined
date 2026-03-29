@@ -75,7 +75,8 @@ function buildInsight(top15) {
   return parts.join(' ') || 'Top 15 by AUM shown with lens fingerprints.';
 }
 
-export default function LensFingerprint({ universe = [], archetypes: serverArchetypes, loading }) {
+export default function LensFingerprint({ universe: rawUniverse, archetypes: serverArchetypes, loading }) {
+  const universe = rawUniverse || [];
   const [verdicts, setVerdicts] = useState({});
 
   const archetypeGrid = useMemo(() => {
