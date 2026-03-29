@@ -232,39 +232,84 @@ RISK_STATS_FIELD_MAP: dict[str, str] = {
     "Mean3Yr": "mean_3y",
     "Mean5Yr": "mean_5y",
     "Mean10Yr": "mean_10y",
-    # Category comparison fields (from Extended Risk Stats API x7jihr9d49jb9f6d)
+    # --- Extended Risk Stats API (x7jihr9d49jb9f6d) ---
+    # Alpha at all tenors (fills gap: old API only had 3Y/5Y/10Y)
+    "Alpha1Yr": "alpha_1y",
+    "Alpha3Yr": "alpha_3y",
+    "Alpha5Yr": "alpha_5y",
+    "Alpha10Yr": "alpha_10y",
+    # Beta at all tenors
+    "Beta1Yr": "beta_1y",
+    "Beta3Yr": "beta_3y",
+    "Beta5Yr": "beta_5y",
+    "Beta10Yr": "beta_10y",
+    # Correlation 10Y (was missing)
+    "Correlation10Yr": "correlation_10y",
+    # Category comparison: Sharpe
+    "CategorySharpeRatio1Yr": "cat_sharpe_1y",
+    "CategorySharpeRatio3Yr": "cat_sharpe_3y",
+    "CategorySharpeRatio5Yr": "cat_sharpe_5y",
+    # Category comparison: StdDev
+    "CategoryStdDev1Yr": "cat_std_dev_1y",
+    "CategoryStdDev3Yr": "cat_std_dev_3y",
+    "CategoryStdDev5Yr": "cat_std_dev_5y",
+    "CategoryStdDev10Yr": "cat_std_dev_10y",
+    # Category comparison: Alpha
+    "CategoryAlpha1Yr": "cat_alpha_1y",
+    "CategoryAlpha3Yr": "cat_alpha_3y",
+    "CategoryAlpha5Yr": "cat_alpha_5y",
+    "CategoryAlpha10Yr": "cat_alpha_10y",
+    # Category comparison: Beta
+    "CategoryBeta1Yr": "cat_beta_1y",
+    "CategoryBeta3Yr": "cat_beta_3y",
+    "CategoryBeta5Yr": "cat_beta_5y",
+    "CategoryBeta10Yr": "cat_beta_10y",
+    # Category comparison: Sortino
     "CategorySortinoRatio1Yr": "cat_sortino_1y",
     "CategorySortinoRatio3Yr": "cat_sortino_3y",
     "CategorySortinoRatio5Yr": "cat_sortino_5y",
     "CategorySortinoRatio10Yr": "cat_sortino_10y",
+    # Category comparison: Kurtosis
     "CategoryKurtosis1Yr": "cat_kurtosis_1y",
     "CategoryKurtosis3Yr": "cat_kurtosis_3y",
     "CategoryKurtosis5Yr": "cat_kurtosis_5y",
     "CategoryKurtosis10Yr": "cat_kurtosis_10y",
+    # Category comparison: Skewness
     "CategorySkewness1Yr": "cat_skewness_1y",
     "CategorySkewness3Yr": "cat_skewness_3y",
     "CategorySkewness5Yr": "cat_skewness_5y",
     "CategorySkewness10Yr": "cat_skewness_10y",
+    # Category comparison: Capture Up
     "CategoryCaptureRatioUpside1Yr": "cat_capture_up_1y",
     "CategoryCaptureRatioUpside3Yr": "cat_capture_up_3y",
     "CategoryCaptureRatioUpside5Yr": "cat_capture_up_5y",
     "CategoryCaptureRatioUpside10Yr": "cat_capture_up_10y",
+    # Category comparison: Capture Down
     "CategoryCaptureRatioDownside1Yr": "cat_capture_down_1y",
     "CategoryCaptureRatioDownside3Yr": "cat_capture_down_3y",
     "CategoryCaptureRatioDownside5Yr": "cat_capture_down_5y",
     "CategoryCaptureRatioDownside10Yr": "cat_capture_down_10y",
+    # Category comparison: Correlation
     "CategoryCorrelation1Yr": "cat_correlation_1y",
     "CategoryCorrelation3Yr": "cat_correlation_3y",
     "CategoryCorrelation5Yr": "cat_correlation_5y",
     "CategoryCorrelation10Yr": "cat_correlation_10y",
+    # Category comparison: R-Squared
+    "CategoryRsquared1Yr": "cat_r_squared_1y",
+    "CategoryRsquared3Yr": "cat_r_squared_3y",
+    "CategoryRsquared5Yr": "cat_r_squared_5y",
+    "CategoryRsquared10Yr": "cat_r_squared_10y",
+    # Category comparison: Information Ratio
     "CategoryInformationRatio1Yr": "cat_info_ratio_1y",
     "CategoryInformationRatio3Yr": "cat_info_ratio_3y",
     "CategoryInformationRatio5Yr": "cat_info_ratio_5y",
     "CategoryInformationRatio10Yr": "cat_info_ratio_10y",
+    # Category comparison: Tracking Error
     "CategoryTrackingError1Yr": "cat_tracking_error_1y",
     "CategoryTrackingError3Yr": "cat_tracking_error_3y",
     "CategoryTrackingError5Yr": "cat_tracking_error_5y",
     "CategoryTrackingError10Yr": "cat_tracking_error_10y",
+    # Category comparison: Treynor
     "CategoryTreynorRatio1Yr": "cat_treynor_1y",
     "CategoryTreynorRatio3Yr": "cat_treynor_3y",
     "CategoryTreynorRatio5Yr": "cat_treynor_5y",

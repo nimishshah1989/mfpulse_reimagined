@@ -25,11 +25,13 @@ class RiskStatsMonthly(Base, UUIDPrimaryKey):
     sharpe_10y: Mapped[None] = _col()
 
     # Alpha
+    alpha_1y: Mapped[None] = _col()
     alpha_3y: Mapped[None] = _col()
     alpha_5y: Mapped[None] = _col()
     alpha_10y: Mapped[None] = _col()
 
     # Beta
+    beta_1y: Mapped[None] = _col()
     beta_3y: Mapped[None] = _col()
     beta_5y: Mapped[None] = _col()
     beta_10y: Mapped[None] = _col()
@@ -86,6 +88,7 @@ class RiskStatsMonthly(Base, UUIDPrimaryKey):
     correlation_1y: Mapped[None] = _col()
     correlation_3y: Mapped[None] = _col()
     correlation_5y: Mapped[None] = _col()
+    correlation_10y: Mapped[None] = _col()
 
     # R-Squared
     r_squared_1y: Mapped[None] = _col()
@@ -112,6 +115,25 @@ class RiskStatsMonthly(Base, UUIDPrimaryKey):
     mean_10y: Mapped[None] = _col()
 
     # Category comparison fields (from Extended Risk Stats API)
+    cat_sharpe_1y: Mapped[None] = _col()
+    cat_sharpe_3y: Mapped[None] = _col()
+    cat_sharpe_5y: Mapped[None] = _col()
+    cat_std_dev_1y: Mapped[None] = _col()
+    cat_std_dev_3y: Mapped[None] = _col()
+    cat_std_dev_5y: Mapped[None] = _col()
+    cat_std_dev_10y: Mapped[None] = _col()
+    cat_alpha_1y: Mapped[None] = _col()
+    cat_alpha_3y: Mapped[None] = _col()
+    cat_alpha_5y: Mapped[None] = _col()
+    cat_alpha_10y: Mapped[None] = _col()
+    cat_beta_1y: Mapped[None] = _col()
+    cat_beta_3y: Mapped[None] = _col()
+    cat_beta_5y: Mapped[None] = _col()
+    cat_beta_10y: Mapped[None] = _col()
+    cat_r_squared_1y: Mapped[None] = _col()
+    cat_r_squared_3y: Mapped[None] = _col()
+    cat_r_squared_5y: Mapped[None] = _col()
+    cat_r_squared_10y: Mapped[None] = _col()
     cat_sortino_1y: Mapped[None] = _col()
     cat_sortino_3y: Mapped[None] = _col()
     cat_sortino_5y: Mapped[None] = _col()
