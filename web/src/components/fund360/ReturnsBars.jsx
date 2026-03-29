@@ -32,7 +32,7 @@ function BarRow({ label, fundVal, catVal, maxAbs }) {
   const fColor = fundVal != null && fundVal >= 0 ? '#0d9488' : '#dc2626';
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       <div className="flex items-center justify-between">
         <span className="text-xs font-bold text-slate-700 w-8">{label}</span>
         {gap != null && (
@@ -51,7 +51,7 @@ function BarRow({ label, fundVal, catVal, maxAbs }) {
       {/* Fund bar */}
       <div className="flex items-center gap-2">
         <span className="text-[10px] text-slate-400 w-10 text-right font-medium">Fund</span>
-        <div className="flex-1 h-3.5 bg-slate-100 rounded-full overflow-hidden">
+        <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-700 ease-out"
             style={{ width: `${fPct}%`, backgroundColor: fColor }}
@@ -70,7 +70,7 @@ function BarRow({ label, fundVal, catVal, maxAbs }) {
       {catVal != null && (
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-slate-400 w-10 text-right font-medium">Cat</span>
-          <div className="flex-1 h-3.5 bg-slate-100 rounded-full overflow-hidden">
+          <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-700 ease-out"
               style={{ width: `${cPct}%`, backgroundColor: '#94a3b8' }}
@@ -107,7 +107,7 @@ export default function ReturnsBars({ fundReturns, categoryReturns }) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {/* Legend */}
       <div className="flex items-center gap-5 text-[11px] text-slate-400">
         <span className="flex items-center gap-1.5">

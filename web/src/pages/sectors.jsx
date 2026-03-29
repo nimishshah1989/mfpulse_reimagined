@@ -46,7 +46,7 @@ export default function SectorsPage() {
   const [exposureLoading, setExposureLoading] = useState(false);
 
   const compassRef = useRef(null);
-  const [compassWidth, setCompassWidth] = useState(600);
+  const [compassWidth, setCompassWidth] = useState(0);
 
   useEffect(() => {
     if (!compassRef.current) return;
@@ -347,7 +347,7 @@ export default function SectorsPage() {
               {/* VIEW 1: Compass */}
               {view === 'compass' && (
                 <div className="view-fade">
-                  {sectorData.length > 0 ? (
+                  {sectorData.length > 0 && compassWidth > 48 ? (
                     <CompassChart
                       sectors={sectorData}
                       selectedSector={selectedSector}
@@ -355,9 +355,13 @@ export default function SectorsPage() {
                       width={compassWidth - 48}
                       height={520}
                     />
-                  ) : (
+                  ) : sectorData.length === 0 ? (
                     <div className="flex items-center justify-center h-[400px] text-sm text-slate-400">
                       Sector rotation data computing... Check back after sector computation runs.
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-[520px] text-sm text-slate-400">
+                      Measuring layout...
                     </div>
                   )}
                 </div>

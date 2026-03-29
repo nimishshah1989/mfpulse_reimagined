@@ -108,7 +108,7 @@ function MiniCompass({ sectors }) {
 
     sectors.forEach((s) => {
       const rs = s.rs_score || 50;
-      const mom = s.momentum || 0;
+      const mom = s.rs_momentum || s.momentum_1m || s.momentum || 0;
       const x = cx + ((rs - 50) / 50) * (cx - 20);
       const y = cy - (mom / maxMom) * (cy - 20);
 
@@ -144,7 +144,7 @@ function SectorRow({ sector }) {
   const quadrant = toTitleCase(sector.quadrant);
   const config = QUADRANT_CONFIG[quadrant] || QUADRANT_CONFIG.Improving;
   const displayName = sector.display_name || sector.sector_name || sector.name || '';
-  const mom = sector.momentum;
+  const mom = sector.rs_momentum || sector.momentum_1m || sector.momentum;
   const momStr = mom != null ? `${mom >= 0 ? '+' : ''}${Number(mom).toFixed(1)}` : '--';
 
   return (

@@ -81,7 +81,9 @@ export default function PerformanceChart({ mstarId, initialData = [], fundReturn
     }
   }, [mstarId]);
 
-  const cleanData = data.filter((d) => d.nav != null);
+  const cleanData = data
+    .filter((d) => d.nav != null)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   const firstNav = cleanData.length > 0 ? Number(cleanData[0].nav) : null;
   const lastNav = cleanData.length > 0 ? Number(cleanData[cleanData.length - 1].nav) : null;

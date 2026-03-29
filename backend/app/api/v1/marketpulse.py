@@ -70,7 +70,13 @@ def get_sectors(period: str = Query(default="3M")) -> APIResponse:
 @router.get("/nifty")
 def get_nifty() -> APIResponse:
     """Get NIFTY index data with period returns from MarketPulse."""
-    client = _get_client()
+    settings = get_settings()
+    # Use shorter timeout for nifty — these endpoints may not exist
+    client = MarketPulseClient(
+        base_url=settings.marketpulse_base_url,
+        timeout=min(settings.marketpulse_timeout_seconds, 5),
+    )
+
     indices_data = client.get_indices()
     returns_data = client.get_indices_latest()
 

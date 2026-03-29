@@ -1,9 +1,9 @@
 import { LENS_LABELS } from '../../lib/lens';
 
 const AUM_CR_DIVISOR = 10000000;
-const MIN_RADIUS = 5;
-const MAX_RADIUS = 30;
-const MAX_AUM_DOMAIN = 50000;
+const MIN_RADIUS = 4;
+const MAX_RADIUS = 36;
+const MAX_AUM_DOMAIN = 25000;
 
 export { AUM_CR_DIVISOR, MIN_RADIUS, MAX_RADIUS, MAX_AUM_DOMAIN };
 
