@@ -8,30 +8,33 @@ const QUARTILE_COLORS = {
 };
 
 const RANK_PERIODS = [
-  { key: 'rank_1m', qKey: 'quartile_1m', label: '1M' },
-  { key: 'rank_3m', qKey: 'quartile_3m', label: '3M' },
-  { key: 'rank_6m', qKey: 'quartile_6m', label: '6M' },
-  { key: 'rank_ytd', qKey: 'quartile_ytd', label: 'YTD' },
-  { key: 'rank_1y', qKey: 'quartile_1y', label: '1Y' },
-  { key: 'rank_2y', qKey: 'quartile_2y', label: '2Y' },
-  { key: 'rank_3y', qKey: 'quartile_3y', label: '3Y' },
-  { key: 'rank_4y', qKey: 'quartile_4y', label: '4Y' },
-  { key: 'rank_5y', qKey: 'quartile_5y', label: '5Y' },
-  { key: 'rank_7y', qKey: 'quartile_7y', label: '7Y' },
-  { key: 'rank_10y', qKey: 'quartile_10y', label: '10Y' },
+  { key: 'abs_rank_1m', qKey: 'quartile_1m', label: '1M' },
+  { key: 'abs_rank_3m', qKey: 'quartile_3m', label: '3M' },
+  { key: 'abs_rank_6m', qKey: 'quartile_6m', label: '6M' },
+  { key: 'abs_rank_ytd', qKey: 'quartile_ytd', label: 'YTD' },
+  { key: 'abs_rank_1y', qKey: 'quartile_1y', label: '1Y' },
+  { key: 'abs_rank_2y', qKey: 'quartile_2y', label: '2Y' },
+  { key: 'abs_rank_3y', qKey: 'quartile_3y', label: '3Y' },
+  { key: 'abs_rank_4y', qKey: 'quartile_4y', label: '4Y' },
+  { key: 'abs_rank_5y', qKey: 'quartile_5y', label: '5Y' },
+  { key: 'abs_rank_7y', qKey: 'quartile_7y', label: '7Y' },
+  { key: 'abs_rank_10y', qKey: 'quartile_10y', label: '10Y' },
 ];
 
+// Calendar year percentiles — "10y ago" through "YTD", labels computed dynamically
+const currentYear = new Date().getFullYear();
 const CALENDAR_YEARS = [
-  { key: 'percentile_cy_1', label: '2016' },
-  { key: 'percentile_cy_2', label: '2017' },
-  { key: 'percentile_cy_3', label: '2018' },
-  { key: 'percentile_cy_4', label: '2019' },
-  { key: 'percentile_cy_5', label: '2020' },
-  { key: 'percentile_cy_6', label: '2021' },
-  { key: 'percentile_cy_7', label: '2022' },
-  { key: 'percentile_cy_8', label: '2023' },
-  { key: 'percentile_cy_9', label: '2024' },
-  { key: 'percentile_cy_10', label: '2025' },
+  { key: 'cal_year_pctile_10y', label: String(currentYear - 10) },
+  { key: 'cal_year_pctile_9y', label: String(currentYear - 9) },
+  { key: 'cal_year_pctile_8y', label: String(currentYear - 8) },
+  { key: 'cal_year_pctile_7y', label: String(currentYear - 7) },
+  { key: 'cal_year_pctile_6y', label: String(currentYear - 6) },
+  { key: 'cal_year_pctile_5y', label: String(currentYear - 5) },
+  { key: 'cal_year_pctile_4y', label: String(currentYear - 4) },
+  { key: 'cal_year_pctile_3y', label: String(currentYear - 3) },
+  { key: 'cal_year_pctile_2y', label: String(currentYear - 2) },
+  { key: 'cal_year_pctile_1y', label: String(currentYear - 1) },
+  { key: 'cal_year_pctile_ytd', label: 'YTD' },
 ];
 
 function percentileColor(pctile) {

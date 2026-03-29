@@ -92,6 +92,16 @@ export default function HoldingsTable({ holdings, sectorQuadrants }) {
                   <p className="text-xs font-semibold text-slate-800 truncate">
                     {holdingName}
                   </p>
+                  {h.share_change != null && Number(h.share_change) !== 0 && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0 ${
+                      Number(h.share_change) > 0
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : 'bg-red-50 text-red-700'
+                    }`}>
+                      {Number(h.share_change) > 0 ? '\u25B2' : '\u25BC'}{' '}
+                      {Number(h.share_change) > 0 ? 'Added' : 'Reduced'}
+                    </span>
+                  )}
                   {sector && (
                     <span className={`text-[9px] px-1.5 py-0.5 rounded flex-shrink-0 ${getSectorColor(sector)}`}>
                       {sector}

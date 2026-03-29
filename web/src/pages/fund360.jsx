@@ -119,6 +119,16 @@ export default function Fund360Page() {
           top_holdings: detailRaw?.top_holdings ?? null,
           sector_exposure: detailRaw?.sector_exposure ?? null,
           category_fund_count: detailRaw?.category_fund_count ?? null,
+          turnover_ratio: detailRaw?.turnover_ratio ?? null,
+          gross_expense_ratio: detailRaw?.gross_expense_ratio ?? null,
+          sip_available: detailRaw?.sip_available ?? null,
+          lock_in_period: detailRaw?.lock_in_period ?? null,
+          is_etf: detailRaw?.is_etf ?? null,
+          is_index_fund: detailRaw?.is_index_fund ?? null,
+          distribution_status: detailRaw?.distribution_status ?? null,
+          closed_to_investors: detailRaw?.closed_to_investors ?? null,
+          previous_fund_name: detailRaw?.previous_fund_name ?? null,
+          investment_philosophy: detailRaw?.investment_philosophy ?? null,
         };
         setFundDetail(detail);
         setLensScores(lens);

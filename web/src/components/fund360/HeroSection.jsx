@@ -163,6 +163,21 @@ export default function HeroSection({ fundDetail, lensScores, mstarId, onCompare
                     {fundDetail.indian_risk_level}
                   </span>
                 )}
+                {fundDetail.lock_in_period != null && Number(fundDetail.lock_in_period) > 0 && (
+                  <span className="text-[11px] px-2 py-0.5 bg-red-50 text-red-700 rounded font-medium">
+                    Lock-in: {Number(fundDetail.lock_in_period)} yr
+                  </span>
+                )}
+                {fundDetail.is_etf && (
+                  <span className="text-[11px] px-2 py-0.5 bg-blue-50 text-blue-700 rounded font-medium">
+                    ETF
+                  </span>
+                )}
+                {fundDetail.is_index_fund && !fundDetail.is_etf && (
+                  <span className="text-[11px] px-2 py-0.5 bg-blue-50 text-blue-700 rounded font-medium">
+                    Index Fund
+                  </span>
+                )}
               </div>
 
               {/* Action buttons */}

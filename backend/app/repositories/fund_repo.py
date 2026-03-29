@@ -446,6 +446,17 @@ class FundRepository:
             # 52-week range
             "nav_52wk_high": nav.nav_52wk_high,
             "nav_52wk_low": nav.nav_52wk_low,
+            # Calendar year returns
+            "calendar_year_return_1y": nav.calendar_year_return_1y,
+            "calendar_year_return_2y": nav.calendar_year_return_2y,
+            "calendar_year_return_3y": nav.calendar_year_return_3y,
+            "calendar_year_return_4y": nav.calendar_year_return_4y,
+            "calendar_year_return_5y": nav.calendar_year_return_5y,
+            "calendar_year_return_6y": nav.calendar_year_return_6y,
+            "calendar_year_return_7y": nav.calendar_year_return_7y,
+            "calendar_year_return_8y": nav.calendar_year_return_8y,
+            "calendar_year_return_9y": nav.calendar_year_return_9y,
+            "calendar_year_return_10y": nav.calendar_year_return_10y,
         }
 
     @staticmethod

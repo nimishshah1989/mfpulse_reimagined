@@ -5,8 +5,11 @@ const PERIODS = [
   { key: 'return_3m', label: '3M' },
   { key: 'return_6m', label: '6M' },
   { key: 'return_1y', label: '1Y' },
+  { key: 'return_2y', label: '2Y' },
   { key: 'return_3y', label: '3Y' },
   { key: 'return_5y', label: '5Y' },
+  { key: 'return_7y', label: '7Y' },
+  { key: 'return_10y', label: '10Y' },
 ];
 
 const MAX_BAR_WIDTH = 100;

@@ -10,7 +10,7 @@ import { formatAUM } from '../../lib/format';
  *   holdingsData object  — holdings snapshot data (from asset-allocation or dedicated endpoint)
  */
 
-const METRICS = [
+const EQUITY_METRICS = [
   { key: 'pe_ratio', label: 'P/E Ratio', format: (v) => Number(v).toFixed(1) },
   { key: 'pb_ratio', label: 'P/B Ratio', format: (v) => Number(v).toFixed(1) },
   { key: 'ps_ratio', label: 'P/S Ratio', format: (v) => Number(v).toFixed(1) },
@@ -19,11 +19,25 @@ const METRICS = [
   { key: 'roe_ttm', label: 'ROE (TTM)', format: (v) => `${Number(v).toFixed(1)}%` },
   { key: 'roa_ttm', label: 'ROA (TTM)', format: (v) => `${Number(v).toFixed(1)}%` },
   { key: 'net_margin_ttm', label: 'Net Margin', format: (v) => `${Number(v).toFixed(1)}%` },
+];
+
+const BOND_METRICS = [
+  { key: 'ytm', label: 'Yield to Maturity', format: (v) => `${Number(v).toFixed(2)}%` },
+  { key: 'modified_duration', label: 'Mod. Duration', format: (v) => `${Number(v).toFixed(2)} yrs` },
+  { key: 'avg_eff_maturity', label: 'Avg Maturity', format: (v) => `${Number(v).toFixed(2)} yrs` },
+  { key: 'avg_credit_quality', label: 'Avg Credit Quality', format: (v) => v },
+];
+
+const COMMON_METRICS = [
+  { key: 'equity_style_box', label: 'Style Box', format: (v) => v },
+  { key: 'bond_style_box', label: 'FI Style Box', format: (v) => v },
+  { key: 'num_holdings', label: 'Holdings', format: (v) => Number(v).toLocaleString('en-IN') },
   { key: 'turnover_ratio', label: 'Turnover', format: (v) => `${Number(v).toFixed(0)}%` },
   { key: 'prospective_div_yield', label: 'Div Yield', format: (v) => `${Number(v).toFixed(2)}%` },
-  { key: 'num_holdings', label: 'Holdings', format: (v) => Number(v).toLocaleString('en-IN') },
-  { key: 'equity_style_box', label: 'Style Box', format: (v) => v },
+  { key: 'est_fund_net_flow', label: 'Est. Net Flow', format: (v) => formatAUM(Number(v) / 10000000) },
 ];
+
+const METRICS = [...EQUITY_METRICS, ...BOND_METRICS, ...COMMON_METRICS];
 
 export default function PortfolioMetrics({ holdingsData }) {
   if (!holdingsData) return null;

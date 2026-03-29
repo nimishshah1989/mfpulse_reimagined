@@ -372,6 +372,7 @@ class HoldingsRepository:
             "avg_credit_quality": snap.avg_credit_quality,
             "prospective_div_yield": snap.prospective_div_yield,
             "turnover_ratio": snap.turnover_ratio,
+            "est_fund_net_flow": snap.est_fund_net_flow,
         }
 
     @staticmethod

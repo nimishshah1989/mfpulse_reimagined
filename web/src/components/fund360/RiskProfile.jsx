@@ -85,15 +85,15 @@ export default function RiskProfile({ riskStats }) {
     },
     {
       label: 'Capture Up',
-      value: riskStats.upside_capture_3y ?? riskStats.upside_capture,
+      value: riskStats.capture_up_3y ?? riskStats.upside_capture_3y ?? riskStats.upside_capture,
       format: fmtPct0,
     },
     {
       label: 'Capture Down',
-      value: riskStats.downside_capture_3y ?? riskStats.downside_capture,
+      value: riskStats.capture_down_3y ?? riskStats.downside_capture_3y ?? riskStats.downside_capture,
       format: fmtPct0,
-      sublabelColor: (riskStats.downside_capture_3y ?? riskStats.downside_capture) != null && Number(riskStats.downside_capture_3y ?? riskStats.downside_capture) < 90 ? 'text-emerald-600' : 'text-amber-600',
-      sublabel: (riskStats.downside_capture_3y ?? riskStats.downside_capture) != null ? (Number(riskStats.downside_capture_3y ?? riskStats.downside_capture) < 90 ? 'Falls less' : null) : null,
+      sublabelColor: (riskStats.capture_down_3y ?? riskStats.downside_capture_3y ?? riskStats.downside_capture) != null && Number(riskStats.capture_down_3y ?? riskStats.downside_capture_3y ?? riskStats.downside_capture) < 90 ? 'text-emerald-600' : 'text-amber-600',
+      sublabel: (riskStats.capture_down_3y ?? riskStats.downside_capture_3y ?? riskStats.downside_capture) != null ? (Number(riskStats.capture_down_3y ?? riskStats.downside_capture_3y ?? riskStats.downside_capture) < 90 ? 'Falls less' : null) : null,
     },
     {
       label: 'R-Squared (3Y)',
@@ -116,8 +116,21 @@ export default function RiskProfile({ riskStats }) {
       sublabel: 'Active deviation',
     },
     {
+      label: 'Max Drawdown (3Y)',
+      value: riskStats.max_drawdown_3y ?? riskStats.max_drawdown,
+      format: fmtPct1,
+      sublabel: 'Worst peak-to-trough',
+      sublabelColor: 'text-red-500',
+    },
+    {
+      label: 'Kurtosis (3Y)',
+      value: riskStats.kurtosis_3y ?? riskStats.kurtosis,
+      format: fmtNum,
+      sublabel: 'Tail risk',
+    },
+    {
       label: 'Mean Return (3Y)',
-      value: riskStats.mean_return_3y ?? riskStats.mean_return,
+      value: riskStats.mean_3y ?? riskStats.mean_return_3y ?? riskStats.mean_return,
       format: fmtPct,
       sublabel: 'Monthly average',
     },

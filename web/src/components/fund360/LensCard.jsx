@@ -126,33 +126,53 @@ function ReturnBreakdown({ fundDetail }) {
 function RiskBreakdown({ riskStats }) {
   if (!riskStats) return null;
   const stats = [
-    { label: 'Std Dev (3Y)', key: 'std_dev_3y', alt: 'std_dev', fmt: 'pct', lowerBetter: true, tip: 'Standard deviation of returns over 3 years' },
-    { label: 'Max Drawdown', key: 'max_drawdown_3y', alt: 'max_drawdown', fmt: 'pct', lowerBetter: true, tip: 'Largest peak-to-trough decline' },
-    { label: 'Beta (3Y)', key: 'beta_3y', alt: 'beta', fmt: 'num', lowerBetter: true, tip: 'Sensitivity to market movements' },
-    { label: 'Downside Capture', key: 'downside_capture_3y', alt: 'downside_capture', fmt: 'pct0', lowerBetter: true, tip: 'How much of market falls the fund captures' },
-    { label: 'Upside Capture', key: 'upside_capture_3y', alt: 'upside_capture', fmt: 'pct0', lowerBetter: false, tip: 'How much of market gains the fund captures' },
-    { label: 'R-Squared', key: 'r_squared_3y', alt: 'r_squared', fmt: 'num', tip: 'How closely fund tracks benchmark' },
-    { label: 'Skewness (3Y)', key: 'skewness_3y', alt: 'skewness', fmt: 'num', tip: 'Return distribution asymmetry' },
-    { label: 'Kurtosis (3Y)', key: 'kurtosis_3y', alt: 'kurtosis', fmt: 'num', tip: 'Tail risk -- extreme event frequency' },
+    { label: 'Std Dev', key3: 'std_dev_3y', key5: 'std_dev_5y', fmt: 'pct', tip: 'Standard deviation of returns' },
+    { label: 'Max Drawdown', key3: 'max_drawdown_3y', key5: 'max_drawdown_5y', fmt: 'pct', tip: 'Largest peak-to-trough decline' },
+    { label: 'Beta', key3: 'beta_3y', key5: 'beta_5y', fmt: 'num', tip: 'Sensitivity to market movements' },
+    { label: 'Downside Capture', key3: 'capture_down_3y', key5: 'capture_down_5y', fmt: 'pct0', tip: 'How much of market falls the fund captures' },
+    { label: 'Upside Capture', key3: 'capture_up_3y', key5: 'capture_up_5y', fmt: 'pct0', tip: 'How much of market gains the fund captures' },
+    { label: 'R-Squared', key3: 'r_squared_3y', key5: 'r_squared_5y', fmt: 'num', tip: 'How closely fund tracks benchmark' },
+    { label: 'Correlation', key3: 'correlation_3y', key5: 'correlation_5y', fmt: 'num', tip: 'Correlation with benchmark' },
+    { label: 'Skewness', key3: 'skewness_3y', key5: 'skewness_5y', fmt: 'num', tip: 'Return distribution asymmetry' },
+    { label: 'Kurtosis', key3: 'kurtosis_3y', key5: 'kurtosis_5y', fmt: 'num', tip: 'Tail risk -- extreme event frequency' },
   ];
 
+  const fmtVal = (v, fmt) => {
+    if (v == null) return null;
+    const n = Number(v);
+    if (fmt === 'pct') return `${n.toFixed(1)}%`;
+    if (fmt === 'pct0') return `${n.toFixed(1)}%`;
+    return n.toFixed(2);
+  };
+
   return (
-    <div className="space-y-0">
-      {stats.map(({ label, key, alt, fmt, lowerBetter, tip }) => {
-        const val = riskStats[key] ?? riskStats[alt];
-        if (val == null) return null;
-        const n = Number(val);
-        let formatted;
-        if (fmt === 'pct') formatted = `${n.toFixed(1)}%`;
-        else if (fmt === 'pct0') formatted = `${n.toFixed(1)}%`;
-        else formatted = n.toFixed(2);
+    <div>
+      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 mb-1">
+        <span className="text-[10px] text-slate-400 font-semibold">Metric</span>
+        <div className="flex gap-6">
+          <span className="text-[10px] text-slate-400 font-semibold w-16 text-right">3Y</span>
+          <span className="text-[10px] text-slate-400 font-semibold w-16 text-right">5Y</span>
+        </div>
+      </div>
+      {stats.map(({ label, key3, key5, fmt, tip }) => {
+        const v3 = riskStats[key3];
+        const v5 = riskStats[key5];
+        if (v3 == null && v5 == null) return null;
         return (
-          <DetailStat
-            key={key}
-            label={label}
-            value={formatted}
-            tip={tip}
-          />
+          <div key={key3} className="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-slate-600">{label}</span>
+              {tip && <InfoIcon tip={tip} />}
+            </div>
+            <div className="flex gap-6">
+              <span className="text-[11px] font-bold font-mono tabular-nums text-slate-800 w-16 text-right">
+                {fmtVal(v3, fmt) ?? '\u2014'}
+              </span>
+              <span className="text-[11px] font-mono tabular-nums text-slate-500 w-16 text-right">
+                {fmtVal(v5, fmt) ?? '\u2014'}
+              </span>
+            </div>
+          </div>
         );
       })}
     </div>
@@ -162,10 +182,34 @@ function RiskBreakdown({ riskStats }) {
 function ConsistencyBreakdown({ riskStats, fundDetail }) {
   if (!riskStats) return null;
   const sortino3y = riskStats.sortino_3y ?? riskStats.sortino;
+  const sortino5y = riskStats.sortino_5y;
+  const captureUp3y = riskStats.capture_up_3y;
+  const captureUp5y = riskStats.capture_up_5y;
   return (
     <div className="space-y-0">
-      {sortino3y != null && (
-        <DetailStat label="Sortino Ratio (3Y)" value={Number(sortino3y).toFixed(2)} tip="Returns per unit of downside risk" />
+      {(sortino3y != null || sortino5y != null) && (
+        <div className="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-slate-600">Sortino Ratio</span>
+            <InfoIcon tip="Returns per unit of downside risk" />
+          </div>
+          <div className="flex items-center gap-3">
+            {sortino3y != null && <span className="text-[11px] font-bold font-mono tabular-nums text-slate-800">3Y: {Number(sortino3y).toFixed(2)}</span>}
+            {sortino5y != null && <span className="text-[11px] font-mono tabular-nums text-slate-500">5Y: {Number(sortino5y).toFixed(2)}</span>}
+          </div>
+        </div>
+      )}
+      {(captureUp3y != null || captureUp5y != null) && (
+        <div className="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-slate-600">Upside Capture</span>
+            <InfoIcon tip="How much of market gains the fund captures" />
+          </div>
+          <div className="flex items-center gap-3">
+            {captureUp3y != null && <span className="text-[11px] font-bold font-mono tabular-nums text-slate-800">3Y: {Number(captureUp3y).toFixed(1)}%</span>}
+            {captureUp5y != null && <span className="text-[11px] font-mono tabular-nums text-slate-500">5Y: {Number(captureUp5y).toFixed(1)}%</span>}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -174,24 +218,49 @@ function ConsistencyBreakdown({ riskStats, fundDetail }) {
 function AlphaBreakdown({ riskStats }) {
   if (!riskStats) return null;
   const stats = [
-    { label: 'Alpha (3Y)', key: 'alpha_3y', alt: 'alpha', fmt: 'sign', tip: 'Excess return vs benchmark after risk adjustment' },
-    { label: 'Alpha (5Y)', key: 'alpha_5y', fmt: 'sign' },
-    { label: 'Information Ratio (3Y)', key: 'info_ratio_3y', alt: 'info_ratio', fmt: 'num', tip: 'Alpha per unit of active risk' },
-    { label: 'Tracking Error (3Y)', key: 'tracking_error_3y', alt: 'tracking_error', fmt: 'pct', tip: 'Deviation from benchmark returns' },
-    { label: 'Treynor Ratio (3Y)', key: 'treynor_3y', alt: 'treynor', fmt: 'num', tip: 'Return per unit of systematic risk' },
+    { label: 'Alpha', key3: 'alpha_3y', key5: 'alpha_5y', fmt: 'sign', tip: 'Excess return vs benchmark after risk adjustment' },
+    { label: 'Info Ratio', key3: 'info_ratio_3y', key5: 'info_ratio_5y', fmt: 'num', tip: 'Alpha per unit of active risk' },
+    { label: 'Tracking Error', key3: 'tracking_error_3y', key5: 'tracking_error_5y', fmt: 'pct', tip: 'Deviation from benchmark returns' },
+    { label: 'Treynor Ratio', key3: 'treynor_3y', key5: 'treynor_5y', fmt: 'num', tip: 'Return per unit of systematic risk' },
   ];
 
+  const fmtVal = (v, fmt) => {
+    if (v == null) return null;
+    const n = Number(v);
+    if (fmt === 'sign') return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
+    if (fmt === 'pct') return `${n.toFixed(2)}%`;
+    return n.toFixed(2);
+  };
+
   return (
-    <div className="space-y-0">
-      {stats.map(({ label, key, alt, fmt, tip }) => {
-        const val = riskStats[key] ?? (alt ? riskStats[alt] : undefined);
-        if (val == null) return null;
-        const n = Number(val);
-        let formatted;
-        if (fmt === 'sign') formatted = `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
-        else if (fmt === 'pct') formatted = `${n.toFixed(2)}%`;
-        else formatted = n.toFixed(2);
-        return <DetailStat key={key} label={label} value={formatted} tip={tip} />;
+    <div>
+      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 mb-1">
+        <span className="text-[10px] text-slate-400 font-semibold">Metric</span>
+        <div className="flex gap-6">
+          <span className="text-[10px] text-slate-400 font-semibold w-16 text-right">3Y</span>
+          <span className="text-[10px] text-slate-400 font-semibold w-16 text-right">5Y</span>
+        </div>
+      </div>
+      {stats.map(({ label, key3, key5, fmt, tip }) => {
+        const v3 = riskStats[key3];
+        const v5 = riskStats[key5];
+        if (v3 == null && v5 == null) return null;
+        return (
+          <div key={key3} className="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-slate-600">{label}</span>
+              {tip && <InfoIcon tip={tip} />}
+            </div>
+            <div className="flex gap-6">
+              <span className="text-[11px] font-bold font-mono tabular-nums text-slate-800 w-16 text-right">
+                {fmtVal(v3, fmt) ?? '\u2014'}
+              </span>
+              <span className="text-[11px] font-mono tabular-nums text-slate-500 w-16 text-right">
+                {fmtVal(v5, fmt) ?? '\u2014'}
+              </span>
+            </div>
+          </div>
+        );
       })}
     </div>
   );
@@ -199,21 +268,45 @@ function AlphaBreakdown({ riskStats }) {
 
 function EfficiencyBreakdown({ fundDetail, riskStats }) {
   const expense = fundDetail?.net_expense_ratio ?? fundDetail?.expense_ratio;
-  const sharpe = riskStats?.sharpe_3y ?? riskStats?.sharpe_ratio;
-  const returnPerCost = expense != null && fundDetail?.return_1y != null
+  const grossExpense = fundDetail?.gross_expense_ratio;
+  const turnover = fundDetail?.turnover_ratio ?? riskStats?.turnover_ratio;
+  const sharpe3y = riskStats?.sharpe_3y ?? riskStats?.sharpe_ratio;
+  const sharpe5y = riskStats?.sharpe_5y;
+  const returnPerCost = expense != null && fundDetail?.return_1y != null && Number(expense) > 0
     ? (Math.abs(Number(fundDetail.return_1y)) / Number(expense)).toFixed(1)
     : null;
 
   return (
     <div className="space-y-0">
       {expense != null && (
-        <DetailStat label="Expense Ratio" value={`${Number(expense).toFixed(2)}%`} tip="Annual fee charged by the fund" />
+        <DetailStat
+          label="Expense Ratio (Net)"
+          value={`${Number(expense).toFixed(2)}%`}
+          catValue={grossExpense != null ? `Gross: ${Number(grossExpense).toFixed(2)}%` : null}
+          tip="Annual fee charged by the fund"
+        />
+      )}
+      {turnover != null && (
+        <DetailStat label="Turnover Ratio" value={`${Number(turnover).toFixed(0)}%`} tip="How often the fund manager trades — high turnover = hidden costs" />
       )}
       {returnPerCost != null && (
         <DetailStat label="Return per Unit Cost" value={`${returnPerCost}x`} tip="1Y return divided by expense ratio" />
       )}
-      {sharpe != null && (
-        <DetailStat label="Sharpe Ratio (3Y)" value={Number(sharpe).toFixed(2)} tip="Risk-adjusted return measure" />
+      {(sharpe3y != null || sharpe5y != null) && (
+        <div className="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-slate-600">Sharpe Ratio</span>
+            <InfoIcon tip="Risk-adjusted return measure" />
+          </div>
+          <div className="flex items-center gap-3">
+            {sharpe3y != null && (
+              <span className="text-[11px] font-bold font-mono tabular-nums text-slate-800">3Y: {Number(sharpe3y).toFixed(2)}</span>
+            )}
+            {sharpe5y != null && (
+              <span className="text-[11px] font-mono tabular-nums text-slate-500">5Y: {Number(sharpe5y).toFixed(2)}</span>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -221,21 +314,44 @@ function EfficiencyBreakdown({ fundDetail, riskStats }) {
 
 function ResilienceBreakdown({ riskStats }) {
   if (!riskStats) return null;
-  const stats = [
-    { label: 'Max Drawdown (3Y)', key: 'max_drawdown_3y', alt: 'max_drawdown', fmt: 'pct' },
-    { label: 'Downside Capture', key: 'downside_capture_3y', alt: 'downside_capture', fmt: 'pct0' },
+  const fmtVal = (v, fmt) => {
+    if (v == null) return '\u2014';
+    const n = Number(v);
+    if (fmt === 'pct') return `${n.toFixed(1)}%`;
+    if (fmt === 'pct0') return `${n.toFixed(1)}%`;
+    return n.toFixed(2);
+  };
+  const rows = [
+    { label: 'Max Drawdown', key3: 'max_drawdown_3y', key5: 'max_drawdown_5y', fmt: 'pct' },
+    { label: 'Downside Capture', key3: 'capture_down_3y', key5: 'capture_down_5y', fmt: 'pct0' },
+    { label: 'Sortino', key3: 'sortino_3y', key5: 'sortino_5y', fmt: 'num' },
   ];
   return (
-    <div className="space-y-0">
-      {stats.map(({ label, key, alt, fmt }) => {
-        const val = riskStats[key] ?? (alt ? riskStats[alt] : undefined);
-        if (val == null) return null;
-        const n = Number(val);
-        let formatted;
-        if (fmt === 'pct') formatted = `${n.toFixed(1)}%`;
-        else if (fmt === 'pct0') formatted = `${n.toFixed(1)}%`;
-        else formatted = n.toFixed(2);
-        return <DetailStat key={key} label={label} value={formatted} />;
+    <div>
+      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 mb-1">
+        <span className="text-[10px] text-slate-400 font-semibold">Metric</span>
+        <div className="flex gap-6">
+          <span className="text-[10px] text-slate-400 font-semibold w-16 text-right">3Y</span>
+          <span className="text-[10px] text-slate-400 font-semibold w-16 text-right">5Y</span>
+        </div>
+      </div>
+      {rows.map(({ label, key3, key5, fmt }) => {
+        const v3 = riskStats[key3];
+        const v5 = riskStats[key5];
+        if (v3 == null && v5 == null) return null;
+        return (
+          <div key={key3} className="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0">
+            <span className="text-[11px] text-slate-600">{label}</span>
+            <div className="flex gap-6">
+              <span className="text-[11px] font-bold font-mono tabular-nums text-slate-800 w-16 text-right">
+                {fmtVal(v3, fmt)}
+              </span>
+              <span className="text-[11px] font-mono tabular-nums text-slate-500 w-16 text-right">
+                {fmtVal(v5, fmt)}
+              </span>
+            </div>
+          </div>
+        );
       })}
     </div>
   );
