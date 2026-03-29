@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MF Pulse — Dashboard Redesign Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #f8fafc; color: #1e293b; }
+  .mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+  .tabnum { font-variant-numeric: tabular-nums; }
+
+  /* Layout */
+  .shell { display: flex; height: 100vh; }
+  .sidebar { width: 220px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; flex-shrink: 0; }
+  .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 16px; border-bottom: 1px solid #f1f5f9; }
+  .logo-icon { width: 32px; height: 32px; background: #0d9488; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 14px; }
+  .logo-text { font-size: 13px; font-weight: 700; color: #1e293b; line-height: 1; }
+  .logo-sub { font-size: 9px; font-weight: 500; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; margin-top: 2px; }
+  .nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; font-size: 13px; color: #64748b; cursor: pointer; border: none; background: none; width: 100%; text-align: left; transition: all 0.15s; }
+  .nav-item:hover { background: #f8fafc; }
+  .nav-item.active { background: #0d9488; color: #fff; }
+  .nav-item span.emoji { font-size: 16px; flex-shrink: 0; }
+
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+
+  /* Top Header with Market Indices */
+  .top-header { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 48px; flex-shrink: 0; }
+  .page-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; color: #1e293b; }
+  .ticker-strip { display: flex; align-items: center; gap: 20px; }
+  .ticker-item { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+  .ticker-name { color: #94a3b8; font-weight: 500; }
+  .ticker-val { font-weight: 600; color: #334155; }
+  .ticker-chg { font-weight: 600; }
+  .ticker-chg.up { color: #059669; }
+  .ticker-chg.down { color: #dc2626; }
+  .ticker-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .ticker-dot.open { background: #10b981; }
+  .ticker-dot.closed { background: #94a3b8; }
+  .ticker-status { font-size: 10px; color: #94a3b8; display: flex; align-items: center; gap: 4px; }
+  .ticker-refresh { font-size: 9px; color: #cbd5e1; margin-left: 4px; }
+
+  /* Content scroll area */
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+  .content > * + * { margin-top: 20px; }
+
+  /* Smart Search Bar */
+  .search-bar { position: relative; }
+  .search-input { width: 100%; padding: 14px 48px 14px 44px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; color: #334155; background: #fff; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+  .search-input:focus { border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13,148,136,0.08); }
+  .search-input::placeholder { color: #94a3b8; font-style: italic; }
+  .search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 16px; }
+  .search-mic { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 18px; transition: color 0.15s; }
+  .search-mic:hover { color: #0d9488; }
+  .search-hints { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .search-hint { font-size: 11px; color: #94a3b8; background: #f1f5f9; padding: 3px 10px; border-radius: 20px; cursor: pointer; transition: all 0.15s; border: none; }
+  .search-hint:hover { background: #e2e8f0; color: #64748b; }
+
+  /* Market Posture Hero */
+  .posture-card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; display: flex; }
+  .posture-accent { width: 5px; flex-shrink: 0; }
+  .posture-accent.bullish { background: #059669; }
+  .posture-accent.cautious { background: #f59e0b; }
+  .posture-accent.bearish { background: #dc2626; }
+  .posture-body { padding: 20px 24px; flex: 1; }
+  .posture-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .posture-badge { padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; }
+  .posture-badge.bullish { background: #ecfdf5; color: #059669; }
+  .posture-badge.cautious { background: #fffbeb; color: #d97706; }
+  .posture-badge.bearish { background: #fef2f2; color: #dc2626; }
+  .posture-narrative { font-size: 14px; color: #475569; line-height: 1.6; }
+  .posture-narrative strong { color: #1e293b; font-weight: 600; }
+  .posture-kpis { display: flex; gap: 24px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #f1f5f9; }
+  .posture-kpi { font-size: 12px; color: #64748b; }
+  .posture-kpi-val { font-weight: 600; margin-left: 4px; }
+
+  /* Sector Readiness Table */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-title { font-size: 14px; font-weight: 600; color: #1e293b; }
+  .section-link { font-size: 12px; color: #0d9488; text-decoration: none; cursor: pointer; font-weight: 500; }
+  .section-link:hover { text-decoration: underline; }
+
+  .sector-table { width: 100%; border-collapse: separate; border-spacing: 0; background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; }
+  .sector-table th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+  .sector-table td { padding: 12px 14px; font-size: 13px; color: #334155; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .sector-table tr:last-child td { border-bottom: none; }
+  .sector-table tr:hover td { background: #f8fafc; }
+  .sector-rank { font-weight: 700; color: #94a3b8; font-size: 12px; width: 32px; }
+  .sector-name { font-weight: 600; color: #1e293b; }
+
+  .quad-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .quad-badge.leading { background: #ecfdf5; color: #059669; }
+  .quad-badge.improving { background: #f0fdfa; color: #0d9488; }
+  .quad-badge.weakening { background: #fffbeb; color: #d97706; }
+  .quad-badge.lagging { background: #fef2f2; color: #dc2626; }
+
+  .trend-bar { display: flex; gap: 2px; align-items: center; }
+  .trend-block { width: 14px; height: 10px; border-radius: 2px; }
+  .trend-block.filled { background: #0d9488; }
+  .trend-block.empty { background: #e2e8f0; }
+
+  .direction { font-weight: 600; font-size: 12px; }
+  .direction.up { color: #059669; }
+  .direction.steady { color: #64748b; }
+  .direction.down { color: #dc2626; }
+
+  .fund-link { color: #0d9488; font-weight: 500; cursor: pointer; font-size: 12px; }
+  .fund-link:hover { text-decoration: underline; }
+  .fund-return { font-weight: 600; color: #059669; }
+
+  /* Expanded sector row */
+  .sector-expand { background: #f8fafc; }
+  .sector-expand td { padding: 0 14px 12px 46px; }
+  .expand-funds { display: flex; gap: 12px; flex-wrap: wrap; }
+  .expand-fund-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; min-width: 200px; flex: 1; max-width: 280px; }
+  .expand-fund-name { font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 4px; }
+  .expand-fund-cat { font-size: 10px; color: #94a3b8; margin-bottom: 6px; }
+  .expand-fund-row { display: flex; justify-content: space-between; font-size: 11px; }
+  .expand-fund-label { color: #64748b; }
+  .expand-fund-val { font-weight: 600; }
+  .expand-fund-val.pos { color: #059669; }
+
+  /* Sector Smart Fund Picks */
+  .picks-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .pick-card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 20px; }
+  .pick-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .pick-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .pick-icon.aggressive { background: #fef2f2; }
+  .pick-icon.balanced { background: #f0fdfa; }
+  .pick-icon.defensive { background: #eff6ff; }
+  .pick-title { font-size: 13px; font-weight: 600; color: #1e293b; }
+  .pick-subtitle { font-size: 11px; color: #94a3b8; }
+  .pick-funds { list-style: none; }
+  .pick-fund { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f8fafc; }
+  .pick-fund:last-child { border-bottom: none; }
+  .pick-fund-info { flex: 1; min-width: 0; }
+  .pick-fund-name { font-size: 12px; font-weight: 500; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+  .pick-fund-name:hover { color: #0d9488; }
+  .pick-fund-sectors { display: flex; gap: 4px; margin-top: 3px; }
+  .pick-sector-pill { font-size: 9px; padding: 1px 6px; border-radius: 10px; font-weight: 500; }
+  .pick-sector-pill.leading { background: #ecfdf5; color: #059669; }
+  .pick-sector-pill.improving { background: #f0fdfa; color: #0d9488; }
+  .pick-fund-returns { text-align: right; flex-shrink: 0; margin-left: 12px; }
+  .pick-fund-1y { font-size: 12px; font-weight: 600; color: #059669; }
+  .pick-fund-3y { font-size: 10px; color: #64748b; }
+
+  /* Signals strip */
+  .signals-strip { display: flex; gap: 12px; }
+  .signal-card { flex: 1; border-radius: 10px; padding: 14px 16px; border-left: 4px solid; background: #fff; }
+  .signal-card.green { border-left-color: #059669; }
+  .signal-card.amber { border-left-color: #f59e0b; }
+  .signal-card.red { border-left-color: #dc2626; }
+  .signal-title { font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 4px; }
+  .signal-desc { font-size: 11px; color: #64748b; line-height: 1.5; }
+
+  /* Responsive */
+  @media (max-width: 1024px) {
+    .picks-grid { grid-template-columns: 1fr; }
+    .signals-strip { flex-direction: column; }
+    .ticker-strip { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">J</div>
+      <div>
+        <div class="logo-text">JHAVERI</div>
+        <div class="logo-sub">Intelligence Platform</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <button class="nav-item"><span class="emoji">&#127760;</span> Universe Explorer</button>
+      <button class="nav-item"><span class="emoji">&#128269;</span> Fund 360&deg;</button>
+      <button class="nav-item"><span class="emoji">&#129517;</span> Sector Intelligence</button>
+      <button class="nav-item"><span class="emoji">&#9889;</span> Simulation Lab</button>
+      <button class="nav-item"><span class="emoji">&#128208;</span> Strategy Builder</button>
+      <button class="nav-item active"><span class="emoji">&#128202;</span> Pulse Dashboard</button>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <!-- Top Header: Page title + Live Market Indices -->
+    <header class="top-header">
+      <div class="page-title">&#128202; Pulse Dashboard</div>
+      <div class="ticker-strip">
+        <div class="ticker-item">
+          <span class="ticker-name mono">NIFTY 50</span>
+          <span class="ticker-val mono tabnum">22,847</span>
+          <span class="ticker-chg mono tabnum up">+1.24%</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-name mono">SENSEX</span>
+          <span class="ticker-val mono tabnum">75,234</span>
+          <span class="ticker-chg mono tabnum up">+1.18%</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-name mono">S&P 500</span>
+          <span class="ticker-val mono tabnum">5,234</span>
+          <span class="ticker-chg mono tabnum up">+0.32%</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-name mono">GOLD</span>
+          <span class="ticker-val mono tabnum">&#8377;71,250</span>
+          <span class="ticker-chg mono tabnum up">+0.48%</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-name mono">CRUDE</span>
+          <span class="ticker-val mono tabnum">$82.40</span>
+          <span class="ticker-chg mono tabnum down">-0.81%</span>
+        </div>
+        <div class="ticker-status">
+          <span class="ticker-dot open"></span> Live
+          <span class="ticker-refresh mono">15m</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Scrollable content -->
+    <div class="content">
+
+      <!-- Smart Search Bar -->
+      <div class="search-bar">
+        <span class="search-icon">&#128269;</span>
+        <input class="search-input" type="text" placeholder="Find me 3 best funds for aggressive investors with 2+ sectors in leading quadrant..." />
+        <button class="search-mic" title="Voice search">&#127908;</button>
+        <div class="search-hints">
+          <button class="search-hint">Top alpha funds in Financial Services</button>
+          <button class="search-hint">Defensive funds with fortress resilience</button>
+          <button class="search-hint">Best SIP funds under 1% expense ratio</button>
+          <button class="search-hint">Funds with leading sector exposure > 30%</button>
+        </div>
+      </div>
+
+      <!-- Market Posture Hero -->
+      <div class="posture-card">
+        <div class="posture-accent bullish"></div>
+        <div class="posture-body">
+          <div class="posture-header">
+            <span class="posture-badge bullish">BULLISH</span>
+            <span style="font-size:11px; color:#94a3b8;">Updated 29 Mar 2026, 3:45 PM</span>
+          </div>
+          <p class="posture-narrative">
+            Broad market participation is strong with <strong>7 of 11 sectors</strong> showing positive relative strength momentum.
+            Financial Services and Technology continue to lead, while Healthcare is accelerating into the improving quadrant.
+            Equity allocation remains favorable &mdash; SIP continuation and selective lumpsum deployment into sector-aligned funds
+            is the recommended stance. Avoid concentrated bets on Energy and Real Estate which show weakening momentum.
+          </p>
+          <div class="posture-kpis">
+            <span class="posture-kpi">Breadth: <span class="posture-kpi-val mono tabnum" style="color:#059669;">62%</span> stocks above 21 EMA</span>
+            <span class="posture-kpi">Leading Sectors: <span class="posture-kpi-val mono tabnum">4</span> of 11</span>
+            <span class="posture-kpi">Improving: <span class="posture-kpi-val mono tabnum">3</span> sectors accelerating</span>
+            <span class="posture-kpi">Fund Universe: <span class="posture-kpi-val mono tabnum">3,412</span> scored</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sector Readiness Table -->
+      <div>
+        <div class="section-header">
+          <span class="section-title">Sector Readiness &mdash; Ranked by Relative Strength &amp; Momentum</span>
+          <a class="section-link">View full Sector Intelligence &rarr;</a>
+        </div>
+        <table class="sector-table">
+          <thead>
+            <tr>
+              <th style="width:40px">#</th>
+              <th>Sector</th>
+              <th>Quadrant</th>
+              <th>RS Strength</th>
+              <th>Momentum</th>
+              <th>4-Week Trend</th>
+              <th>Top Fund</th>
+              <th style="text-align:right">1Y Return</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="sector-rank mono">1</td>
+              <td class="sector-name">Financial Services</td>
+              <td><span class="quad-badge leading">Leading</span></td>
+              <td class="direction up">Strong &#8593;</td>
+              <td class="direction up">Accelerating</td>
+              <td><div class="trend-bar"><div class="trend-block filled"></div><div class="trend-block filled"></div><div class="trend-block filled"></div><div class="trend-block filled"></div><div class="trend-block empty"></div></div></td>
+              <td><span class="fund-link">HDFC Financial Services Fund</span></td>
+              <td style="text-align:right" class="fund-return mono tabnum">+28.4%</td>
+            </tr>
+            <tr>
+              <td class="sector-rank mono">2</td>
+              <td class="sector-name">Technology</td>
+              <td><span class="quad-badge leading">Leading</span></td>
+              <td class="direction up">Strong &#8593;</td>
+              <td class="direction steady">Steady</td>
+              <td><div class="trend-bar"><div class="trend-block filled"></div><div class="trend-block filled"></div><div class="trend-block filled"></div><div class="trend-block empty"></div><div class="trend-block empty"></div></div></td>
+              <td><span class="fund-link">ICICI Pru Technology Fund</span></td>
+              <td style="text-align:right" class="fund-return mono tabnum">+24.1%</td>
+            </tr>
+            <tr>
+              <td class="sector-rank mono">3</td>
+              <td class="sector-name">Healthcare</td>
+              <td><span class="quad-badge improving">Improving</span></td>
+              <td class="direction up">Building &#8593;</td>
+              <td class="direction up">Accelerating</td>
+              <td><div class="trend-bar"><div class="trend-block filled"></div><div class="trend-block filled"></div><div class="trend-block empty"></div><div class="trend-block empty"></div><div class="trend-block empty"></div></div></td>
+              <td><span class="fund-link">SBI Healthcare Opp Fund</span></td>
+              <td style="text-align:right" class="fund-return mono tabnum">+19.2%</td>
+            </tr>
+            <tr>
+              <td class="sector-rank mono">4</td>
+              <td class="sector-name">Consumer Cyclical</td>
+              <td><span class="quad-badge improving">Improving</span></td>
+              <td class="direction up">Building &#8593;</td>
+              <td class="direction steady">Steady</td>
+              <td><div class="trend-bar"><div class="trend-block filled"></div><div class="trend-block filled"></div><div class="trend-block empty"></div><div class="trend-block empty"></div><div class="trend-block empty"></div></div></td>
+              <td><span class="fund-link">Mirae Asset Great Consumer</span></td>
+              <td style="text-align:right" class="fund-return mono tabnum">+17.6%</td>
+            </tr>
+            <tr>
+              <td class="sector-rank mono">5</td>
+              <td class="sector-name">Industrials</td>
+              <td><span class="quad-badge leading">Leading</span></td>
+              <td class="direction up">Strong &#8593;</td>
+              <td class="direction steady">Steady</td>
+              <td><div class="trend-bar"><div class="trend-block filled"></div><div class="trend-block filled"></div><div class="trend-block filled"></div><div class="trend-block empty"></div><div class="trend-block empty"></div></div></td>
+              <td><span class="fund-link">Quant Infrastructure Fund</span></td>
+              <td style="text-align:right" class="fund-return mono tabnum">+22.3%</td>
+            </tr>
+            <tr>
+              <td class="sector-rank mono">6</td>
+              <td class="sector-name">Consumer Defensive</td>
+              <td><span class="quad-badge weakening">Weakening</span></td>
+              <td class="direction steady">Fading &#8594;</td>
+              <td class="direction down">Decelerating</td>
+              <td><div class="trend-bar"><div class="trend-block filled"></div><div class="trend-block empty"></div><div class="trend-block empty"></div><div class="trend-block empty"></div><div class="trend-block empty"></div></div></td>
+              <td><span class="fund-link">Nippon India Consumption</span></td>
+              <td style="text-align:right" class="mono tabnum" style="color:#64748b;">+8.4%</td>
+            </tr>
+            <tr>
+              <td class="sector-rank mono">7</td>
+              <td class="sector-name">Energy</td>
+              <td><span class="quad-badge lagging">Lagging</span></td>
+              <td class="direction down">Weak &#8595;</td>
+              <td class="direction down">Declining</td>
+              <td><div class="trend-bar"><div class="trend-block empty"></div><div class="trend-block empty"></div><div class="trend-block empty"></div><div class="trend-block empty"></div><div class="trend-block empty"></div></div></td>
+              <td><span class="fund-link" style="color:#94a3b8;">DSP Natural Res & New Energy</span></td>
+              <td style="text-align:right" class="mono tabnum" style="color:#dc2626;">-2.1%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Sector-Smart Fund Picks -->
+      <div>
+        <div class="section-header">
+          <span class="section-title">Sector-Smart Fund Picks</span>
+          <span style="font-size:11px; color:#94a3b8;">Based on sector readiness + fund lens scores</span>
+        </div>
+        <div class="picks-grid">
+          <!-- Aggressive Growth -->
+          <div class="pick-card">
+            <div class="pick-header">
+              <div class="pick-icon aggressive">&#128293;</div>
+              <div>
+                <div class="pick-title">Aggressive Growth</div>
+                <div class="pick-subtitle">2+ sectors in Leading quadrant</div>
+              </div>
+            </div>
+            <ul class="pick-funds">
+              <li class="pick-fund">
+                <div class="pick-fund-info">
+                  <div class="pick-fund-name">Quant Flexi Cap Fund - Direct</div>
+                  <div class="pick-fund-sectors">
+                    <span class="pick-sector-pill leading">Financial 24%</span>
+                    <span class="pick-sector-pill leading">Technology 18%</span>
+                  </div>
+                </div>
+                <div class="pick-fund-returns">
+                  <div class="pick-fund-1y mono tabnum">+31.2%</div>
+                  <div class="pick-fund-3y mono tabnum">3Y: 22.4%</div>
+                </div>
+              </li>
+              <li class="pick-fund">
+                <div class="pick-fund-info">
+                  <div class="pick-fund-name">HDFC Flexi Cap Fund - Direct</div>
+                  <div class="pick-fund-sectors">
+                    <span class="pick-sector-pill leading">Financial 32%</span>
+                    <span class="pick-sector-pill leading">Industrials 15%</span>
+                  </div>
+                </div>
+                <div class="pick-fund-returns">
+                  <div class="pick-fund-1y mono tabnum">+26.8%</div>
+                  <div class="pick-fund-3y mono tabnum">3Y: 19.1%</div>
+                </div>
+              </li>
+              <li class="pick-fund">
+                <div class="pick-fund-info">
+                  <div class="pick-fund-name">Parag Parikh Flexi Cap - Direct</div>
+                  <div class="pick-fund-sectors">
+                    <span class="pick-sector-pill leading">Technology 22%</span>
+                    <span class="pick-sector-pill leading">Financial 20%</span>
+                  </div>
+                </div>
+                <div class="pick-fund-returns">
+                  <div class="pick-fund-1y mono tabnum">+24.6%</div>
+                  <div class="pick-fund-3y mono tabnum">3Y: 20.8%</div>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Balanced Momentum -->
+          <div class="pick-card">
+            <div class="pick-header">
+              <div class="pick-icon balanced">&#9878;&#65039;</div>
+              <div>
+                <div class="pick-title">Balanced Momentum</div>
+                <div class="pick-subtitle">Leading + Improving sectors, consistent</div>
+              </div>
+            </div>
+            <ul class="pick-funds">
+              <li class="pick-fund">
+                <div class="pick-fund-info">
+                  <div class="pick-fund-name">UTI Flexi Cap Fund - Direct</div>
+                  <div class="pick-fund-sectors">
+                    <span class="pick-sector-pill leading">Financial 28%</span>
+                    <span class="pick-sector-pill improving">Healthcare 12%</span>
+                  </div>
+                </div>
+                <div class="pick-fund-returns">
+                  <div class="pick-fund-1y mono tabnum">+21.4%</div>
+                  <div class="pick-fund-3y mono tabnum">3Y: 17.2%</div>
+                </div>
+              </li>
+              <li class="pick-fund">
+                <div class="pick-fund-info">
+                  <div class="pick-fund-name">Kotak Flexicap Fund - Direct</div>
+                  <div class="pick-fund-sectors">
+                    <span class="pick-sector-pill leading">Financial 26%</span>
+                    <span class="pick-sector-pill improving">Cons Cyclical 14%</span>
+                  </div>
+                </div>
+                <div class="pick-fund-returns">
+                  <div class="pick-fund-1y mono tabnum">+19.8%</div>
+                  <div class="pick-fund-3y mono tabnum">3Y: 16.5%</div>
+                </div>
+              </li>
+              <li class="pick-fund">
+                <div class="pick-fund-info">
+                  <div class="pick-fund-name">Axis Growth Opp Fund - Direct</div>
+                  <div class="pick-fund-sectors">
+                    <span class="pick-sector-pill leading">Technology 19%</span>
+                    <span class="pick-sector-pill improving">Healthcare 16%</span>
+                  </div>
+                </div>
+                <div class="pick-fund-returns">
+                  <div class="pick-fund-1y mono tabnum">+18.3%</div>
+                  <div class="pick-fund-3y mono tabnum">3Y: 15.9%</div>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Defensive -->
+          <div class="pick-card">
+            <div class="pick-header">
+              <div class="pick-icon defensive">&#128737;&#65039;</div>
+              <div>
+                <div class="pick-title">Defensive Positioning</div>
+                <div class="pick-subtitle">Non-cyclical sectors, fortress resilience</div>
+              </div>
+            </div>
+            <ul class="pick-funds">
+              <li class="pick-fund">
+                <div class="pick-fund-info">
+                  <div class="pick-fund-name">HDFC Balanced Advantage - Direct</div>
+                  <div class="pick-fund-sectors">
+                    <span class="pick-sector-pill improving">Healthcare 14%</span>
+                    <span class="pick-sector-pill" style="background:#eff6ff;color:#3b82f6;">Cons Def 18%</span>
+                  </div>
+                </div>
+                <div class="pick-fund-returns">
+                  <div class="pick-fund-1y mono tabnum">+14.2%</div>
+                  <div class="pick-fund-3y mono tabnum">3Y: 13.8%</div>
+                </div>
+              </li>
+              <li class="pick-fund">
+                <div class="pick-fund-info">
+                  <div class="pick-fund-name">SBI Magnum Balanced - Direct</div>
+                  <div class="pick-fund-sectors">
+                    <span class="pick-sector-pill" style="background:#eff6ff;color:#3b82f6;">Cons Def 16%</span>
+                    <span class="pick-sector-pill improving">Healthcare 11%</span>
+                  </div>
+                </div>
+                <div class="pick-fund-returns">
+                  <div class="pick-fund-1y mono tabnum">+12.8%</div>
+                  <div class="pick-fund-3y mono tabnum">3Y: 12.4%</div>
+                </div>
+              </li>
+              <li class="pick-fund">
+                <div class="pick-fund-info">
+                  <div class="pick-fund-name">ICICI Pru Equity & Debt - Direct</div>
+                  <div class="pick-fund-sectors">
+                    <span class="pick-sector-pill leading">Financial 22%</span>
+                    <span class="pick-sector-pill" style="background:#eff6ff;color:#3b82f6;">Cons Def 15%</span>
+                  </div>
+                </div>
+                <div class="pick-fund-returns">
+                  <div class="pick-fund-1y mono tabnum">+15.6%</div>
+                  <div class="pick-fund-3y mono tabnum">3Y: 14.1%</div>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Signals (only when actionable) -->
+      <div>
+        <div class="section-header">
+          <span class="section-title">Active Signals</span>
+        </div>
+        <div class="signals-strip">
+          <div class="signal-card green">
+            <div class="signal-title">Technology sector crossed into Leading</div>
+            <div class="signal-desc">12 direct funds have &gt;20% technology exposure. Top pick: ICICI Pru Technology Fund (+24.1% 1Y). Consider targeted allocation.</div>
+          </div>
+          <div class="signal-card amber">
+            <div class="signal-title">Healthcare momentum accelerating</div>
+            <div class="signal-desc">Healthcare RS score crossed above 60 with positive momentum slope. 8 funds with &gt;15% healthcare exposure available. Early entry point.</div>
+          </div>
+          <div class="signal-card red">
+            <div class="signal-title">Energy sector weakening &mdash; reduce exposure</div>
+            <div class="signal-desc">Energy RS dropped below 30 for 3 consecutive weeks. Review portfolio for energy-heavy funds. 4 funds in your universe have &gt;20% energy.</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+</body>
+</html>
