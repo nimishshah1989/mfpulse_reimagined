@@ -233,7 +233,7 @@ class FundService:
         return self.holdings_repo.get_sector_exposure(mstar_id)
 
     def get_universe_data(self) -> list[dict]:
-        """Bulk data for Universe Explorer — all eligible Regular funds with lens + returns."""
+        """Bulk data for Universe Explorer — active funds (AUM > 0) with lens + returns."""
         from app.repositories.lens_repo import LensRepository
 
         funds, _ = self.fund_repo.get_all_funds(
@@ -243,18 +243,20 @@ class FundService:
             offset=0,
         )
         mstar_ids = [f.mstar_id for f in funds]
-        nav_map = self.fund_repo.get_latest_navs_batch(mstar_ids)
+
+        # Batch fetch latest holdings snapshots first — filter to funds with AUM > 0
+        snapshot_map = self.holdings_repo.get_latest_snapshots_batch(mstar_ids)
+        active_funds = [f for f in funds if snapshot_map.get(f.mstar_id, {}).get("aum")]
+        active_ids = [f.mstar_id for f in active_funds]
+
+        nav_map = self.fund_repo.get_latest_navs_batch(active_ids)
 
         lens_repo = LensRepository(self.db)
-        # Batch fetch all latest lens scores
-        all_scores = lens_repo.get_all_scores_batch(mstar_ids)
-        all_classes = lens_repo.get_all_classifications_batch(mstar_ids)
-
-        # Batch fetch latest holdings snapshots (AUM, style box, avg_market_cap)
-        snapshot_map = self.holdings_repo.get_latest_snapshots_batch(mstar_ids)
+        all_scores = lens_repo.get_all_scores_batch(active_ids)
+        all_classes = lens_repo.get_all_classifications_batch(active_ids)
 
         result = []
-        for fund in funds:
+        for fund in active_funds:
             mid = fund.mstar_id
             nav = nav_map.get(mid, {})
             scores = all_scores.get(mid, {})
