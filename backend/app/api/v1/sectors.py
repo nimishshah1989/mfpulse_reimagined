@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.services.category_alignment import CategoryAlignmentService
 from app.services.sector_rotation import SectorRotationService
 
 router = APIRouter(prefix="/sectors", tags=["Sectors"])
@@ -63,6 +64,14 @@ def get_fund_exposure_matrix(
     """Top N funds by AUM with all 11 sector exposures — single batch query."""
     svc = SectorRotationService(db)
     data = svc.get_fund_exposure_matrix(limit=limit)
+    return {"success": True, "data": data, "meta": {"count": len(data)}, "error": None}
+
+
+@router.get("/category-alignment")
+def get_category_alignment(db: Session = Depends(get_db)):
+    """Per-category portfolio exposure across sector rotation zones."""
+    svc = CategoryAlignmentService(db)
+    data = svc.get_category_alignment()
     return {"success": True, "data": data, "meta": {"count": len(data)}, "error": None}
 
 
