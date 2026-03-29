@@ -27,3 +27,16 @@ def get_smart_buckets(db: Session = Depends(get_db)):
         "meta": {"timestamp": Meta().timestamp, "count": len(data)},
         "error": None,
     }
+
+
+@router.get("/archetypes")
+def get_fund_archetypes(db: Session = Depends(get_db)):
+    """Cluster all scored funds into 9 lens-pattern archetypes."""
+    svc = DashboardService(db)
+    data = svc.get_archetypes()
+    return {
+        "success": True,
+        "data": data,
+        "meta": {"timestamp": Meta().timestamp, "count": len(data)},
+        "error": None,
+    }

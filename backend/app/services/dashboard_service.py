@@ -219,6 +219,138 @@ class DashboardService:
         return result
 
 
+    def get_archetypes(self) -> list[dict]:
+        """Cluster all funds into 9 archetypes by 6-lens pattern."""
+        latest_class = self.db.query(
+            func.max(FundClassification.computed_date)
+        ).scalar()
+        latest_lens = self.db.query(
+            func.max(FundLensScores.computed_date)
+        ).scalar()
+        if not latest_class or not latest_lens:
+            return _empty_archetypes()
+
+        classes = {
+            c.mstar_id: c
+            for c in self.db.query(FundClassification)
+            .filter(FundClassification.computed_date == latest_class).all()
+        }
+        scores = {
+            s.mstar_id: s
+            for s in self.db.query(FundLensScores)
+            .filter(FundLensScores.computed_date == latest_lens).all()
+        }
+        all_ids = list(set(classes.keys()) & set(scores.keys()))
+        total = len(all_ids) or 1
+
+        # Classify each fund
+        archetype_counts: dict[str, list[str]] = {a["archetype_id"]: [] for a in ARCHETYPE_DEFS}
+        for mid in all_ids:
+            c = classes[mid]
+            s = scores[mid]
+            arch_id = _classify_archetype(c, s)
+            archetype_counts[arch_id].append(mid)
+
+        result = []
+        for defn in ARCHETYPE_DEFS:
+            aid = defn["archetype_id"]
+            count = len(archetype_counts[aid])
+            result.append({
+                **defn,
+                "count": count,
+                "percentage": round(count / total * 100, 1),
+            })
+        return result
+
+
+ARCHETYPE_DEFS = [
+    {"archetype_id": "all-rounder", "name": "All-Rounder",
+     "lens_pattern": ["LEADER", "LOW_RISK", "ROCK_SOLID", "ALPHA_MACHINE", "LEAN", "FORTRESS"],
+     "description": "5+ lenses in top tier. Elite funds across all dimensions."},
+    {"archetype_id": "alpha-fragile", "name": "Alpha but Fragile",
+     "lens_pattern": ["LEADER", "HIGH_RISK", "MIXED", "ALPHA_MACHINE", "FAIR", "VULNERABLE"],
+     "description": "High alpha & return but poor risk control. Great in bull runs, painful in corrections."},
+    {"archetype_id": "defensive", "name": "Defensive Anchor",
+     "lens_pattern": ["AVERAGE", "LOW_RISK", "CONSISTENT", "NEUTRAL", "FAIR", "FORTRESS"],
+     "description": "Low risk, high resilience, moderate returns. Portfolio stabilizers."},
+    {"archetype_id": "compounder", "name": "Consistent Compounder",
+     "lens_pattern": ["STRONG", "MODERATE", "ROCK_SOLID", "POSITIVE", "LEAN", "STURDY"],
+     "description": "Rock-solid consistency with good efficiency. Reliable SIP candidates."},
+    {"archetype_id": "high-return-high-risk", "name": "High Return High Risk",
+     "lens_pattern": ["LEADER", "HIGH_RISK", "ERRATIC", "POSITIVE", "FAIR", "VULNERABLE"],
+     "description": "Strong returns but volatile & erratic. For high-risk-appetite investors only."},
+    {"archetype_id": "mid-tier", "name": "Efficient Mid-Tier",
+     "lens_pattern": ["AVERAGE", "MODERATE", "MIXED", "NEUTRAL", "FAIR", "FRAGILE"],
+     "description": "Average across the board with decent efficiency. The middle of the pack."},
+    {"archetype_id": "watch", "name": "Watch",
+     "lens_pattern": ["AVERAGE", "LOW_RISK", "MIXED", "NEGATIVE", "EXPENSIVE", "STURDY"],
+     "description": "Safe on risk metrics but alpha has eroded. Expensive for what it delivers. Review position."},
+    {"archetype_id": "turnaround", "name": "Turnaround Potential",
+     "lens_pattern": ["WEAK", "MODERATE", "ERRATIC", "POSITIVE", "FAIR", "FRAGILE"],
+     "description": "Weak returns but improving alpha signal. Manager may be turning the corner."},
+    {"archetype_id": "trouble", "name": "Trouble Zone",
+     "lens_pattern": ["WEAK", "HIGH_RISK", "ERRATIC", "NEGATIVE", "EXPENSIVE", "VULNERABLE"],
+     "description": "3+ lenses in weak tier. Underperforming, risky, and inconsistent. Avoid or exit."},
+]
+
+
+def _classify_archetype(c, s) -> str:
+    """Classify a fund into one of 9 archetypes based on lens tiers."""
+    top_tiers = {"LEADER", "STRONG", "LOW_RISK", "ROCK_SOLID", "CONSISTENT",
+                 "ALPHA_MACHINE", "POSITIVE", "LEAN", "FAIR", "FORTRESS", "STURDY"}
+    weak_tiers = {"WEAK", "HIGH_RISK", "ERRATIC", "NEGATIVE", "BLOATED",
+                  "EXPENSIVE", "VULNERABLE", "FRAGILE"}
+
+    tier_list = [
+        getattr(c, "return_class", None) or "AVERAGE",
+        getattr(c, "risk_class", None) or "MODERATE",
+        getattr(c, "consistency_class", None) or "MIXED",
+        getattr(c, "alpha_class", None) or "NEUTRAL",
+        getattr(c, "efficiency_class", None) or "FAIR",
+        getattr(c, "resilience_class", None) or "FRAGILE",
+    ]
+    top_count = sum(1 for t in tier_list if t in top_tiers)
+    weak_count = sum(1 for t in tier_list if t in weak_tiers)
+
+    ret = tier_list[0]
+    risk = tier_list[1]
+    cons = tier_list[2]
+    alpha = tier_list[3]
+    resil = tier_list[5]
+
+    # All-Rounder: 5+ top
+    if top_count >= 5:
+        return "all-rounder"
+    # Trouble Zone: 3+ weak
+    if weak_count >= 3:
+        return "trouble"
+    # Watch: fund has weak alpha despite low risk (eroding value)
+    if alpha in ("NEGATIVE",) and risk in ("LOW_RISK", "MODERATE") and ret in ("AVERAGE", "WEAK"):
+        return "watch"
+    # Alpha but Fragile: strong return/alpha + weak risk/resilience
+    if ret in ("LEADER", "STRONG") and alpha in ("ALPHA_MACHINE", "POSITIVE") and resil in ("VULNERABLE", "FRAGILE"):
+        return "alpha-fragile"
+    # Defensive: low risk + fortress resilience + good return
+    if risk in ("LOW_RISK",) and resil in ("FORTRESS", "STURDY") and ret not in ("WEAK",):
+        return "defensive"
+    # Consistent Compounder: top consistency + good return
+    if cons in ("ROCK_SOLID", "CONSISTENT") and ret in ("LEADER", "STRONG"):
+        return "compounder"
+    # High Return High Risk
+    if ret in ("LEADER", "STRONG") and risk in ("HIGH_RISK", "ELEVATED"):
+        return "high-return-high-risk"
+    # Turnaround: weak return but positive alpha
+    if ret in ("WEAK", "AVERAGE") and alpha in ("ALPHA_MACHINE", "POSITIVE"):
+        return "turnaround"
+    # Default: Mid-Tier
+    return "mid-tier"
+
+
+def _empty_archetypes() -> list[dict]:
+    """Return empty archetype list when no data available."""
+    return [{**d, "count": 0, "percentage": 0.0} for d in ARCHETYPE_DEFS]
+
+
 def _safe_float(val: Optional[Decimal]) -> float:
     """Safely convert Decimal/None to float for comparison."""
     if val is None:
