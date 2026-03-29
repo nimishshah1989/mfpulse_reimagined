@@ -52,8 +52,28 @@ export default function DashboardPage() {
       if (results[0].status === 'fulfilled') setNifty(results[0].value.data);
       if (results[1].status === 'fulfilled') setRegime(results[1].value.data);
       if (results[2].status === 'fulfilled') {
-        setSentiment(results[2].value.data);
-        setBreadthData(results[2].value.data?.short_term_trend?.metrics || null);
+        const raw = results[2].value.data;
+        // Transform for SentimentCard: layer_scores dict → array
+        const ls = raw?.layer_scores || {};
+        const layers = Object.entries(ls).map(([name, score]) => ({ name, score }));
+        setSentiment({ composite_score: raw?.composite_score, zone: raw?.zone, layers });
+        // Transform for BreadthCard: metrics array → keyed object with extra fields
+        const metrics = raw?.short_term_trend?.metrics || [];
+        const broad = raw?.broad_trend?.metrics || [];
+        const allMetrics = [...metrics, ...broad];
+        const breadth = {};
+        allMetrics.forEach((m) => { breadth[m.key] = m.pct; });
+        // Map to BreadthCard expected keys
+        setBreadthData({
+          above_10ema: breadth.above_10ema,
+          above_21ema: breadth.above_21ema,
+          above_50ema: breadth.above_50ema,
+          above_200ema: breadth.above_200ema,
+          highs_52w: breadth.hit_52w_high,
+          lows_52w: breadth.hit_52w_low,
+          macd_bull_pct: breadth.macd_bull_cross,
+          rsi_above_50_pct: breadth.rsi_above_50,
+        });
       }
       if (results[3].status === 'fulfilled') setSectors(results[3].value.data || []);
       if (results[4].status === 'fulfilled') setMatrixData(results[4].value.data || []);

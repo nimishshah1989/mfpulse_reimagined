@@ -90,9 +90,14 @@ function NiftyCard({ nifty }) {
         </span>
       </div>
       <div className="flex gap-3 mt-3">
-        {['open', 'high', 'low', 'close'].map((key) => (
+        {[
+          { key: 'open', label: 'Open' },
+          { key: 'high', label: 'High' },
+          { key: 'low', label: 'Low' },
+          { key: 'prev_close', label: 'Prev Close' },
+        ].map(({ key, label }) => (
           <div key={key} className="flex flex-col">
-            <span className="text-[9px] uppercase text-slate-400">{key}</span>
+            <span className="text-[9px] uppercase text-slate-400">{label}</span>
             <span className="text-[11px] font-mono tabular-nums text-slate-700">
               {formatPrice(idx[key])}
             </span>
@@ -105,11 +110,16 @@ function NiftyCard({ nifty }) {
 
 function RegimeCard({ regime }) {
   const label = regime?.market_regime ?? 'Unknown';
-  const isBear = label.toLowerCase().includes('bear');
-  const badgeBg = isBear ? 'bg-red-50' : 'bg-emerald-50';
-  const badgeText = isBear ? 'text-red-700' : 'text-emerald-700';
+  const lower = label.toLowerCase();
+  const isBear = lower.includes('bear');
+  const isCorrection = lower.includes('correction');
+  const isCautious = isBear || isCorrection;
+  const badgeBg = isBear ? 'bg-red-50' : isCorrection ? 'bg-amber-50' : 'bg-emerald-50';
+  const badgeText = isBear ? 'text-red-700' : isCorrection ? 'text-amber-700' : 'text-emerald-700';
   const implication = isBear
     ? 'Favour large-caps, reduce mid/small allocation'
+    : isCorrection
+    ? 'Defensive tilt — favour quality, reduce speculative positions'
     : 'Broad participation — all-cap strategies viable';
 
   return (
