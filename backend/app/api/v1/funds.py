@@ -1,5 +1,6 @@
 """Fund read API endpoints — enriched with lens scores and classifications."""
 
+import time
 from decimal import Decimal
 from typing import Optional
 
@@ -14,6 +15,10 @@ from app.repositories.override_repo import OverrideRepository
 
 router = APIRouter(prefix="/funds", tags=["funds"])
 
+# In-memory cache for universe data (refreshes every 10 minutes)
+_universe_cache: dict = {"data": None, "ts": 0}
+_UNIVERSE_CACHE_TTL = 600  # seconds
+
 LENS_SORT_FIELDS = {
     "return_score", "risk_score", "consistency_score",
     "alpha_score", "efficiency_score", "resilience_score",
@@ -27,9 +32,18 @@ LENS_TIER_FILTERS = {
 
 @router.get("/universe")
 def get_universe_data(db: Session = Depends(get_db)) -> dict:
-    """Single-query bulk endpoint for Universe Explorer — all funds with lens scores."""
-    service = FundService(db)
-    data = service.get_universe_data()
+    """Single-query bulk endpoint for Universe Explorer — all active funds with lens scores.
+
+    Response is cached in-memory for 10 minutes to avoid repeated 14s DB queries.
+    """
+    now = time.time()
+    if _universe_cache["data"] is not None and (now - _universe_cache["ts"]) < _UNIVERSE_CACHE_TTL:
+        data = _universe_cache["data"]
+    else:
+        service = FundService(db)
+        data = service.get_universe_data()
+        _universe_cache["data"] = data
+        _universe_cache["ts"] = now
     return {
         "success": True,
         "data": data,
