@@ -129,6 +129,8 @@ MASTER_FIELDS_SKIPPED: list[dict[str, str]] = [
     {"field": "InformationRatio15Yr", "reason": "15yr horizon — beyond our scoring timeframes"},
     {"field": "TrackingError15Yr", "reason": "15yr horizon — beyond our scoring timeframes"},
     {"field": "TreynorRatio15Yr", "reason": "15yr horizon — beyond our scoring timeframes"},
+    # Extended Risk Stats API — date field
+    {"field": "CalendarYearReturnDate", "reason": "Calendar year return date — always Dec 31, no analytical value"},
 ]
 
 NAV_FIELD_MAP: dict[str, str] = {
@@ -314,6 +316,18 @@ RISK_STATS_FIELD_MAP: dict[str, str] = {
     "CategoryTreynorRatio3Yr": "cat_treynor_3y",
     "CategoryTreynorRatio5Yr": "cat_treynor_5y",
     "CategoryTreynorRatio10Yr": "cat_treynor_10y",
+    # Category Sharpe 10Y (different prefix: RMMP instead of RM)
+    "CategorySharpeRatio10Yr": "cat_sharpe_10y",
+    # Trailing Total Returns (TTR) — stored here as redundant copy for completeness
+    "Return1Yr": "ttr_return_1y",
+    "Return3Yr": "ttr_return_3y",
+    "Return5Yr": "ttr_return_5y",
+    "Return10Yr": "ttr_return_10y",
+    # Category trailing returns — valuable for "vs category" comparison
+    "CategoryReturn1Yr": "cat_return_1y",
+    "CategoryReturn3Yr": "cat_return_3y",
+    "CategoryReturn5Yr": "cat_return_5y",
+    "CategoryReturn10Yr": "cat_return_10y",
 }
 
 RANK_FIELD_MAP: dict[str, str] = {

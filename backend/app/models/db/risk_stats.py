@@ -171,6 +171,21 @@ class RiskStatsMonthly(Base, UUIDPrimaryKey):
     cat_treynor_5y: Mapped[None] = _col()
     cat_treynor_10y: Mapped[None] = _col()
 
+    # Category Sharpe 10Y (separate RMMP prefix in API)
+    cat_sharpe_10y: Mapped[None] = _col()
+
+    # Trailing Total Returns from Extended Risk Stats API (redundant copy)
+    ttr_return_1y: Mapped[None] = _col()
+    ttr_return_3y: Mapped[None] = _col()
+    ttr_return_5y: Mapped[None] = _col()
+    ttr_return_10y: Mapped[None] = _col()
+
+    # Category trailing returns (for "vs category" return comparison)
+    cat_return_1y: Mapped[None] = _col()
+    cat_return_3y: Mapped[None] = _col()
+    cat_return_5y: Mapped[None] = _col()
+    cat_return_10y: Mapped[None] = _col()
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: __import__("datetime").datetime.now(__import__("datetime").timezone.utc),

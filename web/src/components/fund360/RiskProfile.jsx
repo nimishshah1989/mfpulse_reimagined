@@ -56,11 +56,13 @@ export default function RiskProfile({ riskStats }) {
       label: 'Std Dev (3Y)',
       value: riskStats.std_dev_3y ?? riskStats.std_dev,
       format: fmtPct,
+      catAvg: riskStats.cat_std_dev_3y,
     },
     {
       label: 'Beta (3Y)',
       value: riskStats.beta_3y ?? riskStats.beta,
       format: fmtNum,
+      catAvg: riskStats.cat_beta_3y,
       sublabel: (riskStats.beta_3y ?? riskStats.beta) != null ? (Number(riskStats.beta_3y ?? riskStats.beta) < 1 ? 'Below market' : 'Above market') : null,
       sublabelColor: (riskStats.beta_3y ?? riskStats.beta) != null ? (Number(riskStats.beta_3y ?? riskStats.beta) < 1 ? 'text-emerald-600' : 'text-amber-600') : '',
     },
@@ -68,12 +70,15 @@ export default function RiskProfile({ riskStats }) {
       label: 'Alpha (3Y)',
       value: riskStats.alpha_3y ?? riskStats.alpha,
       format: (v) => `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`,
+      catAvg: riskStats.cat_alpha_3y,
+      catFormat: (v) => `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`,
       sublabel: 'Manager skill',
     },
     {
       label: 'Sharpe (3Y)',
       value: riskStats.sharpe_3y ?? riskStats.sharpe_ratio,
       format: fmtNum,
+      catAvg: riskStats.cat_sharpe_3y,
     },
     {
       label: 'Sortino (3Y)',
@@ -106,6 +111,8 @@ export default function RiskProfile({ riskStats }) {
       label: 'R-Squared (3Y)',
       value: riskStats.r_squared_3y ?? riskStats.r_squared,
       format: (v) => `${(Number(v) * (Number(v) > 1 ? 1 : 100)).toFixed(1)}%`,
+      catAvg: riskStats.cat_r_squared_3y,
+      catFormat: (v) => `${(Number(v) * (Number(v) > 1 ? 1 : 100)).toFixed(1)}%`,
     },
     {
       label: 'Skewness (3Y)',
