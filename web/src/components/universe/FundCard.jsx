@@ -40,7 +40,7 @@ export default function FundCard({ fund, x, y, onClose }) {
   const aumCr = (Number(fund.aum) || 0) / 10000000;
   const return1y = Number(fund.return_1y);
   const return1yValid = !isNaN(return1y);
-  const ter = Number(fund.expense_ratio);
+  const ter = Number(fund.net_expense_ratio ?? fund.expense_ratio);
   const terValid = !isNaN(ter);
 
   const topLenses = LENS_OPTIONS

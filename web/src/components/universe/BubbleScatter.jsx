@@ -33,7 +33,7 @@ export default function BubbleScatter({
   const innerW = width - margin.left - margin.right;
   const innerH = height - margin.top - margin.bottom;
 
-  const isReturnX = ['return_1y', 'return_3y', 'return_5y', 'expense_ratio'].includes(xAxis);
+  const isReturnX = ['return_1y', 'return_3y', 'return_5y', 'net_expense_ratio', 'expense_ratio'].includes(xAxis);
   const isReturnY = ['return_1y', 'return_3y', 'return_5y'].includes(yAxis);
 
   const xDomain = useMemo(() => {

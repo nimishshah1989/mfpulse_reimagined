@@ -109,10 +109,16 @@ export default function Fund360Page() {
           risk_stats: detailRaw?.risk_stats ?? null,
           ranks: detailRaw?.ranks ?? null,
           category_returns: detailRaw?.category_returns ?? null,
+          category_avg_returns: detailRaw?.category_avg_returns ?? null,
           indian_risk_level: detailRaw?.indian_risk_level ?? null,
           primary_benchmark: detailRaw?.primary_benchmark ?? null,
           investment_strategy: detailRaw?.investment_strategy ?? null,
           managers: detailRaw?.managers ?? null,
+          credit_quality: detailRaw?.credit_quality ?? null,
+          portfolio: detailRaw?.portfolio ?? null,
+          top_holdings: detailRaw?.top_holdings ?? null,
+          sector_exposure: detailRaw?.sector_exposure ?? null,
+          category_fund_count: detailRaw?.category_fund_count ?? null,
         };
         setFundDetail(detail);
         setLensScores(lens);
@@ -353,7 +359,7 @@ export default function Fund360Page() {
           </SectionCard>
           <SectionCard title="Credit Quality">
             <CreditQuality
-              creditQuality={holdingsSnapshot?.credit_quality}
+              creditQuality={fundDetail.credit_quality}
               categoryName={fundDetail.category_name}
             />
           </SectionCard>
@@ -361,9 +367,9 @@ export default function Fund360Page() {
       </div>
 
       {/* SECTION 7b: Portfolio Metrics */}
-      {holdingsSnapshot && (
+      {(fundDetail.portfolio || holdingsSnapshot) && (
         <SectionCard title="Portfolio Metrics" subtitle="From latest holdings snapshot">
-          <PortfolioMetrics holdingsData={holdingsSnapshot} />
+          <PortfolioMetrics holdingsData={fundDetail.portfolio || holdingsSnapshot} />
         </SectionCard>
       )}
 

@@ -14,7 +14,7 @@ const AUM_RANGES = [
 const X_AXIS_OPTIONS = [
   { key: 'risk_score', label: 'Risk Score' },
   { key: 'return_score', label: 'Return Score' },
-  { key: 'expense_ratio', label: 'Expense Ratio' },
+  { key: 'net_expense_ratio', label: 'Expense Ratio' },
 ];
 
 const Y_AXIS_OPTIONS = [

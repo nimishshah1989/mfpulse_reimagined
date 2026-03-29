@@ -77,7 +77,7 @@ function FundIdentityCard({ fund, lensScores, onClear }) {
         <div>
           <p className="text-[8px] text-slate-400">NAV</p>
           <p className="text-[11px] font-bold tabular-nums text-slate-700">
-            {fund.nav != null ? Number(fund.nav).toFixed(2) : '\u2014'}
+            {(fund.nav ?? fund.latest_nav) != null ? Number(fund.nav ?? fund.latest_nav).toFixed(2) : '\u2014'}
           </p>
         </div>
         <div>
@@ -97,7 +97,7 @@ function FundIdentityCard({ fund, lensScores, onClear }) {
         <div>
           <p className="text-[8px] text-slate-400">Expense</p>
           <p className="text-[11px] font-bold tabular-nums text-slate-700">
-            {fund.expense_ratio != null ? `${Number(fund.expense_ratio).toFixed(2)}%` : '\u2014'}
+            {(fund.net_expense_ratio ?? fund.expense_ratio) != null ? `${Number(fund.net_expense_ratio ?? fund.expense_ratio).toFixed(2)}%` : '\u2014'}
           </p>
         </div>
       </div>

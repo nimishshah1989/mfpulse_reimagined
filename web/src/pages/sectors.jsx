@@ -6,6 +6,8 @@ import {
   fetchMarketRegime,
   fetchFunds,
   fetchMorningstarSectors,
+  fetchFundExposureMatrix,
+  fetchSectorHistory,
 } from '../lib/api';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
 import EmptyState from '../components/shared/EmptyState';
@@ -59,9 +61,10 @@ export default function SectorsPage() {
 
   const loadMarketPulse = useCallback(async (p) => {
     setMpLoading(true);
-    const [mstarRes, sectorsRes, breadthRes, sentimentRes, regimeRes] =
+    const [mstarRes, historyRes, sectorsRes, breadthRes, sentimentRes, regimeRes] =
       await Promise.allSettled([
         fetchMorningstarSectors(),
+        fetchSectorHistory(6),
         fetchSectors(p),
         fetchBreadth('1y'),
         fetchSentiment(),
@@ -73,14 +76,37 @@ export default function SectorsPage() {
 
     let anySuccess = false;
 
+    // Build history map: { sector_name: [{quadrant, rs_score, snapshot_date}, ...] }
+    const historyMap = {};
+    if (historyRes.status === 'fulfilled' && historyRes.value.data?.length > 0) {
+      for (const h of historyRes.value.data) {
+        const name = h.sector_name;
+        if (!historyMap[name]) historyMap[name] = [];
+        historyMap[name].push({
+          quadrant: toTitleCase(h.quadrant),
+          rs_score: h.rs_score,
+          rs_momentum: h.momentum_1m,
+          snapshot_date: h.snapshot_date,
+        });
+      }
+      // Sort each sector's history by date ascending (oldest first)
+      for (const name of Object.keys(historyMap)) {
+        historyMap[name].sort((a, b) => new Date(a.snapshot_date) - new Date(b.snapshot_date));
+      }
+    }
+
     // Use Morningstar sectors only — no Nifty fallback
     if (mstarRes.status === 'fulfilled' && mstarRes.value.data?.length > 0) {
       const raw = mstarRes.value.data;
-      const normalized = (Array.isArray(raw) ? raw : []).map((s) => ({
-        ...s,
-        sector_name: s.sector_name || s.display_name || s.name || 'Unknown',
-        quadrant: toTitleCase(s.quadrant),
-      }));
+      const normalized = (Array.isArray(raw) ? raw : []).map((s) => {
+        const name = s.sector_name || s.display_name || s.name || 'Unknown';
+        return {
+          ...s,
+          sector_name: name,
+          quadrant: toTitleCase(s.quadrant),
+          history: historyMap[name] || [],
+        };
+      });
       setSectorData(normalized);
       anySuccess = true;
     } else {
@@ -107,8 +133,26 @@ export default function SectorsPage() {
   useEffect(() => {
     async function loadFunds() {
       try {
-        const res = await fetchFunds({ limit: 500 });
-        setFunds(res.data || []);
+        const [fundsRes, matrixRes] = await Promise.allSettled([
+          fetchFunds({ limit: 500 }),
+          fetchFundExposureMatrix(20),
+        ]);
+        if (fundsRes.status === 'fulfilled') setFunds(fundsRes.value.data || []);
+        if (matrixRes.status === 'fulfilled' && matrixRes.value.data) {
+          // Build exposures map: { mstar_id: { sector_name: pct, ... } }
+          const matrix = matrixRes.value.data;
+          const list = Array.isArray(matrix) ? matrix : matrix.funds || [];
+          const expMap = {};
+          list.forEach((f) => {
+            if (!f.mstar_id) return;
+            // Backend returns sectors as { sector_name: pct } dict
+            expMap[f.mstar_id] = typeof f.sectors === 'object' && !Array.isArray(f.sectors)
+              ? f.sectors
+              : {};
+          });
+          setSectorExposures(expMap);
+          setExposureAvailable(true);
+        }
       } catch {
         setFunds([]);
       } finally {

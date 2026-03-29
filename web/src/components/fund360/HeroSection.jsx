@@ -153,9 +153,9 @@ export default function HeroSection({ fundDetail, lensScores, mstarId, onCompare
                     AUM: {formatAUM(aumCr)}
                   </span>
                 )}
-                {fundDetail.expense_ratio != null && (
+                {(fundDetail.net_expense_ratio ?? fundDetail.expense_ratio) != null && (
                   <span className="text-[11px] text-slate-400">
-                    Expense: {Number(fundDetail.expense_ratio).toFixed(2)}%
+                    Expense: {Number(fundDetail.net_expense_ratio ?? fundDetail.expense_ratio).toFixed(2)}%
                   </span>
                 )}
                 {fundDetail.indian_risk_level && (

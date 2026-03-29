@@ -55,7 +55,7 @@ function ModeCard({ mode, summary, isBest, bestSipXirr }) {
   const invested = summary.total_invested;
   const value = summary.final_value ?? summary.current_value;
   const drawdown = summary.max_drawdown_pct ?? summary.max_drawdown;
-  const wealthGain = invested > 0 ? (value / invested).toFixed(2) : '\u2014';
+  const wealthGain = invested > 0 && value > 0 ? (value / invested).toFixed(2) : '\u2014';
   const capitalEff = summary.capital_efficiency;
 
   const borderClass = isBest

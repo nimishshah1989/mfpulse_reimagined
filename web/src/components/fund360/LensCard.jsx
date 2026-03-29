@@ -198,7 +198,7 @@ function AlphaBreakdown({ riskStats }) {
 }
 
 function EfficiencyBreakdown({ fundDetail, riskStats }) {
-  const expense = fundDetail?.expense_ratio;
+  const expense = fundDetail?.net_expense_ratio ?? fundDetail?.expense_ratio;
   const sharpe = riskStats?.sharpe_3y ?? riskStats?.sharpe_ratio;
   const returnPerCost = expense != null && fundDetail?.return_1y != null
     ? (Math.abs(Number(fundDetail.return_1y)) / Number(expense)).toFixed(1)

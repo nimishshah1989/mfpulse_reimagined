@@ -216,7 +216,7 @@ export default function SimulationPage() {
 
   // Latest NAV for signal log return calculations
   const latestNav = useMemo(() => {
-    return fundDetail?.nav ?? null;
+    return fundDetail?.nav ?? fundDetail?.latest_nav ?? null;
   }, [fundDetail]);
 
   const hasResults = compareResults != null;
