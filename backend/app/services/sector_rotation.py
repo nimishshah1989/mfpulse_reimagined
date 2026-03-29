@@ -364,13 +364,11 @@ class SectorRotationService:
         return result
 
     def get_fund_exposure_matrix(self, limit: int = 20) -> list[dict]:
-        """Top N funds by AUM with all 11 sector exposures + 1Y return."""
-        latest_date = self.db.query(
-            func.max(FundSectorExposure.portfolio_date)
-        ).scalar()
-        if not latest_date:
-            return []
+        """Top N funds by AUM with all 11 sector exposures + 1Y return.
 
+        Uses each fund's own latest sector exposure date (not a global latest)
+        because AUM snapshots and sector exposure snapshots may be on different dates.
+        """
         # Get top funds by AUM
         aum_sub = (
             self.db.query(
@@ -410,12 +408,24 @@ class SectorRotationService:
         )
         name_map = {f.mstar_id: {"fund_name": f.fund_name, "category_name": f.category_name} for f in funds}
 
-        # Fetch all sector exposures for these funds
+        # Get each fund's latest sector exposure date (not global latest)
+        expo_date_sub = (
+            self.db.query(
+                FundSectorExposure.mstar_id,
+                func.max(FundSectorExposure.portfolio_date).label("max_date"),
+            )
+            .filter(FundSectorExposure.mstar_id.in_(mstar_ids))
+            .group_by(FundSectorExposure.mstar_id)
+            .subquery()
+        )
+
+        # Fetch all sector exposures using each fund's own latest date
         exposures = (
             self.db.query(FundSectorExposure)
-            .filter(
-                FundSectorExposure.mstar_id.in_(mstar_ids),
-                FundSectorExposure.portfolio_date == latest_date,
+            .join(
+                expo_date_sub,
+                (FundSectorExposure.mstar_id == expo_date_sub.c.mstar_id)
+                & (FundSectorExposure.portfolio_date == expo_date_sub.c.max_date),
             )
             .all()
         )

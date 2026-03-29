@@ -137,7 +137,8 @@ export default function SectorsPage() {
           fetchFunds({ limit: 500 }),
           fetchFundExposureMatrix(20),
         ]);
-        if (fundsRes.status === 'fulfilled') setFunds(fundsRes.value.data || []);
+        const fundsList = fundsRes.status === 'fulfilled' ? (fundsRes.value.data || []) : [];
+        let matrixFundsList = [];
         if (matrixRes.status === 'fulfilled' && matrixRes.value.data) {
           // Build exposures map: { mstar_id: { sector_name: pct, ... } }
           const matrix = matrixRes.value.data;
@@ -152,7 +153,18 @@ export default function SectorsPage() {
           });
           setSectorExposures(expMap);
           setExposureAvailable(true);
+          matrixFundsList = list;
         }
+        // Merge matrix fund data (fund_name, return_1y, aum) into funds list
+        // so FundExposureMatrix component can find them
+        const fundsById = {};
+        fundsList.forEach((f) => { if (f.mstar_id) fundsById[f.mstar_id] = f; });
+        matrixFundsList.forEach((f) => {
+          if (f.mstar_id && !fundsById[f.mstar_id]) {
+            fundsById[f.mstar_id] = f;
+          }
+        });
+        setFunds(Object.values(fundsById));
       } catch {
         setFunds([]);
       } finally {
