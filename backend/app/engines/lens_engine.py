@@ -451,20 +451,24 @@ class LensEngine:
 
         for fid in fund_ids:
             rs = risk_stats.get(fid, {})
-            # Fallback chain: prefer 3Y, then 5Y, then 10Y
+            # Fallback chain: prefer 3Y, then 5Y, then 10Y, then 1Y
             dd_raw[fid] = self._first_available(
                 rs, "max_drawdown_3y", "max_drawdown_5y", "max_drawdown_10y",
+                "max_drawdown_1y",
             )
             dc_raw[fid] = self._first_available(
                 rs, "capture_down_3y", "capture_down_5y", "capture_down_10y",
+                "capture_down_1y",
             )
 
             # Up/Down capture ratio — same fallback chain
             cup = self._first_available(
                 rs, "capture_up_3y", "capture_up_5y", "capture_up_10y",
+                "capture_up_1y",
             )
             cdn = self._first_available(
                 rs, "capture_down_3y", "capture_down_5y", "capture_down_10y",
+                "capture_down_1y",
             )
             if cup is not None and cdn is not None and cdn != 0:
                 ud_ratio_raw[fid] = (cup / cdn).quantize(
@@ -475,7 +479,11 @@ class LensEngine:
 
             cy = calendar_year_returns.get(fid, {})
             cy_vals = [cy.get(k) for k in cal_year_keys if cy.get(k) is not None]
-            worst_cy_raw[fid] = min(cy_vals) if cy_vals else None
+            if cy_vals:
+                worst_cy_raw[fid] = min(cy_vals)
+            else:
+                # Use max_drawdown as proxy for worst year when no CY data
+                worst_cy_raw[fid] = dd_raw[fid]
 
         dd_pct = self._percentile_rank(dd_raw, higher_is_better=False)
         dc_pct = self._percentile_rank(dc_raw, higher_is_better=False)

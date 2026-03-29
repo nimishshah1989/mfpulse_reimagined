@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { fetchFunds, fetchFundDetail, fetchFundLensScores, fetchOverlap } from '../../lib/api';
 import { formatPct } from '../../lib/format';
 import Badge from '../shared/Badge';
-import { LENS_OPTIONS } from '../../lib/lens';
-import { lensColor } from '../../lib/lens';
+import { LENS_OPTIONS, scoreColor } from '../../lib/lens';
 
 const slideIn = {
   animation: 'slideInRight 0.3s ease-out forwards',
@@ -176,7 +175,7 @@ export default function CompareMode({ primaryFund, primaryScores, onClose }) {
                       <td className="py-1.5 text-slate-600">{label}</td>
                       {allFunds.map((f, idx) => {
                         const score = f.scores?.[key];
-                        const color = lensColor(score);
+                        const color = scoreColor(score);
                         return (
                           <td key={idx} className="py-1.5 text-right font-mono tabular-nums font-semibold" style={{ color }}>
                             {score != null ? Math.round(Number(score)) : '—'}

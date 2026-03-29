@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import EmptyState from '../shared/EmptyState';
 import SectionTitle from '../shared/SectionTitle';
 
 const QUADRANT_CELL = {
@@ -92,16 +91,7 @@ export default function RotationHeatmap({
   }, [sectorData]);
 
   if (!online || !sectorData || sectorData.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 p-5 animate-in">
-        <SectionTitle
-          tip="Track how sectors move through quadrants over time"
-        >
-          Sector Rotation Heatmap — Quadrant History
-        </SectionTitle>
-        <EmptyState message="Sector heatmap requires MarketPulse data" />
-      </div>
-    );
+    return null;
   }
 
   // Build data map

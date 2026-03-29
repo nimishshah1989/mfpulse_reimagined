@@ -5,7 +5,6 @@ import { timeFormat } from 'd3-time-format'
 import { formatINR } from '../../lib/format'
 import { getSignalColor, computeStartDate } from '../../lib/simulation'
 import Card from '../shared/Card'
-import EmptyState from '../shared/EmptyState'
 
 const MARGIN = { top: 20, right: 50, bottom: 30, left: 60 }
 const NAV_RATIO = 0.7
@@ -19,11 +18,7 @@ function SignalTimeline({ navHistory, cashflowEvents, period = '5Y', width = 800
   const [tooltip, setTooltip] = useState(null)
 
   if (!navHistory || navHistory.length === 0) {
-    return (
-      <Card title="Signal Timeline">
-        <EmptyState message="No NAV data available" />
-      </Card>
-    )
+    return null
   }
 
   const parsedNav = useMemo(() =>

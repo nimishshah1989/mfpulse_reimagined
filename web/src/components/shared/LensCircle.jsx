@@ -1,4 +1,4 @@
-import { lensColor, LENS_LABELS } from '../../lib/lens';
+import { scoreColor, LENS_LABELS } from '../../lib/lens';
 
 const LABEL_ABBR = {
   return_score: 'Ret',
@@ -39,7 +39,7 @@ export default function LensCircle({ score, value, label, lensKey, scoreKey, siz
   return (
     <div
       className={`${cls} rounded-full flex items-center justify-center text-white font-bold flex-shrink-0`}
-      style={{ backgroundColor: lensColor(s), ...inlineSize }}
+      style={{ backgroundColor: scoreColor(s), ...inlineSize }}
       title={`${fullLabel}: ${Math.round(s)}`}
     >
       {displayLabel}

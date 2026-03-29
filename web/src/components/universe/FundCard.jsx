@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import LensCircle from '../shared/LensCircle';
 import TierBadge from '../shared/TierBadge';
-import { LENS_OPTIONS, lensColor } from '../../lib/lens';
+import { LENS_OPTIONS, scoreColor } from '../../lib/lens';
 import { formatPct, formatAUM } from '../../lib/format';
 
 /**
@@ -94,7 +94,7 @@ export default function FundCard({ fund, x, y, onClose }) {
         <div className="grid grid-cols-6 gap-1">
           {LENS_OPTIONS.map((l) => {
             const score = Number(fund[l.key]) || 0;
-            const color = lensColor(score);
+            const color = scoreColor(score);
             return (
               <div key={l.key} className="flex flex-col items-center gap-0.5">
                 <LensCircle lensKey={l.key} score={fund[l.key]} size="sm" />

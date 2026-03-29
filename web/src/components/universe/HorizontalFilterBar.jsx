@@ -15,6 +15,8 @@ const X_AXIS_OPTIONS = [
   { key: 'risk_score', label: 'Risk Score' },
   { key: 'return_score', label: 'Return Score' },
   { key: 'net_expense_ratio', label: 'Expense Ratio' },
+  { key: 'std_dev_3y', label: 'Std Dev (3Y)' },
+  { key: 'max_drawdown_3y', label: 'Max Drawdown' },
 ];
 
 const Y_AXIS_OPTIONS = [

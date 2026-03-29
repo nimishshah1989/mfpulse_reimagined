@@ -246,6 +246,15 @@ def get_fund_detail(mstar_id: str, db: Session = Depends(get_db)) -> dict:
     detail["lens_classification"] = lens_repo.get_latest_classification(mstar_id)
     detail["active_overrides"] = override_repo.get_overrides_for_fund(mstar_id)
 
+    # Category average lens scores (median across same SEBI category)
+    category_name = detail.get("fund", {}).get("category_name")
+    if category_name:
+        detail["category_avg_lens_scores"] = lens_repo.get_category_median_scores(
+            category_name,
+        )
+    else:
+        detail["category_avg_lens_scores"] = None
+
     return {
         "success": True,
         "data": detail,

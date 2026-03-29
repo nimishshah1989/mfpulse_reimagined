@@ -1,4 +1,4 @@
-import { lensColor, lensBgColor, lensLabel } from '../../lib/lens';
+import { scoreColor, scoreBgColor, lensLabel } from '../../lib/lens';
 
 /**
  * Colored pill showing tier name.
@@ -18,8 +18,8 @@ export default function TierBadge({ tier, label, score, lensKey }) {
     <span
       className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap"
       style={{
-        backgroundColor: hasScore ? lensBgColor(s) : '#f1f5f9',
-        color: hasScore ? lensColor(s) : '#475569',
+        backgroundColor: hasScore ? scoreBgColor(s) : '#f1f5f9',
+        color: hasScore ? scoreColor(s) : '#475569',
       }}
     >
       {displayText}

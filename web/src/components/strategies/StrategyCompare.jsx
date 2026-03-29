@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { formatINR, formatPct } from '../../lib/format';
-import { lensColor } from '../../lib/lens';
 import { resampleTimeline } from '../../lib/simulation';
 import Card from '../shared/Card';
 

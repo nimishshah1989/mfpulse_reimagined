@@ -12,7 +12,6 @@ import {
   LineChart,
 } from 'recharts';
 import SkeletonLoader from '../shared/SkeletonLoader';
-import EmptyState from '../shared/EmptyState';
 import { deriveDrillDownFunds, QUADRANT_COLORS } from '../../lib/sectors';
 import { formatPct } from '../../lib/format';
 
@@ -221,11 +220,7 @@ export default function FundDrillDown({
       )}
 
       {/* Fund drill list */}
-      {rankedFunds.length === 0 ? (
-        <EmptyState
-          message={`No funds found with significant exposure to ${sector.sector_name}`}
-        />
-      ) : (
+      {rankedFunds.length === 0 ? null : (
         <div className="grid grid-cols-2 gap-2">
           {rankedFunds.slice(0, 6).map((fund) => {
             const exposure =

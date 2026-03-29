@@ -87,14 +87,18 @@ export function drawChart(ctx, params) {
   const xMid = xScale(xMidVal);
   const yMid = yScale(yMidVal);
 
-  // Quadrant shading
-  ctx.fillStyle = 'rgba(236, 253, 245, 0.5)';
+  // Quadrant background rectangles
+  // Top-left: low risk + high return = SWEET SPOT (emerald tint)
+  ctx.fillStyle = 'rgba(5, 150, 105, 0.04)';
   ctx.fillRect(0, 0, xMid, yMid);
-  ctx.fillStyle = 'rgba(255, 251, 235, 0.3)';
+  // Top-right: high risk + high return = HIGH RISK HIGH RETURN (amber tint)
+  ctx.fillStyle = 'rgba(245, 158, 11, 0.04)';
   ctx.fillRect(xMid, 0, innerW - xMid, yMid);
-  ctx.fillStyle = 'rgba(240, 249, 255, 0.3)';
+  // Bottom-left: low risk + low return = CONSERVATIVE (sky tint)
+  ctx.fillStyle = 'rgba(14, 165, 233, 0.04)';
   ctx.fillRect(0, yMid, xMid, innerH - yMid);
-  ctx.fillStyle = 'rgba(254, 242, 242, 0.3)';
+  // Bottom-right: high risk + low return = AVOID (red tint)
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.04)';
   ctx.fillRect(xMid, yMid, innerW - xMid, innerH - yMid);
 
   // Grid
@@ -102,9 +106,9 @@ export function drawChart(ctx, params) {
   ctx.lineWidth = 0.5 / currentTransform.k;
   drawGridLines(ctx, xScale, yScale, innerW, innerH, xDomain, yDomain, isReturnX, isReturnY);
 
-  // Midpoint dashed
+  // Quadrant divider lines — dashed gray at midpoint of each axis
   ctx.setLineDash([4 / currentTransform.k, 4 / currentTransform.k]);
-  ctx.strokeStyle = '#cbd5e1';
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
   ctx.lineWidth = 1 / currentTransform.k;
   ctx.beginPath(); ctx.moveTo(xMid, 0); ctx.lineTo(xMid, innerH); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(0, yMid); ctx.lineTo(innerW, yMid); ctx.stroke();
@@ -143,18 +147,28 @@ export function drawChart(ctx, params) {
   ctx.restore(); // zoom
   ctx.restore(); // clip
 
-  // Quadrant labels
-  ctx.font = '600 9px Inter, sans-serif';
-  ctx.globalAlpha = 0.4;
-  ctx.fillStyle = '#34d399'; ctx.textAlign = 'left';
-  ctx.fillText('SWEET SPOT', 10, 18);
-  ctx.fillStyle = '#fbbf24'; ctx.textAlign = 'right';
-  ctx.fillText('HIGH RISK, HIGH RETURN', innerW - 10, 18);
-  ctx.fillStyle = '#60a5fa'; ctx.textAlign = 'left';
-  ctx.fillText('CONSERVATIVE', 10, innerH - 8);
-  ctx.fillStyle = '#f87171'; ctx.textAlign = 'right';
-  ctx.fillText('AVOID', innerW - 10, innerH - 8);
-  ctx.globalAlpha = 1;
+  // Quadrant labels — centered in each quadrant, subtle matching colors
+  ctx.font = '600 11px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // SWEET SPOT — top-left (emerald at 0.15 opacity)
+  ctx.fillStyle = 'rgba(5, 150, 105, 0.15)';
+  ctx.fillText('SWEET SPOT', xMid / 2, yMid / 2);
+
+  // HIGH RISK HIGH RETURN — top-right (amber at 0.15 opacity)
+  ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
+  ctx.fillText('HIGH RISK HIGH RETURN', xMid + (innerW - xMid) / 2, yMid / 2);
+
+  // CONSERVATIVE — bottom-left (sky at 0.15 opacity)
+  ctx.fillStyle = 'rgba(14, 165, 233, 0.15)';
+  ctx.fillText('CONSERVATIVE', xMid / 2, yMid + (innerH - yMid) / 2);
+
+  // AVOID — bottom-right (red at 0.15 opacity)
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+  ctx.fillText('AVOID', xMid + (innerW - xMid) / 2, yMid + (innerH - yMid) / 2);
+
+  ctx.textBaseline = 'alphabetic';
 
   // Axis labels
   ctx.fillStyle = '#64748b';

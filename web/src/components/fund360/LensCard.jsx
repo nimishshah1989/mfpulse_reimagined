@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { lensColor, scoreColor, scoreBgColor } from '../../lib/lens';
+import { scoreColor, scoreBgColor } from '../../lib/lens';
 import { formatPct } from '../../lib/format';
 import InfoIcon from '../shared/InfoIcon';
 

@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { LENS_LABELS, lensColor } from '../../lib/lens';
+import { LENS_LABELS } from '../../lib/lens';
 import { formatPct, formatAUM } from '../../lib/format';
 import { fetchMarketRegime } from '../../lib/api';
 import { cachedFetch } from '../../lib/cache';

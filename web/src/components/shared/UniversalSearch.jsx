@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { fetchUniverseData } from '../../lib/api';
 import { cachedFetch } from '../../lib/cache';
 import { formatPct } from '../../lib/format';
-import { LENS_OPTIONS, lensColor } from '../../lib/lens';
+import { LENS_OPTIONS, scoreColor } from '../../lib/lens';
 
 /* ────────── NL Query Parser ────────── */
 function parseNLQuery(query, funds) {
@@ -119,7 +119,7 @@ function LensBars({ fund }) {
             title={`${label}: ${Math.round(score)}`}
             className="w-4 h-1.5 rounded-sm"
             style={{
-              backgroundColor: lensColor(score),
+              backgroundColor: scoreColor(score),
               opacity: score > 0 ? 1 : 0.2,
             }}
           />

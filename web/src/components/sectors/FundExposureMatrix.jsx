@@ -1,7 +1,5 @@
 import { useMemo } from 'react';
 import { useRouter } from 'next/router';
-import EmptyState from '../shared/EmptyState';
-import SectionTitle from '../shared/SectionTitle';
 import { QUADRANT_COLORS } from '../../lib/sectors';
 import { formatPct } from '../../lib/format';
 
@@ -75,14 +73,7 @@ export default function FundExposureMatrix({
     matrixFunds.length === 0 ||
     sectorColumns.length === 0
   ) {
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 p-5 animate-in">
-        <SectionTitle tip="Heat-colored table showing sector allocation across popular funds">
-          Fund Exposure Matrix
-        </SectionTitle>
-        <EmptyState message="Exposure matrix will appear after sector data loads" />
-      </div>
-    );
+    return null;
   }
 
   return (

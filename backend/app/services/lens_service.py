@@ -246,13 +246,16 @@ class LensService:
         for rs in risk_rows:
             risk_stats[rs.mstar_id] = {
                 "std_dev_3y": rs.std_dev_3y,
+                "max_drawdown_1y": rs.max_drawdown_1y,
                 "max_drawdown_3y": rs.max_drawdown_3y,
                 "max_drawdown_5y": rs.max_drawdown_5y,
                 "max_drawdown_10y": getattr(rs, "max_drawdown_10y", None),
                 "beta_3y": rs.beta_3y,
+                "capture_down_1y": rs.capture_down_1y,
                 "capture_down_3y": rs.capture_down_3y,
                 "capture_down_5y": rs.capture_down_5y,
                 "capture_down_10y": getattr(rs, "capture_down_10y", None),
+                "capture_up_1y": rs.capture_up_1y,
                 "capture_up_3y": rs.capture_up_3y,
                 "capture_up_5y": rs.capture_up_5y,
                 "capture_up_10y": rs.capture_up_10y,

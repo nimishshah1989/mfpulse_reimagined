@@ -3,7 +3,6 @@ import { fetchFunds } from '../../lib/api';
 import LensCircle from '../shared/LensCircle';
 import TierBadge from '../shared/TierBadge';
 import { formatPct, formatINR } from '../../lib/format';
-import { lensColor, lensLabel } from '../../lib/lens';
 
 const QUICK_FILTERS = [
   { label: 'Top 5 by Alpha', params: { sort: 'alpha_score', order: 'desc', limit: 5 } },

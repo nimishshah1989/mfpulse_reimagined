@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { lensColor, lensLabel, LENS_LABELS } from '../../lib/lens';
+import { LENS_LABELS } from '../../lib/lens';
 import { formatPct, formatAUM, formatCount } from '../../lib/format';
 import InfoIcon from '../shared/InfoIcon';
 

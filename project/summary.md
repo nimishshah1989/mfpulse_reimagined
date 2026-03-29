@@ -1,9 +1,9 @@
 # mfpulse_reimagined — Auto-Generated Summary
-_Last updated: 2026-03-28 00:13 (auto-generated — Claude did not write a proper summary)_
+_Last updated: 2026-03-29 18:39 (auto-generated — Claude did not write a proper summary)_
 
 ## Current state
-Branch: fix/morningstar-type-coercion | Last commit: dda0020 fix: make legal_name nullable for multi-API ingestion
-Recent changes:  4 files changed, 112 insertions(+), 128 deletions(-)
+Branch: feature/pr-14b-strategies-dashboard | Last commit: 7a76ea2 fix(models): replace Mapped[None] with proper types across all 11 ORM models
+Recent changes:  38 files changed, 395 insertions(+), 351 deletions(-)
 QA: not run
 
 ## Next session starts here

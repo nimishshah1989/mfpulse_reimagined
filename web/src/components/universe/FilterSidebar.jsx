@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import Pill from '../shared/Pill';
-import { LENS_OPTIONS, LENS_CLASS_KEYS, lensColor } from '../../lib/lens';
+import { LENS_OPTIONS } from '../../lib/lens';
 
 const PURCHASE_MODES = ['Regular', 'Direct', 'Both'];
 const DIVIDEND_TYPES = ['Growth', 'IDCW', 'Both'];

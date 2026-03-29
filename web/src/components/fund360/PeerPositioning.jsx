@@ -1,11 +1,11 @@
 import { useRouter } from 'next/router';
-import { lensColor, LENS_OPTIONS } from '../../lib/lens';
+import { scoreColor, LENS_OPTIONS } from '../../lib/lens';
 import { formatPct } from '../../lib/format';
 
 function LensTrack({ label, score, peerAvg }) {
   const pct = score != null ? Math.min(Math.max(Number(score), 0), 100) : null;
   const peerPct = peerAvg != null ? Math.min(Math.max(Number(peerAvg), 0), 100) : 50;
-  const color = lensColor(score);
+  const color = scoreColor(score);
 
   return (
     <div className="flex items-center gap-3 py-2.5 group hover:bg-slate-50 rounded-lg px-2 -mx-2 transition-colors">

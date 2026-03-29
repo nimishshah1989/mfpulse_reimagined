@@ -38,10 +38,41 @@ const RETURN_PERIODS = [
   { key: 'return_1m', label: '1M' },
   { key: 'return_3m', label: '3M' },
   { key: 'return_6m', label: '6M' },
-  { key: 'return_1y', label: '1Y', highlight: true },
-  { key: 'return_3y', label: '3Y' },
-  { key: 'return_5y', label: '5Y' },
+  { key: 'return_1y', label: '1Y', highlight: true, showPercentile: true },
+  { key: 'return_3y', label: '3Y', showPercentile: true },
+  { key: 'return_5y', label: '5Y', showPercentile: true },
 ];
+
+/** Derive approximate percentile from quartile rank. Q1=~P85, Q2=~P62, Q3=~P37, Q4=~P12 */
+function quartileToPercentile(quartile) {
+  if (quartile == null) return null;
+  const q = Number(quartile);
+  if (q === 1) return 85;
+  if (q === 2) return 62;
+  if (q === 3) return 37;
+  if (q === 4) return 12;
+  return null;
+}
+
+/** Map return period key to the corresponding quartile key in ranks data */
+function getQuartileKey(returnKey) {
+  const map = {
+    return_1y: 'quartile_1y',
+    return_3y: 'quartile_3y',
+    return_5y: 'quartile_5y',
+  };
+  return map[returnKey] || null;
+}
+
+/** Map return period key to the abs_rank key in ranks data */
+function getAbsRankKey(returnKey) {
+  const map = {
+    return_1y: 'abs_rank_1y',
+    return_3y: 'abs_rank_3y',
+    return_5y: 'abs_rank_5y',
+  };
+  return map[returnKey] || null;
+}
 
 /**
  * HeroSection -- full-width fund identity card with teal top bar, NAV price, returns strip.
@@ -95,6 +126,10 @@ export default function HeroSection({ fundDetail, lensScores, mstarId, onCompare
 
   // Category returns for comparison
   const categoryReturns = fundDetail.category_returns || fundDetail.returns?.category || null;
+
+  // Ranks data for percentile display
+  const ranks = fundDetail.ranks || null;
+  const categoryFundCount = fundDetail.category_fund_count || null;
 
   return (
     <div className="animate-in">
@@ -258,7 +293,7 @@ export default function HeroSection({ fundDetail, lensScores, mstarId, onCompare
           {/* Quick Returns Strip */}
           <div className="mt-5 pt-4 border-t border-slate-100">
             <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
-              {RETURN_PERIODS.map(({ key, label, highlight }) => {
+              {RETURN_PERIODS.map(({ key, label, highlight, showPercentile }) => {
                 const val = fundReturns[key];
                 if (val == null) return (
                   <div key={key} className="text-center">
@@ -268,8 +303,23 @@ export default function HeroSection({ fundDetail, lensScores, mstarId, onCompare
                 );
                 const n = Number(val);
                 const positive = n >= 0;
-                const catKey = key;
-                const catVal = categoryReturns?.[catKey];
+                const catVal = categoryReturns?.[key];
+
+                // Compute percentile from ranks data
+                let percentile = null;
+                if (showPercentile && ranks) {
+                  const absRankKey = getAbsRankKey(key);
+                  const quartileKey = getQuartileKey(key);
+                  const absRank = absRankKey ? ranks[absRankKey] : null;
+                  const totalFunds = categoryFundCount;
+                  if (absRank != null && totalFunds != null && Number(totalFunds) > 0) {
+                    // Exact percentile: (1 - rank/total) * 100
+                    percentile = Math.round((1 - Number(absRank) / Number(totalFunds)) * 100);
+                  } else if (quartileKey && ranks[quartileKey] != null) {
+                    percentile = quartileToPercentile(ranks[quartileKey]);
+                  }
+                }
+
                 return (
                   <div
                     key={key}
@@ -284,8 +334,13 @@ export default function HeroSection({ fundDetail, lensScores, mstarId, onCompare
                     }`}>
                       {formatPct(n)}
                     </p>
+                    {percentile != null && (
+                      <p className={`text-[9px] font-semibold ${highlight ? 'text-teal-500' : 'text-teal-600'}`}>
+                        P{percentile} in cat
+                      </p>
+                    )}
                     {catVal != null && (
-                      <p className="text-[9px] text-slate-400">Cat: {formatPct(Number(catVal))}</p>
+                      <p className="text-[9px] text-slate-400 font-mono tabular-nums">Cat: {formatPct(Number(catVal))}</p>
                     )}
                   </div>
                 );

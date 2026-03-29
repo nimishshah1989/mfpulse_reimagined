@@ -3,6 +3,109 @@ import { fetchStrategies, fetchStrategy, fetchMarketRegime } from '../lib/api';
 import StrategyRepository from '../components/strategies/StrategyRepository';
 import StrategyEditor from '../components/strategies/StrategyEditor';
 
+const QUICK_START_TEMPLATES = [
+  {
+    key: 'conservative',
+    emoji: '\u{1F6E1}\uFE0F',
+    title: 'Conservative Growth',
+    description: 'Low-risk large caps with consistent track records. Focus on capital preservation with steady returns.',
+    tags: [
+      { label: 'Low Risk', color: 'blue' },
+      { label: '12-14% CAGR', color: 'emerald' },
+    ],
+    iconBg: 'bg-blue-50',
+    defaults: { sipAmount: 10000, lumpsumAmount: 0, mode: 'sip_topups', templateName: 'Conservative Growth' },
+  },
+  {
+    key: 'alpha',
+    emoji: '\u{1F3AF}',
+    title: 'Alpha Hunters',
+    description: 'Funds with proven manager skill. High alpha, positive info ratio, across cap sizes.',
+    tags: [
+      { label: 'Alpha Focus', color: 'teal' },
+      { label: '16-20% CAGR', color: 'amber' },
+    ],
+    iconBg: 'bg-teal-50',
+    defaults: { sipAmount: 10000, lumpsumAmount: 200000, mode: 'sip_topups', templateName: 'Alpha Hunters' },
+  },
+  {
+    key: 'sector',
+    emoji: '\u{1F504}',
+    title: 'Sector Rotation',
+    description: 'Leverage MarketPulse sector signals to rotate into leading sectors and out of lagging ones.',
+    tags: [
+      { label: 'Signal-Driven', color: 'amber' },
+      { label: 'Dynamic', color: 'purple' },
+    ],
+    iconBg: 'bg-amber-50',
+    defaults: { sipAmount: 10000, lumpsumAmount: 200000, mode: 'sip_topups', templateName: 'Sector Rotation' },
+  },
+  {
+    key: 'allweather',
+    emoji: '\u{26A1}',
+    title: 'All-Weather',
+    description: 'Resilient funds that perform across market regimes. Fortress resilience + rock-solid consistency.',
+    tags: [
+      { label: 'Resilient', color: 'purple' },
+      { label: 'All Regimes', color: 'emerald' },
+    ],
+    iconBg: 'bg-purple-50',
+    defaults: { sipAmount: 15000, lumpsumAmount: 300000, mode: 'sip_topups', templateName: 'All-Weather' },
+  },
+];
+
+const TAG_COLORS = {
+  blue: 'bg-blue-50 text-blue-600',
+  teal: 'bg-teal-50 text-teal-600',
+  amber: 'bg-amber-50 text-amber-600',
+  purple: 'bg-purple-50 text-purple-600',
+  emerald: 'bg-emerald-50 text-emerald-600',
+};
+
+function QuickStartTemplates({ onSelectTemplate }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[11px] font-semibold tracking-wider uppercase text-slate-400">
+          Quick Start Templates
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {QUICK_START_TEMPLATES.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => onSelectTemplate(t.defaults)}
+            className="bg-white rounded-xl border border-slate-200 p-4 text-left cursor-pointer hover:border-teal-300 hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`w-8 h-8 rounded-lg ${t.iconBg} flex items-center justify-center text-lg`}>
+                {t.emoji}
+              </div>
+              <span className="text-sm font-semibold text-slate-700 group-hover:text-teal-700 transition-colors">
+                {t.title}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed mb-3">
+              {t.description}
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              {t.tags.map((tag) => (
+                <span
+                  key={tag.label}
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${TAG_COLORS[tag.color] || 'bg-slate-50 text-slate-600'}`}
+                >
+                  {tag.label}
+                </span>
+              ))}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const INVESTMENT_MODES = [
   {
     key: 'pure_sip',
@@ -183,6 +286,9 @@ export default function StrategiesPage() {
           ))}
         </div>
       </div>
+
+      {/* Quick Start Templates */}
+      <QuickStartTemplates onSelectTemplate={handleNewStrategy} />
 
       {/* Strategy Repository */}
       <StrategyRepository

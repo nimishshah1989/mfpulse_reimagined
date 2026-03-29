@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   fetchSectors,
   fetchBreadth,
@@ -23,6 +23,32 @@ import RotationHeatmap from '../components/sectors/RotationHeatmap';
 import FundExposureMatrix from '../components/sectors/FundExposureMatrix';
 
 const PERIODS = ['1M', '3M', '6M', '1Y'];
+
+function buildRotationNarrative(sectors) {
+  if (!sectors || sectors.length === 0) return null;
+
+  const grouped = { Leading: [], Improving: [], Weakening: [], Lagging: [] };
+  sectors.forEach((s) => {
+    const q = s.quadrant || '';
+    if (grouped[q]) grouped[q].push(s.sector_name);
+  });
+
+  const parts = [];
+  if (grouped.Leading.length > 0) {
+    parts.push(`${grouped.Leading.join(' & ')} entering Leading quadrant -- consider overweight.`);
+  }
+  if (grouped.Improving.length > 0) {
+    parts.push(`${grouped.Improving.join(' & ')} improving -- early entry window.`);
+  }
+  if (grouped.Weakening.length > 0) {
+    parts.push(`${grouped.Weakening.join(' & ')} weakening -- reduce exposure.`);
+  }
+  if (grouped.Lagging.length > 0) {
+    parts.push(`${grouped.Lagging.join(' & ')} lagging -- avoid.`);
+  }
+
+  return parts.length > 0 ? parts.join(' ') : null;
+}
 
 export default function SectorsPage() {
   const [sectorData, setSectorData] = useState([]);
@@ -197,6 +223,11 @@ export default function SectorsPage() {
     setSelectedSector(null);
   }, []);
 
+  const rotationNarrative = useMemo(
+    () => buildRotationNarrative(sectorData),
+    [sectorData]
+  );
+
   const handleHeatmapSectorClick = useCallback(
     (sectorName) => {
       const found = sectorData.find((s) => s.sector_name === sectorName);
@@ -362,6 +393,18 @@ export default function SectorsPage() {
                   ) : (
                     <div className="flex items-center justify-center h-[520px] text-sm text-slate-400">
                       Measuring layout...
+                    </div>
+                  )}
+
+                  {/* Rotation Playbook Narrative */}
+                  {rotationNarrative && (
+                    <div className="mt-4 p-3 rounded-lg bg-teal-50 border border-teal-100">
+                      <p className="text-[10px] font-semibold text-teal-700 uppercase tracking-wider mb-1">
+                        Rotation Playbook
+                      </p>
+                      <p className="text-xs text-teal-800 leading-relaxed">
+                        {rotationNarrative}
+                      </p>
                     </div>
                   )}
                 </div>

@@ -1,5 +1,4 @@
 import { formatINR, formatPct } from '../../lib/format';
-import { lensColor } from '../../lib/lens';
 import Badge from '../shared/Badge';
 
 const MODE_LABELS = {

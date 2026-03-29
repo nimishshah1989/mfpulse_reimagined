@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import SectionTitle from '../shared/SectionTitle';
 import { formatScore, formatPct, formatAUM } from '../../lib/format';
-import { lensColor, scoreColor, scoreBgColor } from '../../lib/lens';
+import { scoreColor, scoreBgColor } from '../../lib/lens';
 
 const LENS_TABS = [
   { key: 'return_score', label: 'Return' },

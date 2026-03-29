@@ -1,12 +1,12 @@
 import { formatPct, formatAUM } from '../../lib/format';
-import { LENS_OPTIONS, LENS_CLASS_KEYS, lensColor } from '../../lib/lens';
+import { LENS_OPTIONS, LENS_CLASS_KEYS, scoreColor } from '../../lib/lens';
 import Badge from '../shared/Badge';
 
 /**
  * Tiny colored dot for a single lens score.
  */
 function LensDot({ score }) {
-  const color = score != null ? lensColor(Number(score)) : '#e2e8f0';
+  const color = score != null ? scoreColor(Number(score)) : '#e2e8f0';
   return (
     <span
       className="inline-block w-2 h-2 rounded-full flex-shrink-0"

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { cachedFetch } from '../../lib/cache';
 import { fetchUniverseData } from '../../lib/api';
-import { formatPct } from '../../lib/format';
+import { formatPct, formatAUM } from '../../lib/format';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import SectionTitle from '../shared/SectionTitle';
 
@@ -133,11 +133,18 @@ function BucketCard({ bucket, count, topFund, onClick }) {
             <p className="text-[10px] text-slate-500 truncate">
               Top: {topFund.fund_name}
             </p>
-            {topFund.return_1y != null && (
-              <p className={`text-[10px] font-semibold tabular-nums ${topFund.return_1y >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {formatPct(topFund.return_1y)} 1Y
-              </p>
-            )}
+            <div className="flex items-center justify-between gap-1">
+              {topFund.return_1y != null && (
+                <p className={`text-[10px] font-semibold tabular-nums ${topFund.return_1y >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {formatPct(topFund.return_1y)} 1Y
+                </p>
+              )}
+              {topFund.aum != null && (
+                <p className="text-[10px] text-slate-400 tabular-nums">
+                  {formatAUM(Number(topFund.aum) / 10000000)}
+                </p>
+              )}
+            </div>
           </>
         ) : (
           <p className="text-[10px] text-slate-500">

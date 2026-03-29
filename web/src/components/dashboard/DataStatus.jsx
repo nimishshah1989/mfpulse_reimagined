@@ -153,7 +153,7 @@ function RegimeActions({ regime, leading, weakening }) {
         <p className="section-title">Regime-Aware Actions</p>
         {aiActions && <span className="text-[9px] text-teal-500">{'\u2726'} AI-powered</span>}
       </div>
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {displayActions.map((action, idx) => (
           <div key={idx} className={`p-3 rounded-lg ${action.bg} border ${action.border} border-l-4`} style={{ borderLeftColor: action.iconColor === 'text-emerald-600' ? '#059669' : action.iconColor === 'text-red-600' ? '#dc2626' : action.iconColor === 'text-amber-600' ? '#d97706' : action.iconColor === 'text-sky-600' ? '#0284c7' : '#3b82f6' }}>
             <div className="flex items-center gap-2 mb-1">

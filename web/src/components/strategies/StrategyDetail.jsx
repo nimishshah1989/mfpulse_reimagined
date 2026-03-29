@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatINR, formatPct } from '../../lib/format';
-import { lensColor } from '../../lib/lens';
 import { MODE_COLORS, MODE_LABELS, resampleTimeline } from '../../lib/simulation';
 import LensCircle from '../shared/LensCircle';
 import TierBadge from '../shared/TierBadge';

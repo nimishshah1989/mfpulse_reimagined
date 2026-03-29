@@ -290,6 +290,55 @@ class LensRepository:
 
         return distribution
 
+    def get_category_median_scores(self, category_name: str) -> dict:
+        """Compute median of each lens score for all funds in a SEBI category.
+
+        Returns dict with keys: return_score, risk_score, consistency_score,
+        alpha_score, efficiency_score, resilience_score — each a Decimal or None.
+        """
+        from decimal import Decimal
+
+        # Get latest scores for all funds in this category
+        latest_sub = (
+            self.db.query(
+                FundLensScores.mstar_id,
+                func.max(FundLensScores.computed_date).label("max_date"),
+            )
+            .filter(FundLensScores.category_name == category_name)
+            .group_by(FundLensScores.mstar_id)
+            .subquery()
+        )
+        rows = (
+            self.db.query(FundLensScores)
+            .join(
+                latest_sub,
+                (FundLensScores.mstar_id == latest_sub.c.mstar_id)
+                & (FundLensScores.computed_date == latest_sub.c.max_date),
+            )
+            .all()
+        )
+
+        lens_fields = [
+            "return_score", "risk_score", "consistency_score",
+            "alpha_score", "efficiency_score", "resilience_score",
+        ]
+        result: dict = {}
+        for field in lens_fields:
+            values = sorted(
+                v for r in rows
+                if (v := getattr(r, field)) is not None
+            )
+            if not values:
+                result[field] = None
+            else:
+                n = len(values)
+                if n % 2 == 1:
+                    result[field] = values[n // 2]
+                else:
+                    mid = n // 2
+                    result[field] = (values[mid - 1] + values[mid]) / Decimal("2")
+        return result
+
     # --- Private helpers ---
 
     @staticmethod

@@ -31,12 +31,12 @@ describe('LensCircle component', () => {
     expect(el.className).toContain('h-8');
   });
 
-  it('sets backgroundColor style via lensColor', async () => {
+  it('sets backgroundColor style via scoreColor', async () => {
     const { default: LensCircle } = await import('../components/shared/LensCircle');
     const { container } = render(<LensCircle score={80} label="Ret" />);
     const el = container.firstChild;
-    // score=80 → lensColor returns '#0d9488'
-    expect(el.style.backgroundColor).toBe('rgb(13, 148, 136)');
+    // score=80 → scoreColor returns '#059669' → rgb(5, 150, 105)
+    expect(el.style.backgroundColor).toBe('rgb(5, 150, 105)');
   });
 
   it('renders title attribute with score', async () => {
@@ -66,20 +66,20 @@ describe('TierBadge component', () => {
     expect(container.textContent).toContain('Leader');
   });
 
-  it('applies backgroundColor from lensBgColor', async () => {
+  it('applies backgroundColor from scoreBgColor', async () => {
     const { default: TierBadge } = await import('../components/shared/TierBadge');
     const { container } = render(<TierBadge tier="Leader" score={80} />);
     const el = container.firstChild;
-    // score=80 → lensBgColor returns '#E1F5EE' → rgb(225, 245, 238)
-    expect(el.style.backgroundColor).toBe('rgb(225, 245, 238)');
+    // score=80 → scoreBgColor returns '#ecfdf5' → rgb(236, 253, 245)
+    expect(el.style.backgroundColor).toBe('rgb(236, 253, 245)');
   });
 
-  it('applies color from lensColor', async () => {
+  it('applies color from scoreColor', async () => {
     const { default: TierBadge } = await import('../components/shared/TierBadge');
     const { container } = render(<TierBadge tier="Leader" score={80} />);
     const el = container.firstChild;
-    // score=80 → lensColor returns '#0d9488' → rgb(13, 148, 136)
-    expect(el.style.color).toBe('rgb(13, 148, 136)');
+    // score=80 → scoreColor returns '#059669' → rgb(5, 150, 105)
+    expect(el.style.color).toBe('rgb(5, 150, 105)');
   });
 
   it('renders as a span element', async () => {
