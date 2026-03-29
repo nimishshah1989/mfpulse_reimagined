@@ -163,6 +163,34 @@ export default function FundExposureMatrix({
           );
         })}
       </div>
+      {/* Color legend */}
+      <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
+        <div className="flex gap-4">
+          {[
+            { label: 'Leading', color: '#059669' },
+            { label: 'Improving', color: '#0ea5e9' },
+            { label: 'Weakening', color: '#f59e0b' },
+            { label: 'Lagging', color: '#ef4444' },
+          ].map(({ label, color }) => (
+            <div key={label} className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+              <span className="text-[10px] text-slate-500">{label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-slate-400">Cell intensity = allocation %</span>
+          <div className="flex gap-0.5">
+            {[0.05, 0.15, 0.3, 0.45].map((op) => (
+              <span
+                key={op}
+                className="w-3 h-3 rounded-sm"
+                style={{ backgroundColor: `rgba(13,148,136,${op})` }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
