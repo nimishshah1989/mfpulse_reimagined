@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react';
 import SkeletonLoader from '../shared/SkeletonLoader';
-import SectionTitle from '../shared/SectionTitle';
-import { formatScore, formatPct, formatAUM } from '../../lib/format';
-import { scoreColor, scoreBgColor } from '../../lib/lens';
+import { formatPct, formatAUMRaw } from '../../lib/format';
+import { scoreColor } from '../../lib/lens';
 
 const LENS_TABS = [
   { key: 'return_score', label: 'Return' },
@@ -13,20 +12,21 @@ const LENS_TABS = [
   { key: 'resilience_score', label: 'Resilience' },
 ];
 
-function ScoreBadge({ score }) {
-  const s = Math.round(score || 0);
-  const color = scoreColor(s);
-  const bg = scoreBgColor(s);
+const LENS_DOT_KEYS = [
+  { key: 'return_score', abbr: 'R' },
+  { key: 'risk_score', abbr: 'Rk' },
+  { key: 'consistency_score', abbr: 'C' },
+  { key: 'alpha_score', abbr: 'A' },
+  { key: 'efficiency_score', abbr: 'E' },
+  { key: 'resilience_score', abbr: 'Rs' },
+];
 
-  return (
-    <span
-      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold"
-      style={{ backgroundColor: bg, color }}
-    >
-      {s}
-    </span>
-  );
-}
+const LEGEND_ITEMS = [
+  { color: '#059669', label: '80+' },
+  { color: '#10b981', label: '60-79' },
+  { color: '#d97706', label: '40-59' },
+  { color: '#ef4444', label: '<40' },
+];
 
 export default function TopFundsByLens({ universe, onFundClick, loading }) {
   const [activeTab, setActiveTab] = useState('return_score');
@@ -74,57 +74,126 @@ export default function TopFundsByLens({ universe, onFundClick, loading }) {
         })}
       </div>
 
-      {/* Fund table */}
+      {/* Fund rows with lens dots */}
       {topFunds.length > 0 ? (
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="text-[10px] text-slate-400 uppercase tracking-wider">
-              <th className="text-left pb-2 pl-2 w-6">#</th>
-              <th className="text-left pb-2">Fund Name</th>
-              <th className="text-left pb-2">Category</th>
-              <th className="text-right pb-2">Score</th>
-              <th className="text-right pb-2">1Y Return</th>
-              <th className="text-right pb-2 pr-2">AUM (Cr)</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {topFunds.map((fund, idx) => {
-              const return1y = fund.return_1y;
-              const aum = fund.aum;
-              return (
-                <tr
-                  key={fund.mstar_id}
-                  className="hover:bg-slate-50 cursor-pointer"
-                  onClick={() => onFundClick(fund.mstar_id)}
+        <div>
+          {/* Header row for lens dot labels */}
+          <div className="flex items-center px-0 mb-1">
+            <div style={{ width: 24 }} />
+            <div className="flex-1 min-w-0" />
+            <div className="flex gap-[3px] mx-3">
+              {LENS_DOT_KEYS.map(({ key, abbr }) => (
+                <span
+                  key={key}
+                  className="text-slate-400 font-medium text-center"
+                  style={{ width: 8, fontSize: 7, lineHeight: '10px' }}
                 >
-                  <td className="py-2.5 pl-2 text-slate-400 tabular-nums">{idx + 1}</td>
-                  <td className="py-2.5">
-                    <div>
-                      <p className="font-medium text-slate-800 truncate max-w-[220px]">
-                        {fund.fund_name}
-                      </p>
-                      <p className="text-[10px] text-slate-400">
-                        {fund.plan_type || 'Direct Growth'}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="py-2.5 text-slate-500 truncate max-w-[100px]">
-                    {fund.category_name || '--'}
-                  </td>
-                  <td className="py-2.5 text-right">
-                    <ScoreBadge score={fund[activeTab]} />
-                  </td>
-                  <td className={`py-2.5 text-right font-semibold tabular-nums ${return1y != null ? (return1y >= 0 ? 'text-emerald-600' : 'text-red-600') : 'text-slate-400'}`}>
-                    {return1y != null ? formatPct(return1y) : '--'}
-                  </td>
-                  <td className="py-2.5 text-right pr-2 text-slate-500 tabular-nums">
-                    {aum != null ? formatAUM(Number(aum) / 10000000) : '--'}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  {abbr}
+                </span>
+              ))}
+            </div>
+            <div style={{ width: 60 }} />
+            <div style={{ width: 50 }} />
+          </div>
+
+          {/* Fund rows */}
+          {topFunds.map((fund, idx) => {
+            const return1y = fund.return_1y;
+            const aum = fund.aum;
+            return (
+              <div
+                key={fund.mstar_id}
+                className="flex items-center py-2 cursor-pointer hover:bg-slate-50 transition-colors"
+                style={{ borderBottom: '1px solid #f8fafc' }}
+                onClick={() => onFundClick(fund.mstar_id)}
+              >
+                {/* Rank */}
+                <span
+                  className="text-slate-400 tabular-nums"
+                  style={{ width: 24, fontSize: 11 }}
+                >
+                  {idx + 1}
+                </span>
+
+                {/* Fund info */}
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="font-medium text-slate-800 truncate"
+                    style={{ fontSize: 12 }}
+                  >
+                    {fund.fund_name}
+                  </p>
+                  <p className="text-slate-400 truncate" style={{ fontSize: 10 }}>
+                    {fund.category_name || fund.plan_type || 'Direct Growth'}
+                  </p>
+                </div>
+
+                {/* 6 Lens dots */}
+                <div className="flex gap-[3px] mx-3">
+                  {LENS_DOT_KEYS.map(({ key }) => {
+                    const score = fund[key];
+                    const color = score != null ? scoreColor(score) : '#e2e8f0';
+                    return (
+                      <span
+                        key={key}
+                        title={`${key.replace('_score', '')}: ${score != null ? Math.round(score) : '--'}`}
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          backgroundColor: color,
+                          display: 'inline-block',
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* 1Y Return */}
+                <span
+                  className={`font-bold tabular-nums text-right ${
+                    return1y != null
+                      ? return1y >= 0
+                        ? 'text-emerald-600'
+                        : 'text-red-600'
+                      : 'text-slate-400'
+                  }`}
+                  style={{ fontSize: 11, width: 60 }}
+                >
+                  {return1y != null ? formatPct(return1y) : '--'}
+                </span>
+
+                {/* AUM */}
+                <span
+                  className="text-slate-500 tabular-nums text-right"
+                  style={{ fontSize: 10, width: 50 }}
+                >
+                  {aum != null ? formatAUMRaw(aum) : '--'}
+                </span>
+              </div>
+            );
+          })}
+
+          {/* Legend */}
+          <div className="flex items-center gap-3 mt-3 pt-2 border-t border-slate-100">
+            {LEGEND_ITEMS.map(({ color, label }) => (
+              <div key={label} className="flex items-center gap-1">
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    backgroundColor: color,
+                    display: 'inline-block',
+                  }}
+                />
+                <span className="text-slate-400" style={{ fontSize: 9 }}>
+                  {label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : null}
     </div>
   );

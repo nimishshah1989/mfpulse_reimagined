@@ -130,7 +130,7 @@ export default function CategoryHeatmap({ universe, loading }) {
     <div className="bg-white rounded-xl border border-slate-200 p-5 animate-in" style={{ animationDelay: '0.4s' }}>
       <div className="flex items-center justify-between mb-4">
         <p className="section-title">
-          Category Performance Heatmap &mdash; {periodLabel} Returns
+          CATEGORY HEATMAP &mdash; {periodLabel} Returns
         </p>
         <div className="flex gap-1 bg-slate-100 rounded-md p-0.5">
           {PERIOD_OPTIONS.map(({ key, label }) => (
@@ -150,7 +150,7 @@ export default function CategoryHeatmap({ universe, loading }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-6 gap-1.5">
+      <div className="grid grid-cols-5 gap-1.5">
         {topCats.map((cat, idx) => (
           <CategoryTile
             key={cat.name}
