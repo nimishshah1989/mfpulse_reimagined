@@ -562,6 +562,16 @@ class FundRepository:
             "mean_1y": rs.mean_1y,
             "mean_3y": rs.mean_3y,
             "mean_5y": rs.mean_5y,
+            # Category comparison (from Extended Risk Stats API)
+            "cat_sortino_3y": getattr(rs, "cat_sortino_3y", None),
+            "cat_capture_up_3y": getattr(rs, "cat_capture_up_3y", None),
+            "cat_capture_down_3y": getattr(rs, "cat_capture_down_3y", None),
+            "cat_info_ratio_3y": getattr(rs, "cat_info_ratio_3y", None),
+            "cat_tracking_error_3y": getattr(rs, "cat_tracking_error_3y", None),
+            "cat_treynor_3y": getattr(rs, "cat_treynor_3y", None),
+            "cat_kurtosis_3y": getattr(rs, "cat_kurtosis_3y", None),
+            "cat_skewness_3y": getattr(rs, "cat_skewness_3y", None),
+            "cat_correlation_3y": getattr(rs, "cat_correlation_3y", None),
         }
 
     @staticmethod

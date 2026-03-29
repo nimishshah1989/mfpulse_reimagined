@@ -1,6 +1,6 @@
 import InfoIcon from '../shared/InfoIcon';
 
-function StatCard({ label, value, format, sublabel, sublabelColor }) {
+function StatCard({ label, value, format, sublabel, sublabelColor, catAvg, catFormat }) {
   const displayVal = value != null ? format(value) : '\u2014';
   const isPositive = typeof displayVal === 'string' && displayVal.startsWith('+');
   const isNegative = typeof displayVal === 'string' && (displayVal.startsWith('-') || displayVal.startsWith('\u2212'));
@@ -18,6 +18,9 @@ function StatCard({ label, value, format, sublabel, sublabelColor }) {
     <div className="bg-gradient-to-br from-teal-50/30 to-slate-50 rounded-xl p-3">
       <p className="text-[10px] text-slate-400">{label}</p>
       <p className={`text-lg font-bold font-mono tabular-nums ${valueColor}`}>{displayVal}</p>
+      {catAvg != null && (
+        <p className="text-[9px] text-slate-400 font-mono tabular-nums">Cat: {(catFormat || format)(catAvg)}</p>
+      )}
       {sublabel && (
         <p className={`text-[10px] ${sublabelColor || 'text-slate-500'}`}>{sublabel}</p>
       )}
@@ -76,22 +79,26 @@ export default function RiskProfile({ riskStats }) {
       label: 'Sortino (3Y)',
       value: riskStats.sortino_3y ?? riskStats.sortino,
       format: fmtNum,
+      catAvg: riskStats.cat_sortino_3y,
       sublabel: 'Downside adjusted',
     },
     {
       label: 'Info Ratio',
       value: riskStats.info_ratio_3y ?? riskStats.info_ratio,
       format: fmtNum,
+      catAvg: riskStats.cat_info_ratio_3y,
     },
     {
       label: 'Capture Up',
       value: riskStats.capture_up_3y ?? riskStats.upside_capture_3y ?? riskStats.upside_capture,
       format: fmtPct0,
+      catAvg: riskStats.cat_capture_up_3y,
     },
     {
       label: 'Capture Down',
       value: riskStats.capture_down_3y ?? riskStats.downside_capture_3y ?? riskStats.downside_capture,
       format: fmtPct0,
+      catAvg: riskStats.cat_capture_down_3y,
       sublabelColor: (riskStats.capture_down_3y ?? riskStats.downside_capture_3y ?? riskStats.downside_capture) != null && Number(riskStats.capture_down_3y ?? riskStats.downside_capture_3y ?? riskStats.downside_capture) < 90 ? 'text-emerald-600' : 'text-amber-600',
       sublabel: (riskStats.capture_down_3y ?? riskStats.downside_capture_3y ?? riskStats.downside_capture) != null ? (Number(riskStats.capture_down_3y ?? riskStats.downside_capture_3y ?? riskStats.downside_capture) < 90 ? 'Falls less' : null) : null,
     },
@@ -104,6 +111,7 @@ export default function RiskProfile({ riskStats }) {
       label: 'Skewness (3Y)',
       value: riskStats.skewness_3y ?? riskStats.skewness,
       format: (v) => `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}`,
+      catAvg: riskStats.cat_skewness_3y,
       sublabel: riskStats.skewness_3y != null || riskStats.skewness != null
         ? (Number(riskStats.skewness_3y ?? riskStats.skewness) >= 0 ? 'Positive skew' : 'Negative skew')
         : null,
@@ -113,6 +121,7 @@ export default function RiskProfile({ riskStats }) {
       label: 'Tracking Error',
       value: riskStats.tracking_error_3y ?? riskStats.tracking_error,
       format: fmtPct,
+      catAvg: riskStats.cat_tracking_error_3y,
       sublabel: 'Active deviation',
     },
     {
@@ -126,6 +135,7 @@ export default function RiskProfile({ riskStats }) {
       label: 'Kurtosis (3Y)',
       value: riskStats.kurtosis_3y ?? riskStats.kurtosis,
       format: fmtNum,
+      catAvg: riskStats.cat_kurtosis_3y,
       sublabel: 'Tail risk',
     },
     {
@@ -148,6 +158,8 @@ export default function RiskProfile({ riskStats }) {
           format={m.format}
           sublabel={m.sublabel}
           sublabelColor={m.sublabelColor}
+          catAvg={m.catAvg}
+          catFormat={m.catFormat}
         />
       ))}
     </div>
