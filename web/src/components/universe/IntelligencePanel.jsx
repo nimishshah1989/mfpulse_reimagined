@@ -213,9 +213,7 @@ export default function IntelligencePanel({
               </button>
             );
           })}
-          {top5.length === 0 && (
-            <p className="text-[10px] text-slate-400 text-center py-2">No funds in view</p>
-          )}
+          {top5.length === 0 && null}
         </div>
       </div>
 
@@ -231,9 +229,7 @@ export default function IntelligencePanel({
               </p>
             </div>
           ))}
-          {insights.length === 0 && (
-            <p className="text-[10px] text-slate-400">Not enough data for insights.</p>
-          )}
+          {insights.length === 0 && null}
         </div>
       </div>
 

@@ -91,7 +91,7 @@ function FundIdentityCard({ fund, lensScores, onClear }) {
         <div>
           <p className="text-[8px] text-slate-400">AUM</p>
           <p className="text-[11px] font-bold tabular-nums text-slate-700">
-            {fund.aum != null ? formatAUM(fund.aum) : '\u2014'}
+            {fund.aum != null ? formatAUM(Number(fund.aum) / 10000000) : '\u2014'}
           </p>
         </div>
         <div>

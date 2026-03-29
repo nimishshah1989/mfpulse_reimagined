@@ -11,9 +11,9 @@ import {
 } from 'recharts';
 import InfoIcon from '../shared/InfoIcon';
 import SkeletonLoader from '../shared/SkeletonLoader';
-import { resampleTimeline, MODE_LABELS, findBestMode } from '../../lib/simulation';
+import { resampleTimeline, MODE_LABELS, MODE_COLORS, findBestMode } from '../../lib/simulation';
 
-const MODES_TO_SHOW = ['SIP', 'SIP_SIGNAL'];
+const MODES_TO_SHOW = ['SIP', 'SIP_SIGNAL', 'LUMPSUM', 'HYBRID'];
 
 function formatYAxis(val) {
   if (val >= 10000000) return `\u20B9${(val / 10000000).toFixed(1)}Cr`;
@@ -163,15 +163,13 @@ export default function EquityCurve({ results, cashflowEvents, isLoading }) {
           <p className="section-title">Equity Curve + Signal Events</p>
           <InfoIcon tip="The teal line shows portfolio value over time. Orange diamonds mark signal-triggered deployments. The gray dashed line shows Pure SIP for comparison." />
         </div>
-        <div className="flex gap-3 text-[10px]">
-          <div className="flex items-center gap-1">
-            <span className="w-3 h-0.5 bg-teal-500 rounded" />
-            <span className="text-slate-500">SIP + Signals</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="w-3 h-0.5 bg-slate-300 rounded" />
-            <span className="text-slate-500">Pure SIP</span>
-          </div>
+        <div className="flex gap-3 text-[10px] flex-wrap">
+          {MODES_TO_SHOW.map((mode) => (
+            <div key={mode} className="flex items-center gap-1">
+              <span className="w-3 h-0.5 rounded" style={{ backgroundColor: MODE_COLORS[mode] }} />
+              <span className="text-slate-500">{MODE_LABELS[mode]}</span>
+            </div>
+          ))}
           <div className="flex items-center gap-1">
             <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
             <span className="text-slate-500">Signal Deploy</span>
@@ -208,38 +206,35 @@ export default function EquityCurve({ results, cashflowEvents, isLoading }) {
             />
             <Tooltip content={<CustomTooltip />} />
 
-            {/* SIP + Signals area fill */}
-            <Area
-              type="monotone"
-              dataKey="SIP_SIGNAL"
-              name={MODE_LABELS.SIP_SIGNAL}
-              stroke="none"
-              fill="rgba(13,148,136,0.06)"
-              connectNulls
-            />
+            {/* Best mode area fill */}
+            {bestMode && (
+              <Area
+                type="monotone"
+                dataKey={bestMode}
+                name={MODE_LABELS[bestMode]}
+                stroke="none"
+                fill={`${MODE_COLORS[bestMode]}10`}
+                connectNulls
+              />
+            )}
 
-            {/* Pure SIP dashed line */}
-            <Line
-              type="monotone"
-              dataKey="SIP"
-              name={MODE_LABELS.SIP}
-              stroke="#94a3b8"
-              strokeDasharray="4 4"
-              strokeWidth={1.5}
-              dot={false}
-              connectNulls
-            />
-
-            {/* SIP + Signals solid line */}
-            <Line
-              type="monotone"
-              dataKey="SIP_SIGNAL"
-              name={MODE_LABELS.SIP_SIGNAL}
-              stroke="#0d9488"
-              strokeWidth={2.5}
-              dot={false}
-              connectNulls
-            />
+            {/* All mode lines */}
+            {MODES_TO_SHOW.map((mode) => {
+              const isBest = mode === bestMode;
+              return (
+                <Line
+                  key={mode}
+                  type="monotone"
+                  dataKey={mode}
+                  name={MODE_LABELS[mode]}
+                  stroke={MODE_COLORS[mode]}
+                  strokeWidth={isBest ? 2.5 : 1.5}
+                  strokeDasharray={isBest ? undefined : '4 4'}
+                  dot={false}
+                  connectNulls
+                />
+              );
+            })}
 
             {/* Benchmark if available */}
             <Line

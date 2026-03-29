@@ -215,18 +215,7 @@ export default function SectorSnapshot({ sectors, loading }) {
     );
   }
 
-  if (!sectors || sectors.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <div className="flex items-center justify-between mb-4">
-          <p className="section-title">Sector Rotation</p>
-        </div>
-        <div className="text-center py-6">
-          <p className="text-xs text-slate-400">Sector data unavailable. MarketPulse may be offline.</p>
-        </div>
-      </div>
-    );
-  }
+  if (!sectors || sectors.length === 0) return null;
 
   // Normalize quadrant casing
   const normalized = sectors.map((s) => ({

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import SectionTitle from '../shared/SectionTitle';
 import { formatScore, formatPct, formatAUM } from '../../lib/format';
-import { lensColor } from '../../lib/lens';
+import { lensColor, scoreColor, scoreBgColor } from '../../lib/lens';
 
 const LENS_TABS = [
   { key: 'return_score', label: 'Return' },
@@ -15,15 +15,14 @@ const LENS_TABS = [
 
 function ScoreBadge({ score }) {
   const s = Math.round(score || 0);
-  let bg = 'bg-emerald-50';
-  let text = 'text-emerald-700';
-  if (s < 50) { bg = 'bg-amber-50'; text = 'text-amber-700'; }
-  if (s < 30) { bg = 'bg-red-50'; text = 'text-red-700'; }
-  if (s >= 80) { bg = 'bg-emerald-50'; text = 'text-emerald-700'; }
-  else if (s >= 60) { bg = 'bg-teal-50'; text = 'text-teal-700'; }
+  const color = scoreColor(s);
+  const bg = scoreBgColor(s);
 
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${bg} ${text}`}>
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold"
+      style={{ backgroundColor: bg, color }}
+    >
       {s}
     </span>
   );
@@ -119,18 +118,14 @@ export default function TopFundsByLens({ universe, onFundClick, loading }) {
                     {return1y != null ? formatPct(return1y) : '--'}
                   </td>
                   <td className="py-2.5 text-right pr-2 text-slate-500 tabular-nums">
-                    {aum != null ? Number(aum).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '--'}
+                    {aum != null ? formatAUM(Number(aum) / 10000000) : '--'}
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-      ) : (
-        <p className="text-xs text-slate-400 text-center py-6">
-          No fund data available for this lens.
-        </p>
-      )}
+      ) : null}
     </div>
   );
 }
