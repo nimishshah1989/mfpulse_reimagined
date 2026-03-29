@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { lensColor } from '../../lib/lens';
+import { lensColor, scoreColor, scoreBgColor } from '../../lib/lens';
 import { formatPct } from '../../lib/format';
 import InfoIcon from '../shared/InfoIcon';
 
@@ -431,16 +431,19 @@ export default function LensCard({ name, lensKey, score, tier, categoryName, ris
         <div className="flex-1">
           <div className="h-6 bg-slate-100 rounded-full relative overflow-hidden">
             <div
-              className={`h-full rounded-full bg-gradient-to-r ${meta.barGradient || 'from-teal-400 to-teal-500'} transition-all duration-700 ease-out`}
-              style={{ width: `${barPct}%` }}
+              className="h-full rounded-full transition-all duration-700 ease-out"
+              style={{ width: `${barPct}%`, backgroundColor: scoreColor(displayScore) }}
             />
             <div className="absolute top-0 left-1/2 h-full w-px bg-slate-300 opacity-50" />
           </div>
         </div>
         <div className="w-24 text-right flex-shrink-0">
-          <span className={`text-sm font-bold font-mono tabular-nums ${color}`}>{displayScore}</span>
+          <span className="text-sm font-bold font-mono tabular-nums" style={{ color: scoreColor(displayScore) }}>{displayScore}</span>
           {tier && (
-            <span className={`text-[10px] font-semibold block ${color}`}>{tier}</span>
+            <span
+              className="text-[10px] font-semibold block px-1.5 py-0.5 rounded inline-block mt-0.5"
+              style={{ color: scoreColor(displayScore), backgroundColor: scoreBgColor(displayScore) }}
+            >{tier}</span>
           )}
           {rankInfo && (
             <span className="text-[9px] text-slate-400 block">

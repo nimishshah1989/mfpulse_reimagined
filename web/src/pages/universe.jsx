@@ -382,7 +382,7 @@ export default function UniversePage() {
           </div>
           <div
             ref={chartContainerRef}
-            className="bg-white rounded-xl border border-slate-200 overflow-hidden relative"
+            className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden relative"
             style={{ height: Math.min(560, typeof window !== 'undefined' ? window.innerHeight - 240 : 560) }}
           >
             {taggedFunds.length === 0 ? (

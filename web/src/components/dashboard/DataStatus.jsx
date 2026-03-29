@@ -148,14 +148,14 @@ function RegimeActions({ regime, leading, weakening }) {
     : actions;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5">
+    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
       <div className="flex items-center justify-between mb-3">
         <p className="section-title">Regime-Aware Actions</p>
         {aiActions && <span className="text-[9px] text-teal-500">{'\u2726'} AI-powered</span>}
       </div>
       <div className="space-y-3">
         {displayActions.map((action, idx) => (
-          <div key={idx} className={`p-3 rounded-lg ${action.bg} border ${action.border}`}>
+          <div key={idx} className={`p-3 rounded-lg ${action.bg} border ${action.border} border-l-4`} style={{ borderLeftColor: action.iconColor === 'text-emerald-600' ? '#059669' : action.iconColor === 'text-red-600' ? '#dc2626' : action.iconColor === 'text-amber-600' ? '#d97706' : action.iconColor === 'text-sky-600' ? '#0284c7' : '#3b82f6' }}>
             <div className="flex items-center gap-2 mb-1">
               <span className={`text-sm ${action.iconColor}`}>{action.icon}</span>
               <p className={`text-xs font-semibold ${action.titleColor}`}>{action.title}</p>
@@ -229,7 +229,7 @@ function DataFreshness({ freshness, onRefreshNav, onRecomputeLens, refreshing, r
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5">
+    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
       <p className="section-title mb-3">Data Freshness</p>
       <div className="space-y-2.5">
         <FreshnessRow label="NAV Data" dateStr={freshness.nav_last_date} />

@@ -67,11 +67,10 @@ export default function DashboardPage() {
       if (results[0].status === 'fulfilled') setRegime(results[0].value.data);
       if (results[1].status === 'fulfilled') setBreadth(results[1].value.data);
       if (results[2].status === 'fulfilled') setSentiment(results[2].value.data);
-      // Prefer Morningstar sectors, fallback to MarketPulse
       if (results[5].status === 'fulfilled' && results[5].value.data?.length > 0) {
         setSectors(results[5].value.data);
-      } else if (results[3].status === 'fulfilled') {
-        setSectors(results[3].value.data || []);
+      } else {
+        setSectors([]);
       }
       if (results[4].status === 'fulfilled') setNifty(results[4].value.data);
       setMpStatus('ready');

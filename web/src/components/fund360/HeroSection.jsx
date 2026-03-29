@@ -86,7 +86,7 @@ export default function HeroSection({ fundDetail, lensScores, mstarId, onCompare
       const score = lensScores[lens.key];
       const classKey = LENS_CLASS_KEYS[lens.key];
       const tier = lensScores[classKey];
-      if (score != null && Number(score) >= 70 && tier) {
+      if (score != null && Number(score) >= 80 && tier) {
         topTiers.push({ label: lens.label, tier, score: Number(score) });
       }
     });

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { fetchFunds } from '../../lib/api';
 import { formatPct, formatAUM } from '../../lib/format';
-import { LENS_OPTIONS, lensColor } from '../../lib/lens';
+import { LENS_OPTIONS, scoreColor } from '../../lib/lens';
 import InfoIcon from '../shared/InfoIcon';
 
 const LENS_SHORT = {
@@ -23,7 +23,7 @@ const LENS_TIPS = {
 };
 
 function LensMiniBar({ score, shortLabel }) {
-  const color = lensColor(score);
+  const color = scoreColor(score);
   const widthPct = Math.max(10, Math.min(100, score));
   return (
     <div className="text-center">

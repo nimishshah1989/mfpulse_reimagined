@@ -143,7 +143,7 @@ export default function IntelligencePanel({
   return (
     <div className="hidden lg:block col-span-3 space-y-3">
       {/* Market Context */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
         <div className="flex items-center gap-1 mb-3">
           <p className="section-title">Market Context</p>
           <InfoIcon tip="Current market regime affects which funds perform well. In Risk-On regimes, aggressive funds outperform. In Risk-Off, defensive funds shine." />
@@ -184,7 +184,7 @@ export default function IntelligencePanel({
       </div>
 
       {/* Top 5 */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
         <p className="section-title mb-3">Top 5 -- Visible Funds</p>
         <div className="space-y-2">
           {top5.map((fund, i) => {
@@ -204,7 +204,7 @@ export default function IntelligencePanel({
                     {fund.fund_name || fund.legal_name}
                   </p>
                   <p className="text-[9px] text-slate-400">
-                    {fund.category_name || fund.broad_category} &middot; Score {Math.round(score)}
+                    {fund.category_name || fund.broad_category} &middot; {formatAUM(aumCr)}
                   </p>
                 </div>
                 <span className={`text-[10px] font-bold tabular-nums ${retVal >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -218,7 +218,7 @@ export default function IntelligencePanel({
       </div>
 
       {/* Insights */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
         <p className="section-title mb-3">Insights from Data</p>
         <div className="space-y-2.5">
           {insights.map((ins, i) => (

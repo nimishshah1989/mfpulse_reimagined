@@ -77,7 +77,7 @@ export default function TierSummary({
   return (
     <div className="hidden lg:block col-span-2 space-y-3">
       {/* Summary stats */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
         <p className="section-title mb-3">Visible Funds</p>
         <div className="space-y-3">
           <div>
@@ -120,7 +120,7 @@ export default function TierSummary({
       </div>
 
       {/* Tier distribution */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
         <div className="flex items-center gap-1 mb-3">
           <p className="section-title">{lensName} Tiers</p>
           <InfoIcon tip={`Distribution based on selected Color axis (${lensName} Score). Click any tier to highlight those funds on the chart.`} />

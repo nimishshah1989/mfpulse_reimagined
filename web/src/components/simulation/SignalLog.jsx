@@ -64,12 +64,12 @@ function SignalEventItem({ event, latestNav }) {
         <p className="text-[10px] font-semibold text-slate-700">
           {dateStr} {'\u2014'} {trigger}
         </p>
-        <p className="text-[9px] text-slate-500">
+        <p className="text-[9px] text-slate-500 font-mono tabular-nums">
           Deployed {formatCompact(amount)} at NAV {nav != null ? Number(nav).toFixed(1) : '\u2014'}
           {currentValue != null && ` \u00B7 Now worth ${formatCompact(currentValue)}`}
         </p>
         {returnPct != null && (
-          <p className={`text-[9px] font-semibold ${returnColor(returnPct)}`}>
+          <p className={`text-[9px] font-semibold font-mono tabular-nums ${returnColor(returnPct)}`}>
             {returnPct >= 0 ? '+' : '\u2212'}{Math.abs(returnPct).toFixed(0)}% return
             {returnPct >= 100 ? ' on this deployment' : ''}
           </p>
@@ -211,7 +211,7 @@ export default function SignalLog({
       </div>
 
       {/* Why Signals Won explanation */}
-      <WhySignalsWon results={results} />
+      <WhySignalsWon results={results} fund={fund} />
     </div>
   );
 }

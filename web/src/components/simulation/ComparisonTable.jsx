@@ -187,18 +187,18 @@ export default function ComparisonTable({ results }) {
                   return (
                     <td
                       key={MODES[i]}
-                      className={`text-center py-2 px-1 tabular-nums ${
+                      className={`text-center py-2 px-1 font-mono tabular-nums ${
                         isWinner
-                          ? 'bg-teal-50 font-bold text-teal-600'
+                          ? 'bg-emerald-50 font-bold text-emerald-700 rounded'
                           : displayVal === '\u2014'
                             ? 'text-slate-300'
-                            : ''
+                            : 'text-slate-600'
                       } ${
-                        metric.key === 'drawdown' && val != null && Math.abs(Number(val)) > 30
+                        metric.key === 'drawdown' && val != null && Math.abs(Number(val)) > 30 && !isWinner
                           ? 'text-red-500'
                           : ''
                       } ${
-                        isSignalMetric && isSignalMode && displayVal !== '\u2014'
+                        isSignalMetric && isSignalMode && displayVal !== '\u2014' && !isWinner
                           ? 'font-semibold text-teal-600'
                           : ''
                       }`}

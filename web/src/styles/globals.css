@@ -64,6 +64,14 @@ html {
   font-variant-numeric: tabular-nums;
 }
 
+.card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 22px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
 /* Float design card */
 .float-card {
   background: linear-gradient(to bottom right, #ffffff, rgba(248, 250, 252, 0.8));

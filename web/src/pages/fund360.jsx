@@ -36,7 +36,7 @@ import CreditQuality from '../components/fund360/CreditQuality';
 /* ---- Section wrapper matching mockup white cards ---- */
 function SectionCard({ title, subtitle, badge, children, className = '' }) {
   return (
-    <div className={`bg-white rounded-2xl border border-slate-200 p-5 animate-in ${className}`}>
+    <div className={`bg-white rounded-2xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5 animate-in ${className}`}>
       {(title || subtitle || badge) && (
         <div className="flex items-center justify-between mb-4">
           <div>

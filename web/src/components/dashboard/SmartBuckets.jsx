@@ -107,7 +107,7 @@ function BucketCard({ bucket, count, topFund, onClick }) {
   return (
     <div
       onClick={onClick}
-      className={`bucket-card w-52 bg-white rounded-xl border ${borderClass} p-4 cursor-pointer flex-shrink-0`}
+      className={`bucket-card w-52 bg-white rounded-xl border ${borderClass} p-4 cursor-pointer flex-shrink-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200`}
     >
       {/* Icon + name header */}
       <div className="flex items-center gap-2 mb-3">

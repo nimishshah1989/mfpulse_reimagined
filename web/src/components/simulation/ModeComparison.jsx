@@ -59,7 +59,7 @@ function ModeCard({ mode, summary, isBest, bestSipXirr }) {
   const capitalEff = summary.capital_efficiency;
 
   const borderClass = isBest
-    ? 'border-teal-500 bg-teal-50/50'
+    ? 'border-teal-500 bg-teal-50/50 ring-1 ring-teal-200/50'
     : 'border-slate-200';
   const textColor = isBest ? 'text-teal-700' : 'text-slate-700';
   const subColor = isBest ? 'text-teal-500' : 'text-slate-400';
@@ -78,7 +78,7 @@ function ModeCard({ mode, summary, isBest, bestSipXirr }) {
           <p className={`text-[10px] uppercase tracking-wider font-bold ${labelColor}`}>
             {MODE_LABELS[mode]}
           </p>
-          <span className="px-2 py-0.5 text-[8px] font-bold text-white bg-teal-600 rounded-full">
+          <span className="px-2.5 py-0.5 text-[9px] font-bold text-white bg-teal-600 rounded-full shadow-sm shadow-teal-200 tracking-wide">
             BEST
           </span>
         </div>
@@ -87,7 +87,10 @@ function ModeCard({ mode, summary, isBest, bestSipXirr }) {
           {MODE_LABELS[mode]}
         </p>
       )}
-      <p className={`text-xs ${subColor} mb-3`}>{MODE_DESCRIPTIONS[mode]}</p>
+      <div className="flex items-center gap-1.5 mb-3">
+        <span className={`${subColor}`}>{MODE_ICONS[mode]}</span>
+        <p className={`text-xs ${subColor}`}>{MODE_DESCRIPTIONS[mode]}</p>
+      </div>
 
       <div className="space-y-2">
         <div>

@@ -77,7 +77,7 @@ export default function CategoryHeatmap({ universe, loading }) {
     if (!universe || universe.length === 0) return [];
 
     // Exclude low-signal categories
-    const EXCLUDED_CATEGORIES = ['Overnight Fund', 'Liquid Fund', 'Money Market Fund', 'Index Fund', 'Fund of Funds'];
+    const EXCLUDED_CATEGORIES = ['Overnight Fund', 'Liquid Fund', 'Money Market Fund', 'Index Fund', 'Fund of Funds', 'Equity - Other'];
 
     // Group by category_name
     const grouped = {};

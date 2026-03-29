@@ -75,6 +75,12 @@ export default function FundCard({ fund, x, y, onClose }) {
         </p>
         <p className="text-[10px] text-slate-400 mt-0.5 truncate">
           {fund.amc_name}
+          {fund.category_name && (
+            <span className="ml-1 text-slate-300">&middot;</span>
+          )}
+          {fund.category_name && (
+            <span className="ml-1">{fund.category_name}</span>
+          )}
         </p>
         {fund.headline_tag && (
           <p className="text-[10px] text-teal-600 italic mt-1 leading-snug line-clamp-2">
