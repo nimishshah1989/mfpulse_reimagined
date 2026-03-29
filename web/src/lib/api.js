@@ -182,6 +182,12 @@ export const fetchClaudeUsage = () =>
 // Dashboard APIs
 export const fetchSmartBuckets = () =>
   apiFetch('/api/v1/dashboard/smart-buckets');
+export const fetchFundArchetypes = () =>
+  apiFetch('/api/v1/dashboard/archetypes');
+
+// Sector alignment
+export const fetchCategoryAlignment = () =>
+  apiFetch('/api/v1/sectors/category-alignment');
 
 // Fund intelligence
 export const fetchFundIntelligence = (mstarId) =>
