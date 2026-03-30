@@ -373,7 +373,7 @@ export default function UniversePage() {
   }, []);
 
   if (loading) return (
-    <div className="max-w-[1440px] mx-auto px-4 space-y-5">
+    <div className="max-w-[1440px] mx-auto space-y-5">
       <SkeletonLoader variant="row" className="w-full h-12" />
       <SkeletonLoader variant="row" className="w-full h-10" />
       <div className="grid grid-cols-12 gap-5">
@@ -385,13 +385,13 @@ export default function UniversePage() {
   );
 
   if (error) return (
-    <div className="max-w-[1440px] mx-auto px-4">
+    <div className="max-w-[1440px] mx-auto">
       <EmptyState message={`Failed to load fund data: ${error}`} action="Retry" onAction={() => window.location.reload()} />
     </div>
   );
 
   return (
-    <div className="max-w-[1440px] mx-auto px-4 space-y-5" style={{ backgroundColor: '#ffffff' }}>
+    <div className="max-w-[1440px] mx-auto space-y-5">
       {/* NL Search Bar */}
       <div className="animate-in">
         <div className="relative">

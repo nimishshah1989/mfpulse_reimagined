@@ -64,7 +64,7 @@ export default function AppShell({ children, activeTab, onTabChange }) {
   )?.label;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f8f9fb' }}>
+    <div className="min-h-screen" style={{ backgroundColor: activeTab === 'universe' ? '#ffffff' : '#f8f9fb' }}>
       {/* ===== TOP NAV BAR (matches mockups) ===== */}
       <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-xl border-b border-slate-200/50 px-6 py-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="w-full flex items-center justify-between">
