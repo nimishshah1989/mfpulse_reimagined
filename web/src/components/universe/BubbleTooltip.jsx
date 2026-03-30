@@ -36,30 +36,18 @@ export default function BubbleTooltip({ tooltip }) {
         )}
       </div>
 
-      {/* Lens score bars */}
-      <div className="space-y-1.5">
+      {/* 6 lens mini-pills */}
+      <div className="grid grid-cols-3 gap-x-3 gap-y-1 mt-2">
         {ALL_LENS_KEYS.map((lens) => {
           const score = Number(fund[lens]) || 0;
-          const tierKey = LENS_CLASS_KEYS[lens];
           return (
-            <div key={lens} className="flex items-center gap-2">
-              <span className="text-[10px] text-slate-500 w-16 text-right">
-                {LENS_LABELS[lens]}
-              </span>
-              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{ width: `${score}%`, backgroundColor: scoreColor(score) }}
-                />
-              </div>
-              <span className="text-[10px] font-mono text-slate-600 w-6 text-right">
-                {formatScore(score)}
-              </span>
-              {fund[tierKey] && (
-                <Badge variant="tier" className="text-[8px] px-1 py-0">
-                  {fund[tierKey]}
-                </Badge>
-              )}
+            <div key={lens} className="flex items-center gap-1">
+              <span
+                className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: scoreColor(score) }}
+              />
+              <span className="text-[9px] text-slate-500">{LENS_LABELS[lens]}</span>
+              <span className="text-[9px] font-mono font-medium text-slate-700 ml-auto">{Math.round(score)}</span>
             </div>
           );
         })}
@@ -92,6 +80,7 @@ export default function BubbleTooltip({ tooltip }) {
           </span>
         </div>
       </div>
+      <p className="text-[8px] text-teal-500 mt-1.5 text-center font-medium">Click for details &middot; Double-click for Fund 360</p>
     </div>
   );
 }

@@ -11,18 +11,20 @@ export { AUM_CR_DIVISOR, MIN_RADIUS, MAX_RADIUS, MAX_AUM_DOMAIN };
 
 export function getBubbleColor(score) {
   const s = Number(score) || 0;
-  if (s >= 75) return 'rgba(5, 150, 105, 0.55)';
-  if (s >= 50) return 'rgba(13, 148, 136, 0.50)';
-  if (s >= 25) return 'rgba(245, 158, 11, 0.45)';
-  return 'rgba(239, 68, 68, 0.45)';
+  if (s >= 80) return 'rgba(5, 150, 105, 0.55)';   // #059669 deep green
+  if (s >= 60) return 'rgba(16, 185, 129, 0.50)';   // #10b981 green
+  if (s >= 40) return 'rgba(217, 119, 6, 0.45)';    // #d97706 amber
+  if (s >= 20) return 'rgba(239, 68, 68, 0.45)';    // #ef4444 light red
+  return 'rgba(220, 38, 38, 0.45)';                  // #dc2626 deep red
 }
 
 export function getBubbleBorder(score) {
   const s = Number(score) || 0;
-  if (s >= 75) return 'rgba(5,150,105,0.7)';
-  if (s >= 50) return 'rgba(13,148,136,0.6)';
-  if (s >= 25) return 'rgba(245,158,11,0.5)';
-  return 'rgba(239,68,68,0.5)';
+  if (s >= 80) return 'rgba(5,150,105,0.7)';
+  if (s >= 60) return 'rgba(16,185,129,0.6)';
+  if (s >= 40) return 'rgba(217,119,6,0.5)';
+  if (s >= 20) return 'rgba(239,68,68,0.5)';
+  return 'rgba(220,38,38,0.5)';
 }
 
 export function getRadius(aumRaw, aumScale, fund) {

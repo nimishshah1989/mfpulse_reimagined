@@ -118,19 +118,31 @@ export default function FundCard({ fund, x, y, onClose }) {
         ))}
       </div>
 
-      {/* Key metrics */}
-      <div className="px-3.5 py-2 border-t border-slate-100 flex items-center justify-between">
-        <div className="flex items-center gap-3 text-[11px]">
-          <span>
-            <span className="text-slate-400">1Y </span>
-            {return1yValid ? (
-              <span className={`font-mono font-semibold tabular-nums ${return1y >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {formatPct(return1y)}
-              </span>
-            ) : (
-              <span className="font-mono text-slate-300">&mdash;</span>
-            )}
-          </span>
+      {/* Multi-period returns */}
+      <div className="px-3.5 py-2 border-t border-slate-100">
+        <div className="grid grid-cols-3 gap-2 text-center">
+          {[
+            { label: '1Y', key: 'return_1y' },
+            { label: '3Y CAGR', key: 'return_3y' },
+            { label: '5Y CAGR', key: 'return_5y' },
+          ].map(({ label, key }) => {
+            const val = Number(fund[key]);
+            const valid = !isNaN(val);
+            return (
+              <div key={key}>
+                <p className="text-[9px] text-slate-400">{label}</p>
+                {valid ? (
+                  <p className={`text-xs font-mono font-bold tabular-nums ${val >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {formatPct(val)}
+                  </p>
+                ) : (
+                  <p className="text-xs font-mono text-slate-300">&mdash;</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex items-center justify-between mt-1.5 text-[10px]">
           <span>
             <span className="text-slate-400">AUM </span>
             <span className="font-mono text-slate-700 tabular-nums">{formatAUM(aumCr)}</span>
@@ -144,14 +156,21 @@ export default function FundCard({ fund, x, y, onClose }) {
         </div>
       </div>
 
-      {/* Action */}
-      <div className="px-3.5 py-2.5 border-t border-slate-100">
+      {/* Actions */}
+      <div className="px-3.5 py-2.5 border-t border-slate-100 flex gap-2">
         <button
           type="button"
           onClick={() => router.push(`/fund360?fund=${fund.mstar_id}`)}
-          className="w-full text-center px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-semibold rounded-lg transition-colors"
+          className="flex-1 text-center px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-semibold rounded-lg transition-colors"
         >
-          View Full Profile
+          View Fund 360
+        </button>
+        <button
+          type="button"
+          onClick={() => router.push(`/simulation?fund=${fund.mstar_id}`)}
+          className="flex-1 text-center px-3 py-1.5 bg-white hover:bg-slate-50 text-teal-700 text-[11px] font-semibold rounded-lg border border-teal-200 transition-colors"
+        >
+          Simulate SIP
         </button>
       </div>
     </div>

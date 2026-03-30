@@ -6,14 +6,15 @@ import { formatScore, formatAUM } from '../../lib/format';
 import { LENS_LABELS } from '../../lib/lens';
 
 const colorScale = scaleLinear()
-  .domain([0, 40, 80, 100])
-  .range(['#f1f5f9', '#ccfbf1', '#0d9488', '#059669'])
+  .domain([0, 20, 40, 60, 80, 100])
+  .range(['#dc2626', '#ef4444', '#d97706', '#10b981', '#059669', '#047857'])
   .clamp(true);
 
 export default function Treemap({
   data,
   colorLens,
   onFundClick,
+  onFundDoubleClick,
   width,
   height = 500,
 }) {
@@ -123,6 +124,9 @@ export default function Treemap({
       .on('mouseleave', () => setTooltip(null))
       .on('click', (event, d) => {
         if (onFundClick) onFundClick(d.data.fund);
+      })
+      .on('dblclick', (event, d) => {
+        if (onFundDoubleClick) onFundDoubleClick(d.data.fund);
       });
 
     // Fund name labels (only if rect is large enough)
@@ -139,7 +143,7 @@ export default function Treemap({
         const name = d.data.name;
         return name.length > maxLen ? name.slice(0, maxLen - 1) + '\u2026' : name;
       });
-  }, [hierarchy, width, height, onFundClick, colorLens]);
+  }, [hierarchy, width, height, onFundClick, onFundDoubleClick, colorLens]);
 
   return (
     <div className="relative">

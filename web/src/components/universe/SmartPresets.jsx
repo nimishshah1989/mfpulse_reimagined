@@ -74,7 +74,7 @@ const PRESETS = [
   },
 ];
 
-export default function SmartPresets({ allFunds, activePreset, onPresetClick }) {
+export default function SmartPresets({ allFunds, activePreset, onPresetClick, viewMode, onViewModeChange }) {
   const counts = useMemo(() => {
     const result = {};
     PRESETS.forEach((p) => {
@@ -89,39 +89,65 @@ export default function SmartPresets({ allFunds, activePreset, onPresetClick }) 
         <p className="section-title">Quick Screener Presets</p>
         <InfoIcon tip="One-click filters that combine multiple lenses to find specific fund profiles. Each preset applies lens + return + risk filters automatically." />
       </div>
-      <div className="scroll-x">
-        <div className="flex gap-2 pb-1" style={{ minWidth: 'max-content' }}>
-          {PRESETS.map((p) => (
+      <div className="flex items-center gap-3">
+        <div className="scroll-x flex-1 min-w-0">
+          <div className="flex gap-2 pb-1" style={{ minWidth: 'max-content' }}>
+            {PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => onPresetClick(activePreset === p.id ? null : p.id)}
+                className={`preset-card px-3.5 py-2 rounded-lg bg-white border ${p.borderClass} flex items-center gap-2 ${
+                  activePreset === p.id ? 'ring-2 ring-teal-400 border-teal-300' : ''
+                }`}
+              >
+                <span className={`${p.iconColor} text-sm`}>{p.icon}</span>
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-700">{p.label}</p>
+                  <p className="text-[9px] text-slate-400">{p.desc}</p>
+                </div>
+                <span className={`text-[10px] font-bold ${p.countColor} tabular-nums ml-1`}>
+                  {counts[p.id]}
+                </span>
+              </button>
+            ))}
             <button
-              key={p.id}
               type="button"
-              onClick={() => onPresetClick(activePreset === p.id ? null : p.id)}
-              className={`preset-card px-3.5 py-2 rounded-lg bg-white border ${p.borderClass} flex items-center gap-2 ${
-                activePreset === p.id ? 'ring-2 ring-teal-400 border-teal-300' : ''
+              onClick={() => onPresetClick('custom')}
+              className={`px-3.5 py-2 rounded-lg border border-dashed text-[11px] transition-colors ${
+                activePreset === 'custom'
+                  ? 'border-teal-400 text-teal-600 bg-teal-50'
+                  : 'border-slate-300 text-slate-400 hover:border-teal-300 hover:text-teal-600'
               }`}
             >
-              <span className={`${p.iconColor} text-sm`}>{p.icon}</span>
-              <div>
-                <p className="text-[11px] font-semibold text-slate-700">{p.label}</p>
-                <p className="text-[9px] text-slate-400">{p.desc}</p>
-              </div>
-              <span className={`text-[10px] font-bold ${p.countColor} tabular-nums ml-1`}>
-                {counts[p.id]}
-              </span>
+              + Custom Filter
             </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => onPresetClick('custom')}
-            className={`px-3.5 py-2 rounded-lg border border-dashed text-[11px] transition-colors ${
-              activePreset === 'custom'
-                ? 'border-teal-400 text-teal-600 bg-teal-50'
-                : 'border-slate-300 text-slate-400 hover:border-teal-300 hover:text-teal-600'
-            }`}
-          >
-            + Custom Filter
-          </button>
+          </div>
         </div>
+
+        {/* View mode toggle — fixed right side */}
+        {onViewModeChange && (
+          <div className="flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5 flex-shrink-0">
+            {[
+              { id: 'scatter', label: 'Scatter' },
+              { id: 'heatmap', label: 'Heatmap' },
+              { id: 'treemap', label: 'Treemap' },
+            ].map((mode) => (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => onViewModeChange(mode.id)}
+                className={`px-2.5 py-1.5 text-[10px] font-medium rounded-md transition-colors whitespace-nowrap ${
+                  viewMode === mode.id
+                    ? 'bg-white shadow-sm text-teal-700 font-semibold'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

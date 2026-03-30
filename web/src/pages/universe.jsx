@@ -23,6 +23,16 @@ const BubbleScatter = dynamic(
   }
 );
 
+const Heatmap = dynamic(
+  () => import('../components/universe/Heatmap'),
+  { ssr: false, loading: () => <SkeletonLoader variant="chart" className="w-full h-full" /> }
+);
+
+const Treemap = dynamic(
+  () => import('../components/universe/Treemap'),
+  { ssr: false, loading: () => <SkeletonLoader variant="chart" className="w-full h-full" /> }
+);
+
 const DEFAULT_FILTERS = {
   purchaseMode: 'Both',
   categories: [],
@@ -50,6 +60,7 @@ export default function UniversePage() {
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS });
   const [selectedTier, setSelectedTier] = useState(null);
   const [activePreset, setActivePreset] = useState(null);
+  const [viewMode, setViewMode] = useState('scatter');
 
   const [selectedFund, setSelectedFund] = useState(null);
   const [fundCardPos, setFundCardPos] = useState({ x: 0, y: 0 });
@@ -100,14 +111,22 @@ export default function UniversePage() {
     setNLFilters(parsed);
   }, []);
 
+  // Comprehensive URL param parsing for cross-page linking
   useEffect(() => {
     if (!router.isReady) return;
-    const q = router.query.q;
+    const { q, return_class, category, alpha_class, consistency_class, view } = router.query;
+
     if (q && typeof q === 'string') {
       handleSearch(q);
       setSearchQuery(q);
     }
-  }, [router.isReady, router.query.q]);
+    if (view && ['scatter', 'heatmap', 'treemap'].includes(view)) {
+      setViewMode(view);
+    }
+    if (category && typeof category === 'string') {
+      setFilters((prev) => ({ ...prev, categories: [category] }));
+    }
+  }, [router.isReady, router.query.q, router.query.view, router.query.category, handleSearch]);
 
   // Apply preset filters
   const handlePresetClick = useCallback((presetId) => {
@@ -134,6 +153,7 @@ export default function UniversePage() {
       const aumCr = aumVal / 10000000;
       if (aumCr < 10) return false;
       if (fund.fund_name?.toLowerCase().includes('segregated')) return false;
+      if (fund.fund_name?.toLowerCase().includes('idcw')) return false;
       if (fund.inception_date) {
         const age = now - new Date(fund.inception_date).getTime();
         if (age < THREE_YEARS_MS) return false;
@@ -170,8 +190,27 @@ export default function UniversePage() {
       result = applyNLFilters(result, nlFilters);
     }
 
+    // URL-based tier class filters (e.g., ?return_class=LEADER&alpha_class=ALPHA_MACHINE,POSITIVE)
+    if (router.isReady) {
+      const { return_class, alpha_class, consistency_class, risk_class, efficiency_class, resilience_class } = router.query;
+      const tierParams = [
+        { key: 'return_class', value: return_class },
+        { key: 'alpha_class', value: alpha_class },
+        { key: 'consistency_class', value: consistency_class },
+        { key: 'risk_class', value: risk_class },
+        { key: 'efficiency_class', value: efficiency_class },
+        { key: 'resilience_class', value: resilience_class },
+      ];
+      for (const { key, value } of tierParams) {
+        if (value && typeof value === 'string') {
+          const classes = value.split(',');
+          result = result.filter((f) => classes.includes(f[key]));
+        }
+      }
+    }
+
     return result;
-  }, [allFunds, filters, activePreset, nlFilters]);
+  }, [allFunds, filters, activePreset, nlFilters, router.isReady, router.query]);
 
   // Tag funds with tier display for selected tier highlighting
   const taggedFunds = useMemo(() => {
@@ -341,6 +380,8 @@ export default function UniversePage() {
         allFunds={allFunds}
         activePreset={activePreset}
         onPresetClick={handlePresetClick}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
       {/* Section 2: Filter Bar */}
@@ -370,11 +411,11 @@ export default function UniversePage() {
           period="1Y"
         />
 
-        {/* CENTER: Bubble Chart */}
+        {/* CENTER: Visualization */}
         <div className="col-span-12 lg:col-span-7">
           <div className="flex items-center justify-between mb-2 px-1">
             <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              Fund Universe
+              Fund Universe{viewMode !== 'scatter' ? ` \u2014 ${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} View` : ''}
             </p>
             <span className="text-xs font-bold text-teal-600 tabular-nums">
               {taggedFunds.length.toLocaleString('en-IN')} funds
@@ -383,10 +424,13 @@ export default function UniversePage() {
           <div
             ref={chartContainerRef}
             className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden relative"
-            style={{ height: Math.min(560, typeof window !== 'undefined' ? window.innerHeight - 240 : 560) }}
+            style={{
+              height: viewMode === 'heatmap' ? 'auto' : Math.min(560, typeof window !== 'undefined' ? window.innerHeight - 240 : 560),
+              minHeight: viewMode === 'heatmap' ? 400 : undefined,
+            }}
           >
             {taggedFunds.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
+              <div className="flex items-center justify-center h-full" style={{ minHeight: 300 }}>
                 <EmptyState
                   icon={<svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>}
                   message="No funds match your current filters"
@@ -394,34 +438,58 @@ export default function UniversePage() {
                   onAction={handleResetFilters}
                 />
               </div>
-            ) : !chartMeasured ? (
-              <SkeletonLoader variant="chart" className="w-full h-full" />
-            ) : (
-              <BubbleScatter
+            ) : viewMode === 'scatter' ? (
+              !chartMeasured ? (
+                <SkeletonLoader variant="chart" className="w-full h-full" />
+              ) : (
+                <BubbleScatter
+                  data={taggedFunds}
+                  xAxis={xAxis}
+                  yAxis={yAxis}
+                  colorLens={colorLens}
+                  onFundClick={handleFundClick}
+                  onFundDoubleClick={handleFundDoubleClick}
+                  onHover={handleHover}
+                  width={chartWidth}
+                  height={chartHeight}
+                  selectedTier={selectedTier}
+                />
+              )
+            ) : viewMode === 'heatmap' ? (
+              <div className="p-4 overflow-auto" style={{ maxHeight: 600 }}>
+                <Heatmap
+                  data={taggedFunds}
+                  colorLens={colorLens}
+                  onCellClick={(category) => {
+                    setFilters((prev) => ({ ...prev, categories: [category] }));
+                    setViewMode('scatter');
+                  }}
+                />
+              </div>
+            ) : viewMode === 'treemap' ? (
+              <Treemap
                 data={taggedFunds}
-                xAxis={xAxis}
-                yAxis={yAxis}
                 colorLens={colorLens}
-                onFundClick={handleFundClick}
+                onFundClick={(fund) => handleFundClick(fund, window.innerWidth / 2 - 144, window.innerHeight / 2 - 100)}
                 onFundDoubleClick={handleFundDoubleClick}
-                onHover={handleHover}
-                width={chartWidth}
-                height={chartHeight}
-                selectedTier={selectedTier}
+                width={chartWidth || 800}
+                height={Math.min(560, typeof window !== 'undefined' ? window.innerHeight - 240 : 560)}
               />
-            )}
+            ) : null}
           </div>
-          {/* Chart Guide */}
-          <details className="mt-2 text-[10px] text-slate-400">
-            <summary className="cursor-pointer hover:text-slate-600 font-medium">Chart Guide</summary>
-            <ul className="mt-1 space-y-0.5 pl-3 list-disc">
-              <li>Click a bubble to see fund details</li>
-              <li>Double-click to open Fund 360 view</li>
-              <li>Scroll to zoom in/out</li>
-              <li>Drag to pan across the chart</li>
-              <li>Click tier labels (left) to spotlight a group</li>
-            </ul>
-          </details>
+          {/* Chart Guide — scatter only */}
+          {viewMode === 'scatter' && (
+            <details className="mt-2 text-[10px] text-slate-400">
+              <summary className="cursor-pointer hover:text-slate-600 font-medium">Chart Guide</summary>
+              <ul className="mt-1 space-y-0.5 pl-3 list-disc">
+                <li>Click a bubble to see fund details</li>
+                <li>Double-click to open Fund 360 view</li>
+                <li>Scroll to zoom in/out</li>
+                <li>Drag to pan across the chart</li>
+                <li>Click tier labels (left) to spotlight a group</li>
+              </ul>
+            </details>
+          )}
         </div>
 
         {/* RIGHT: Intelligence Panel */}

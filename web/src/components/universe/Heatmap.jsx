@@ -10,19 +10,28 @@ const QUINTILES = [
   { label: '80\u2013100', min: 80, max: 100 },
 ];
 
-function getCellColor(count, maxCount) {
-  if (count === 0) return 'bg-white';
+function getCellColor(count, maxCount, quintileIndex) {
+  if (count === 0) return { bg: '#ffffff', text: '#94a3b8' };
+  const quintileColors = [
+    { light: '#fef2f2', mid: '#fecaca', strong: '#f87171', intense: '#dc2626' },
+    { light: '#fef2f2', mid: '#fecaca', strong: '#ef4444', intense: '#dc2626' },
+    { light: '#fffbeb', mid: '#fde68a', strong: '#f59e0b', intense: '#d97706' },
+    { light: '#ecfdf5', mid: '#a7f3d0', strong: '#10b981', intense: '#059669' },
+    { light: '#ecfdf5', mid: '#6ee7b7', strong: '#059669', intense: '#047857' },
+  ];
+  const palette = quintileColors[quintileIndex] || quintileColors[2];
   const ratio = count / Math.max(maxCount, 1);
-  if (ratio > 0.7) return 'bg-teal-800 text-white';
-  if (ratio > 0.4) return 'bg-teal-500 text-white';
-  if (ratio > 0.2) return 'bg-teal-200 text-teal-800';
-  return 'bg-teal-50 text-teal-700';
+  if (ratio > 0.7) return { bg: palette.intense, text: '#ffffff' };
+  if (ratio > 0.4) return { bg: palette.strong, text: '#ffffff' };
+  if (ratio > 0.2) return { bg: palette.mid, text: '#1e293b' };
+  return { bg: palette.light, text: '#475569' };
 }
 
 function getAvgColor(avg) {
-  if (avg >= 70) return 'text-emerald-600';
-  if (avg >= 50) return 'text-teal-600';
-  return 'text-amber-600';
+  if (avg >= 80) return 'text-emerald-700';
+  if (avg >= 60) return 'text-emerald-600';
+  if (avg >= 40) return 'text-amber-600';
+  return 'text-red-600';
 }
 
 export default function Heatmap({
@@ -136,36 +145,40 @@ export default function Heatmap({
                   )}
                   <span className="text-slate-700">{row.category}</span>
                 </td>
-                {row.buckets.map((bucket, bi) => (
-                  <td
-                    key={bi}
-                    className={`text-center px-3 py-1.5 border-b border-slate-100 cursor-pointer transition-colors hover:ring-2 hover:ring-teal-300 ${getCellColor(bucket.count, maxCount)}`}
-                    onClick={() =>
-                      onCellClick &&
-                      onCellClick(row.category, bucket.quintile)
-                    }
-                    onMouseEnter={(e) =>
-                      setTooltip({
-                        category: row.category,
-                        quintile: bucket.quintile,
-                        count: bucket.count,
-                        top3: bucket.top3,
-                        x: e.clientX,
-                        y: e.clientY,
-                      })
-                    }
-                    onMouseMove={(e) =>
-                      setTooltip((prev) =>
-                        prev ? { ...prev, x: e.clientX, y: e.clientY } : null
-                      )
-                    }
-                    onMouseLeave={() => setTooltip(null)}
-                  >
-                    <span className="font-mono font-bold">
-                      {bucket.count > 0 ? bucket.count : ''}
-                    </span>
-                  </td>
-                ))}
+                {row.buckets.map((bucket, bi) => {
+                  const cellStyle = getCellColor(bucket.count, maxCount, bi);
+                  return (
+                    <td
+                      key={bi}
+                      className="text-center px-3 py-1.5 border-b border-slate-100 cursor-pointer transition-all hover:ring-2 hover:ring-teal-300"
+                      style={{ backgroundColor: cellStyle.bg, color: cellStyle.text }}
+                      onClick={() =>
+                        onCellClick &&
+                        onCellClick(row.category, bucket.quintile)
+                      }
+                      onMouseEnter={(e) =>
+                        setTooltip({
+                          category: row.category,
+                          quintile: bucket.quintile,
+                          count: bucket.count,
+                          top3: bucket.top3,
+                          x: e.clientX,
+                          y: e.clientY,
+                        })
+                      }
+                      onMouseMove={(e) =>
+                        setTooltip((prev) =>
+                          prev ? { ...prev, x: e.clientX, y: e.clientY } : null
+                        )
+                      }
+                      onMouseLeave={() => setTooltip(null)}
+                    >
+                      <span className="font-mono font-bold">
+                        {bucket.count > 0 ? bucket.count : ''}
+                      </span>
+                    </td>
+                  );
+                })}
                 <td className="text-center px-3 py-1.5 border-b border-slate-100">
                   <span className="font-mono text-slate-600">{row.total}</span>
                   <span className="text-slate-300 mx-1">/</span>
