@@ -17,6 +17,7 @@ from app.services.claude_client import (
     generate_regime_actions,
     generate_fund_verdict,
     parse_strategy_query,
+    generate_weekly_intelligence,
     get_usage_stats,
 )
 from app.services.marketpulse_client import MarketPulseClient
@@ -240,6 +241,117 @@ def parse_nl_query(req: NLQueryRequest) -> dict:
     return {
         "success": True,
         "data": {"criteria": criteria, "original_query": req.query},
+        "meta": {"timestamp": Meta().timestamp},
+        "error": None,
+    }
+
+
+@router.get("/weekly-intelligence")
+def get_weekly_intelligence(db: Session = Depends(get_db)) -> dict:
+    """AI-generated weekly intelligence: 10 actionable insights combining
+    market sentiment, sector rotation, and fund universe data."""
+    from app.repositories.fund_repo import FundRepository
+    from decimal import Decimal
+
+    settings = get_settings()
+    mp = MarketPulseClient(
+        base_url=settings.marketpulse_base_url,
+        timeout=10,
+    )
+
+    # Gather market data
+    picks = mp.get_market_picks() or {}
+    sentiment = mp.get_sentiment() or {}
+    sectors = mp.get_sector_scores() or []
+
+    # Leading/lagging sectors
+    leading = []
+    lagging = []
+    if isinstance(sectors, list):
+        for s in sectors:
+            quad = (s.get("quadrant") or "").upper()
+            name = s.get("name") or s.get("sector_name", "?")
+            rs = s.get("rs_score", 0)
+            entry = f"{name} (RS={rs})"
+            if quad in ("LEADING", "IMPROVING"):
+                leading.append(entry)
+            elif quad in ("LAGGING", "WEAKENING"):
+                lagging.append(entry)
+
+    # Fund universe summary — compute category-level aggregates
+    fund_repo = FundRepository(db)
+    all_funds = fund_repo.get_all_funds(
+        min_aum=Decimal("100000000"),  # 10 Cr in raw rupees
+    )
+
+    cat_stats: dict = {}
+    for f in all_funds:
+        cat = getattr(f, "category_name", None) or getattr(f, "broad_category", None)
+        if not cat:
+            continue
+        if cat not in cat_stats:
+            cat_stats[cat] = {"returns": [], "count": 0}
+        cat_stats[cat]["count"] += 1
+        r1y = getattr(f, "return_1y", None)
+        if r1y is not None:
+            try:
+                cat_stats[cat]["returns"].append(float(r1y))
+            except (ValueError, TypeError):
+                pass
+
+    cat_avgs = []
+    for cat, data in cat_stats.items():
+        if data["returns"]:
+            avg_r = sum(data["returns"]) / len(data["returns"])
+            cat_avgs.append((cat, avg_r, data["count"]))
+
+    cat_avgs.sort(key=lambda x: x[1], reverse=True)
+    top_cats = "\n".join(f"  {c[0]}: {c[1]:.1f}% (n={c[2]})" for c in cat_avgs[:5])
+    worst_cats = "\n".join(f"  {c[0]}: {c[1]:.1f}% (n={c[2]})" for c in cat_avgs[-5:])
+
+    total_funds = len(all_funds)
+    positive = sum(1 for c in cat_avgs if c[1] > 0)
+
+    context = {
+        "regime": picks.get("regime") or picks.get("market_regime", "N/A"),
+        "sentiment_score": sentiment.get("composite_score", sentiment.get("score", "N/A")),
+        "breadth": sentiment.get("breadth_advance_pct", "N/A"),
+        "leading_sectors": ", ".join(leading[:5]) or "N/A",
+        "lagging_sectors": ", ".join(lagging[:5]) or "N/A",
+        "top_categories": top_cats or "N/A",
+        "worst_categories": worst_cats or "N/A",
+        "universe_summary": (
+            f"{total_funds} funds tracked. "
+            f"{positive}/{len(cat_avgs)} categories with positive avg 1Y returns."
+        ),
+    }
+
+    points = generate_weekly_intelligence(context)
+
+    # Enrich each point with matching fund recommendations from the universe
+    # This happens server-side so Claude doesn't need to know fund names
+    for point in points:
+        fund_type = (point.get("fund_type") or "").lower()
+        matching = []
+        for f in all_funds:
+            cat = (getattr(f, "category_name", "") or "").lower()
+            if fund_type and fund_type in cat:
+                r1y = getattr(f, "return_1y", None)
+                alpha = getattr(f, "alpha_score", None)
+                matching.append({
+                    "mstar_id": getattr(f, "mstar_id", ""),
+                    "fund_name": getattr(f, "fund_name", "") or getattr(f, "legal_name", ""),
+                    "return_1y": float(r1y) if r1y is not None else None,
+                    "alpha_score": float(alpha) if alpha is not None else None,
+                    "aum": float(getattr(f, "aum", 0) or 0),
+                })
+        # Sort by alpha_score desc, take top 3
+        matching.sort(key=lambda x: x.get("alpha_score") or 0, reverse=True)
+        point["recommended_funds"] = matching[:3]
+
+    return {
+        "success": True,
+        "data": {"points": points, "context": context},
         "meta": {"timestamp": Meta().timestamp},
         "error": None,
     }

@@ -178,6 +178,8 @@ export const parseStrategyQuery = (query) =>
   apiFetch('/api/v1/claude/parse-query', { method: 'POST', body: JSON.stringify({ query }) });
 export const fetchClaudeUsage = () =>
   apiFetch('/api/v1/claude/usage');
+export const fetchWeeklyIntelligence = () =>
+  apiFetch('/api/v1/claude/weekly-intelligence');
 
 // Dashboard APIs
 export const fetchSmartBuckets = () =>

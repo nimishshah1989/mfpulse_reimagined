@@ -443,6 +443,80 @@ def parse_strategy_query(query: str) -> dict:
     return {}
 
 
+# ── Feature 8: Weekly Intelligence ────────────────────────────────────────────
+
+INTELLIGENCE_SYSTEM = (
+    "You are MF Pulse's weekly intelligence engine for an Indian mutual fund manager. "
+    "Given current market conditions, sector sentiment, and fund universe data, "
+    "generate exactly 10 actionable intelligence points. "
+    "Each point MUST follow this format and be a JSON object:\n"
+    '{"headline": "Short punchy headline (10 words max)", '
+    '"insight": "What is happening and why (1-2 sentences)", '
+    '"action": "Specific action to take (1 sentence, starts with a verb)", '
+    '"fund_type": "Category of funds this applies to (e.g. Large Cap, Flexi Cap)", '
+    '"urgency": "high|medium|low"}\n\n'
+    "Cover these angles across the 10 points:\n"
+    "- 2-3 points on market regime and what it means for fund selection\n"
+    "- 2-3 points on sector rotation (which sectors to overweight/underweight)\n"
+    "- 2-3 points on specific fund category recommendations\n"
+    "- 1-2 points on risk management or portfolio rebalancing\n"
+    "- 1 point on a contrarian or non-obvious opportunity\n\n"
+    "Be specific with numbers. Reference Indian categories (Large Cap, Flexi Cap, "
+    "ELSS, Value, etc.). Return ONLY a JSON array of 10 objects."
+)
+
+
+def generate_weekly_intelligence(context: dict) -> list[dict]:
+    """Generate 10 actionable intelligence points from market + fund data.
+
+    Args:
+        context: Dict with keys: regime, sentiment_score, breadth,
+                 leading_sectors, lagging_sectors, top_categories,
+                 worst_categories, universe_summary
+    """
+    cache_key = f"weekly_intel:{context.get('regime', '')}:{context.get('sentiment_score', '')}"
+    cached = _cache_get(cache_key)
+    if cached:
+        import json
+        try:
+            return json.loads(cached)
+        except Exception:
+            pass
+
+    prompt = (
+        f"=== MARKET CONDITIONS ===\n"
+        f"Market Regime: {context.get('regime', 'N/A')}\n"
+        f"Sentiment Score: {context.get('sentiment_score', 'N/A')}/100\n"
+        f"Breadth (advancing %): {context.get('breadth', 'N/A')}\n"
+        f"\n=== SECTOR ROTATION ===\n"
+        f"Leading Sectors: {context.get('leading_sectors', 'N/A')}\n"
+        f"Lagging Sectors: {context.get('lagging_sectors', 'N/A')}\n"
+        f"\n=== FUND UNIVERSE ===\n"
+        f"Top Performing Categories (1Y avg return):\n"
+        f"{context.get('top_categories', 'N/A')}\n"
+        f"Worst Performing Categories (1Y avg return):\n"
+        f"{context.get('worst_categories', 'N/A')}\n"
+        f"\n=== UNIVERSE SUMMARY ===\n"
+        f"{context.get('universe_summary', 'N/A')}\n"
+        f"\nGenerate 10 weekly intelligence points as a JSON array."
+    )
+
+    result = _call_claude(INTELLIGENCE_SYSTEM, prompt, max_tokens=2000, timeout=30.0)
+    if result:
+        import json
+        _log_feature("weekly_intelligence")
+        try:
+            start = result.index("[")
+            end = result.rindex("]") + 1
+            points = json.loads(result[start:end])
+            _cache_set(cache_key, json.dumps(points), 86400)  # 24 hours
+            return points
+        except (ValueError, json.JSONDecodeError):
+            logger.warning("Failed to parse weekly intelligence JSON")
+
+    return []
+
+
 # ── Usage tracking ───────────────────────────────────────────────────────────
 
 def _log_feature(feature: str) -> None:

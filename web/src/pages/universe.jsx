@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, useTransition } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { fetchUniverseData } from '../lib/api';
@@ -14,8 +14,13 @@ import FundCard from '../components/universe/FundCard';
 import UniverseInsights from '../components/universe/UniverseInsights';
 import FilterBreadcrumbs from '../components/universe/FilterBreadcrumbs';
 import ScreenerTable from '../components/universe/ScreenerTable';
-import AnalyticsPanel from '../components/universe/AnalyticsPanel';
+
+const AnalyticsPanel = dynamic(
+  () => import('../components/universe/AnalyticsPanel'),
+  { ssr: false, loading: () => <SkeletonLoader variant="chart" className="w-full h-64" /> }
+);
 import { parseNLQuery, applyNLFilters } from '../lib/nl-search';
+import WeeklyIntelligence from '../components/universe/WeeklyIntelligence';
 
 const ComparePanel = dynamic(
   () => import('../components/universe/ComparePanel'),
@@ -108,8 +113,9 @@ export default function UniversePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Active section
+  // Active section with transition for smooth tab switching
   const [activeSection, setActiveSection] = useState('explorer');
+  const [isPending, startTransition] = useTransition();
 
   // Global filters — match dashboard defaults
   const [globalFilters, setGlobalFilters] = useState({
@@ -538,7 +544,7 @@ export default function UniversePage() {
           <button
             key={s.key}
             type="button"
-            onClick={() => setActiveSection(s.key)}
+            onClick={() => startTransition(() => setActiveSection(s.key))}
             className={`px-7 py-3.5 text-[13px] font-semibold tracking-wide transition-all border-b-[2.5px] -mb-[2px] ${
               activeSection === s.key
                 ? 'border-current'
@@ -553,7 +559,7 @@ export default function UniversePage() {
 
       {/* Section Band Header */}
       <div
-        className="px-5 py-3.5 rounded-r-xl flex items-center justify-between animate-in"
+        className={`px-5 py-3.5 rounded-r-xl flex items-center justify-between animate-in transition-opacity ${isPending ? 'opacity-60' : ''}`}
         style={{
           borderLeft: `4px solid ${currentSection.band}`,
           background: currentSection.bg,
@@ -733,7 +739,10 @@ export default function UniversePage() {
            ANALYTICS SECTION
            ═══════════════════════════════════════ */}
       {activeSection === 'analytics' && (
-        <AnalyticsPanel funds={taggedFunds} />
+        <>
+          <WeeklyIntelligence />
+          <AnalyticsPanel funds={taggedFunds} />
+        </>
       )}
 
       {/* ═══════════════════════════════════════
