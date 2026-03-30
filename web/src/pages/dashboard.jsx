@@ -96,7 +96,7 @@ export default function DashboardPage() {
       <MarketPulseStrip nifty={nifty} regime={regime} sentiment={sentiment} breadth={breadthData} loading={loading} />
 
       {/* Row 2: Sector Rotation */}
-      <SectorRotation sectors={sectors} loading={loading} />
+      <SectorRotation sectors={sectors} universe={universe} loading={loading} />
 
       {/* Row 3: Sector-Fund Bridge */}
       <FundExposureBridge matrixData={matrixData} sectors={sectors} universe={universe} loading={loading} />

@@ -78,10 +78,10 @@ function InsightBar({ data }) {
 
     const parts = [];
     if (topTailwind.length > 0) {
-      parts.push(`Strongest tailwinds: ${topTailwind.join(', ')}`);
+      parts.push(`Strongest positioning: ${topTailwind.join(', ')}`);
     }
     if (worstHeadwind.length > 0) {
-      parts.push(`Headwind caution: ${worstHeadwind.join(', ')}`);
+      parts.push(`Under pressure: ${worstHeadwind.join(', ')}`);
     }
     return parts.length > 0 ? parts.join('. ') + '.' : null;
   }, [data]);
@@ -180,32 +180,32 @@ export default function QuadrantAlignment({ alignmentData, universe, onFundClick
     <div className="bg-white rounded-xl border border-slate-200 p-5">
       {/* Header */}
       <p className="section-title">Quadrant Alignment</p>
-      <p className="text-[10px] text-slate-400 -mt-1 mb-4">
-        Category positioning across sector rotation zones
+      <p className="text-xs text-slate-500 -mt-1 mb-4">
+        How fund categories are distributed across sector rotation zones — <span className="font-medium text-emerald-600">Strength</span> = % in Leading + Improving, <span className="font-medium text-red-500">Pressure</span> = % in Weakening + Lagging.
       </p>
 
       {/* Column headers */}
       <div
-        className="grid items-center pb-2 mb-1 border-b border-slate-100"
-        style={{ gridTemplateColumns: '140px 1fr 60px 60px' }}
+        className="grid items-center pb-2 mb-1 border-b border-slate-200"
+        style={{ gridTemplateColumns: '160px 1fr 70px 70px' }}
       >
-        <span className="text-[9px] uppercase tracking-wider text-slate-400 font-medium">
+        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
           Category
         </span>
-        <span className="text-[9px] uppercase tracking-wider text-slate-400 font-medium">
+        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
           Zone Distribution
         </span>
-        <span className="text-[9px] uppercase tracking-wider text-slate-400 font-medium text-right">
-          Tailwind
+        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold text-right">
+          Strength
         </span>
-        <span className="text-[9px] uppercase tracking-wider text-slate-400 font-medium text-right">
-          Headwind
+        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold text-right">
+          Pressure
         </span>
       </div>
 
-      {/* Data rows */}
+      {/* Data rows — limited to 15 */}
       <div className="space-y-0.5">
-        {alignmentData.map((row) => {
+        {alignmentData.slice(0, 15).map((row) => {
           const tw = row.tailwind_pct ?? 0;
           const hw = row.headwind_pct ?? 0;
 
@@ -213,14 +213,14 @@ export default function QuadrantAlignment({ alignmentData, universe, onFundClick
             <div
               key={row.category_name}
               className="grid items-center py-2 px-1 rounded-md hover:bg-slate-50 transition-colors"
-              style={{ gridTemplateColumns: '140px 1fr 60px 60px' }}
+              style={{ gridTemplateColumns: '160px 1fr 70px 70px' }}
             >
               {/* Category name + fund count */}
               <div className="min-w-0">
-                <p className="text-xs font-medium text-slate-700 truncate">
+                <p className="text-[13px] font-medium text-slate-700 truncate">
                   {row.category_name}
                 </p>
-                <p className="text-[10px] text-slate-400 leading-tight">
+                <p className="text-[11px] text-slate-500 leading-tight">
                   {row.fund_count} funds
                 </p>
               </div>
@@ -230,17 +230,17 @@ export default function QuadrantAlignment({ alignmentData, universe, onFundClick
                 <StackedBar row={row} onSegmentClick={(cat, zone) => setDrillDown({ category: cat, zone })} />
               </div>
 
-              {/* Tailwind % */}
+              {/* Strength % */}
               <p
-                className="text-xs font-bold text-right font-mono tabular-nums"
+                className="text-[13px] font-bold text-right font-mono tabular-nums"
                 style={{ color: tailwindColor(tw) }}
               >
                 {Math.round(tw)}%
               </p>
 
-              {/* Headwind % */}
+              {/* Pressure % */}
               <p
-                className="text-xs text-right font-mono tabular-nums"
+                className="text-[13px] text-right font-mono tabular-nums font-semibold"
                 style={headwindStyle(hw)}
               >
                 {Math.round(hw)}%

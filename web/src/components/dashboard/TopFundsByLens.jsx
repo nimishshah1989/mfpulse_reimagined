@@ -36,7 +36,7 @@ export default function TopFundsByLens({ universe, onFundClick, loading }) {
     return [...universe]
       .filter((f) => f[activeTab] != null)
       .sort((a, b) => (b[activeTab] || 0) - (a[activeTab] || 0))
-      .slice(0, 5);
+      .slice(0, 10);
   }, [universe, activeTab]);
 
   if (loading) {
@@ -109,8 +109,8 @@ export default function TopFundsByLens({ universe, onFundClick, loading }) {
               >
                 {/* Rank */}
                 <span
-                  className="text-slate-400 tabular-nums"
-                  style={{ width: 24, fontSize: 11 }}
+                  className="text-slate-500 tabular-nums font-medium"
+                  style={{ width: 24, fontSize: 12 }}
                 >
                   {idx + 1}
                 </span>
@@ -119,11 +119,11 @@ export default function TopFundsByLens({ universe, onFundClick, loading }) {
                 <div className="flex-1 min-w-0">
                   <p
                     className="font-medium text-slate-800 truncate"
-                    style={{ fontSize: 12 }}
+                    style={{ fontSize: 13 }}
                   >
                     {fund.fund_name}
                   </p>
-                  <p className="text-slate-400 truncate" style={{ fontSize: 10 }}>
+                  <p className="text-slate-500 truncate" style={{ fontSize: 11 }}>
                     {fund.category_name || fund.plan_type || 'Direct Growth'}
                   </p>
                 </div>
@@ -158,15 +158,15 @@ export default function TopFundsByLens({ universe, onFundClick, loading }) {
                         : 'text-red-600'
                       : 'text-slate-400'
                   }`}
-                  style={{ fontSize: 11, width: 60 }}
+                  style={{ fontSize: 12, width: 60 }}
                 >
                   {return1y != null ? formatPct(return1y) : '--'}
                 </span>
 
                 {/* AUM */}
                 <span
-                  className="text-slate-500 tabular-nums text-right"
-                  style={{ fontSize: 10, width: 50 }}
+                  className="text-slate-600 tabular-nums text-right"
+                  style={{ fontSize: 11, width: 50 }}
                 >
                   {aum != null ? formatAUMRaw(aum) : '--'}
                 </span>

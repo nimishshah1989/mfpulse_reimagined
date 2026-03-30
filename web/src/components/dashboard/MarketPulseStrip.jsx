@@ -47,7 +47,7 @@ function ScoreBar({ label, score, height = 6 }) {
   const pct = score != null ? Math.min(Math.max(score, 0), 100) : 0;
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[10px] text-slate-500 w-[80px] shrink-0 truncate">
+      <span className="text-[11px] text-slate-600 w-[80px] shrink-0 truncate">
         {label}
       </span>
       <div className="flex-1 bg-slate-100 rounded-full overflow-hidden" style={{ height }}>

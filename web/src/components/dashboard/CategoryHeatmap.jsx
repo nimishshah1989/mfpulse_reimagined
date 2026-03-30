@@ -60,11 +60,11 @@ function CategoryTile({ category, count, avgReturn, large, onClick }) {
       className={`rounded-lg p-2.5 ${colors.bg} border ${colors.border} cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all`}
       onClick={onClick}
     >
-      <p className={`text-[10px] font-semibold ${colors.name}`}>{category}</p>
+      <p className={`text-[11px] font-semibold ${colors.name}`}>{category}</p>
       <p className={`text-sm font-bold ${colors.text} tabular-nums`}>
         {avgReturn != null ? formatPct(avgReturn) : '--'}
       </p>
-      <p className="text-[9px] text-slate-400">{count}</p>
+      <p className="text-[10px] text-slate-500">{count} funds</p>
     </div>
   );
 }
@@ -122,8 +122,8 @@ export default function CategoryHeatmap({ universe, loading }) {
 
   const periodLabel = PERIOD_OPTIONS.find((p) => p.key === period)?.label || '1Y';
 
-  // Take top 15 categories
-  const topCats = categories.slice(0, 24);
+  // Show all available categories to fill the grid
+  const topCats = categories.slice(0, 30);
   const largest = topCats[0];
 
   return (

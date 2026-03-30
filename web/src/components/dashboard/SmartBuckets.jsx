@@ -78,6 +78,20 @@ const BUCKET_DEFINITIONS = [
     filterParams: 'return_class=WEAK&alpha_class=POSITIVE',
   },
   {
+    id: 'rising-stars',
+    name: 'Rising Stars',
+    description: 'Strong returns + high alpha',
+    icon: '\u2191', // up arrow
+    iconBg: 'bg-orange-50',
+    iconColor: 'text-orange-600',
+    countColor: 'text-orange-600',
+    highlightBg: 'bg-orange-50/50',
+    filter: (f) =>
+      f.return_class === 'LEADER' &&
+      (f.alpha_class === 'ALPHA_MACHINE' || f.alpha_class === 'POSITIVE'),
+    filterParams: 'return_class=LEADER&alpha_class=ALPHA_MACHINE,POSITIVE',
+  },
+  {
     id: 'avoid',
     name: 'Avoid Zone',
     description: 'Multiple weak lenses',
@@ -193,7 +207,7 @@ export default function SmartBuckets() {
           SMART BUCKETS
         </SectionTitle>
         <div className="flex gap-3 overflow-hidden">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => (
             <SkeletonLoader key={i} className="h-40 w-[190px] rounded-xl flex-shrink-0" />
           ))}
         </div>

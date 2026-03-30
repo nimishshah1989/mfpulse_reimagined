@@ -18,8 +18,8 @@ function TierPill({ tierClass }) {
   const label = TIER_LABELS[tierClass] || '—';
   const bg = TIER_COLORS[tierClass] || '#94a3b8';
   return (
-    <span style={{ display: 'inline-block', width: 44, height: 18, borderRadius: 4, backgroundColor: bg, color: '#fff',
-      fontSize: 8, fontWeight: 700, textTransform: 'uppercase', lineHeight: '18px', textAlign: 'center' }}>
+    <span style={{ display: 'inline-block', width: 48, height: 20, borderRadius: 4, backgroundColor: bg, color: '#fff',
+      fontSize: 9, fontWeight: 700, textTransform: 'uppercase', lineHeight: '20px', textAlign: 'center' }}>
       {label}
     </span>
   );
@@ -27,7 +27,10 @@ function TierPill({ tierClass }) {
 
 function ArchetypeCard({ archetype }) {
   const meta = ARCHETYPE_META[archetype.archetype_id] || ARCHETYPE_META['mid-tier'];
-  const lensValues = archetype.lens_pattern || {};
+  const rawPattern = archetype.lens_pattern;
+  const lensValues = Array.isArray(rawPattern)
+    ? Object.fromEntries(LENS_KEYS.map((k, i) => [k, rawPattern[i]]))
+    : (rawPattern || {});
   return (
     <div style={{ border: '1px solid #e2e8f0', borderLeft: `3px solid ${meta.borderColor}`, borderRadius: 6, padding: '8px 10px',
       cursor: 'default', transition: 'transform 0.15s, box-shadow 0.15s' }}
@@ -37,7 +40,7 @@ function ArchetypeCard({ archetype }) {
         <span style={{ fontSize: 11, fontWeight: 600 }}>{meta.icon} {archetype.name}</span>
         <span style={{ textAlign: 'right' }}>
           <span style={{ fontSize: 18, fontWeight: 800 }}>{archetype.count}</span>
-          <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 4 }}>{archetype.percentage?.toFixed(1)}%</span>
+          <span style={{ fontSize: 10, color: '#64748b', marginLeft: 4 }}>{archetype.percentage?.toFixed(1)}%</span>
         </span>
       </div>
       <div style={{ display: 'flex', gap: 0, marginBottom: 4 }}>
@@ -140,7 +143,7 @@ export default function LensFingerprint({ universe: rawUniverse, archetypes: ser
 
       {/* Filter pills */}
       <div className="flex flex-wrap items-center gap-1.5 mb-3">
-        <span className="text-[9px] uppercase text-slate-400 font-medium mr-1">Sort by:</span>
+        <span className="text-[10px] uppercase text-slate-500 font-medium mr-1">Sort by:</span>
         {SORT_OPTIONS.map(({ key, label }) => (
           <button
             key={key}
@@ -163,7 +166,7 @@ export default function LensFingerprint({ universe: rawUniverse, archetypes: ser
           <thead>
             <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
               {['Fund', 'Return', 'Risk', 'Consist.', 'Alpha', 'Effic.', 'Resil.', 'Archetype', 'Verdict'].map((h, i) => (
-                <th key={h} style={{ fontSize: 9, textTransform: 'uppercase', color: '#94a3b8', fontWeight: 600,
+                <th key={h} style={{ fontSize: 10, textTransform: 'uppercase', color: '#64748b', fontWeight: 600,
                   padding: '6px 4px', textAlign: i === 0 ? 'left' : 'center',
                   width: i === 0 ? 200 : i === 8 ? 140 : undefined }}>{h}</th>
               ))}
@@ -179,10 +182,10 @@ export default function LensFingerprint({ universe: rawUniverse, archetypes: ser
                   onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f8fafc'; }}
                   onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}>
                   <td style={{ padding: '6px 4px', textAlign: 'left', maxWidth: 200 }}>
-                    <div style={{ fontSize: 11, fontWeight: 500, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {f.fund_name}
                     </div>
-                    <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                    <div style={{ fontSize: 10, color: '#64748b' }}>
                       {f.category_name?.split(' ').slice(0, 2).join(' ')} · {formatAUMRaw(f.aum)}
                     </div>
                   </td>
