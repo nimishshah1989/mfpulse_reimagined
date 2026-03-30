@@ -4,7 +4,7 @@
  * 42+ data points across 8 sections:
  * 1. Header + Stats Ribbon (9 metrics)
  * 2. Positioning Panel: Quadrant Intelligence + Market Health Gauges
- * 3. Category Tailwind/Headwind Map
+ * 3. Sector Fund Breakdown (category distribution)
  * 4. Fund 2×2 Scatter (risk vs return, lens color, AUM sized)
  * 5. Top Funds Table (paginated, filterable, all 6 lenses)
  * 6. AMC Concentration
@@ -19,7 +19,7 @@ import {
 } from 'recharts';
 import { QUADRANT_COLORS } from '../../lib/sectors';
 import { formatPct, formatAUMRaw, formatCount, formatScore } from '../../lib/format';
-import { fetchSectorDrillDown, fetchCategoryAlignment } from '../../lib/api';
+import { fetchSectorDrillDown } from '../../lib/api';
 import InfoBulb from '../shared/InfoBulb';
 
 const PAGE_SIZE = 15;
@@ -29,6 +29,34 @@ const QUADRANT_ACTIONS = {
   Improving: { action: 'ACCUMULATE', icon: '↗', desc: 'Low RS but gaining fast — early entry window', short: 'Enter' },
   Weakening: { action: 'REDUCE', icon: '↘', desc: 'High RS but losing steam — take profits, trim', short: 'Trim' },
   Lagging: { action: 'AVOID', icon: '↓', desc: 'Low RS + falling further — wait for turnaround', short: 'Wait' },
+};
+
+const QUADRANT_MEANING = {
+  Leading: 'High relative strength AND gaining momentum. This sector is outperforming and accelerating.',
+  Improving: 'Currently underperforming BUT momentum is turning positive. Early entry opportunity.',
+  Weakening: 'Currently outperforming BUT momentum is fading. Consider reducing exposure.',
+  Lagging: 'Low relative strength AND losing further ground. Stay underweight until reversal.',
+};
+
+const REGIME_MEANING = {
+  BULL: 'Broad market trend is upward. Most sectors benefit from risk-on positioning.',
+  BEAR: 'Broad market is in a downtrend. Defensives and cash preservation take priority.',
+  NEUTRAL: 'Market lacks clear direction. Stock selection and sector rotation matter more than overall exposure.',
+};
+
+const BREADTH_ZONE_MEANING = {
+  Healthy: 'Most stocks are above their 21-day EMA — broad participation in the rally.',
+  Recovery: 'Breadth is improving after a weak period — market recovering from recent weakness.',
+  Deterioration: 'Fewer stocks above their EMA — selective market, only a few leaders holding up.',
+  Oversold: 'Very few stocks above EMA — potential bounce territory but macro risk elevated.',
+  Overbought: 'Almost all stocks above EMA — rally may be extended, proceed cautiously.',
+};
+
+const ACTION_MEANING = {
+  OVERWEIGHT: 'Increase sector allocation above benchmark weight.',
+  ACCUMULATE: 'Start or grow positions on dips — wait for strength confirmation.',
+  REDUCE: 'Trim positions gradually — lock in gains before momentum deteriorates.',
+  AVOID: 'Do not add new exposure. Exit on rallies if already holding.',
 };
 
 const LENS_NAMES = ['return', 'risk', 'alpha', 'consistency', 'efficiency', 'resilience'];
@@ -58,6 +86,28 @@ const PRESET_FILTERS = [
   { key: 'large_aum', label: 'Large AUM' },
 ];
 
+/* ── Tooltip component ── */
+function Tooltip2({ text, children }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="relative inline-block">
+      <span
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        className="cursor-help"
+      >
+        {children}
+      </span>
+      {show && (
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-56 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-xl leading-relaxed pointer-events-none">
+          {text}
+          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+        </span>
+      )}
+    </span>
+  );
+}
+
 const SectorDeepDive = forwardRef(function SectorDeepDive({
   sector,
   sectorData,
@@ -77,7 +127,6 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
   const [presetFilter, setPresetFilter] = useState('all');
   const [drillFunds, setDrillFunds] = useState([]);
   const [drillLoading, setDrillLoading] = useState(false);
-  const [categoryAlignment, setCategoryAlignment] = useState([]);
 
   const q = sector.quadrant || 'Lagging';
   const colors = QUADRANT_COLORS[q] || QUADRANT_COLORS.Lagging;
@@ -94,16 +143,9 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
     async function load() {
       setDrillLoading(true);
       try {
-        const [drillRes, alignRes] = await Promise.allSettled([
-          fetchSectorDrillDown(sector.sector_name, 3, 200),
-          fetchCategoryAlignment(),
-        ]);
-        if (cancelled) return;
-        if (drillRes.status === 'fulfilled') {
-          setDrillFunds(drillRes.value.data || []);
-        }
-        if (alignRes.status === 'fulfilled') {
-          setCategoryAlignment(alignRes.value.data || []);
+        const drillRes = await fetchSectorDrillDown(sector.sector_name, 3, 200);
+        if (!cancelled) {
+          setDrillFunds(drillRes.data || []);
         }
       } catch {
         // silent
@@ -195,14 +237,18 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
       .slice(0, 8);
   }, [drillFunds]);
 
-  // Category breakdown
+  // Category breakdown — fund count + avg exposure per category
   const categoryBreakdown = useMemo(() => {
     const cats = {};
     drillFunds.forEach((f) => {
       const cat = f.category_name || 'Other';
-      cats[cat] = (cats[cat] || 0) + 1;
+      if (!cats[cat]) cats[cat] = { count: 0, totalExp: 0 };
+      cats[cat].count += 1;
+      cats[cat].totalExp += f.sector_exposure_pct || 0;
     });
-    return Object.entries(cats).sort((a, b) => b[1] - a[1]);
+    return Object.entries(cats)
+      .map(([name, d]) => ({ name, count: d.count, avgExp: d.count > 0 ? d.totalExp / d.count : 0 }))
+      .sort((a, b) => b.count - a.count);
   }, [drillFunds]);
 
   // Scatter data
@@ -267,16 +313,6 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
   const regimeLabel = regimeData?.market_regime || null;
   const leadingSectors = regimeData?.leading_sectors ?? [];
 
-  // Category alignment for THIS sector
-  const sectorCategoryAlignment = useMemo(() => {
-    if (!categoryAlignment.length) return [];
-    // Filter categories that have significant exposure to sectors in the same quadrant
-    return categoryAlignment
-      .filter((c) => c.fund_count >= 3)
-      .sort((a, b) => b.tailwind_pct - a.tailwind_pct)
-      .slice(0, 12);
-  }, [categoryAlignment]);
-
   // Sector rank among all 11
   const sectorRank = useMemo(() => {
     if (!sectorData?.length) return null;
@@ -303,7 +339,7 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-slate-900">{sector.sector_name}</h2>
                 {sectorRank && (
-                  <span className="text-[10px] font-bold text-slate-400">
+                  <span className="text-xs font-bold text-slate-400">
                     #{sectorRank} of 11
                   </span>
                 )}
@@ -315,24 +351,54 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
           </div>
           <div className="flex items-center gap-2">
             {regimeLabel && (
-              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                regimeLabel === 'BULL' ? 'bg-emerald-100 text-emerald-700'
-                : regimeLabel === 'BEAR' ? 'bg-red-100 text-red-700'
-                : 'bg-amber-100 text-amber-700'
-              }`}>
-                {regimeLabel} Market
-              </span>
+              <div className="flex flex-col items-end gap-0.5">
+                <Tooltip2 text={REGIME_MEANING[regimeLabel] || 'Current broad market trend.'}>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold cursor-help ${
+                    regimeLabel === 'BULL' ? 'bg-emerald-100 text-emerald-700'
+                    : regimeLabel === 'BEAR' ? 'bg-red-100 text-red-700'
+                    : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {regimeLabel} Market ⓘ
+                  </span>
+                </Tooltip2>
+              </div>
             )}
-            <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${colors.badge}`}>
-              {q}
-            </span>
-            <span
-              className="px-3 py-1.5 rounded-lg text-xs font-bold"
-              style={{ backgroundColor: `${colors.circle}15`, color: colors.circle }}
-            >
-              {actionInfo.icon} {actionInfo.action}
-            </span>
+            <div className="flex flex-col items-end gap-0.5">
+              <Tooltip2 text={QUADRANT_MEANING[q] || actionInfo.desc}>
+                <span className={`px-3 py-1.5 rounded-full text-sm font-bold cursor-help ${colors.badge}`}>
+                  {q} ⓘ
+                </span>
+              </Tooltip2>
+            </div>
+            <div className="flex flex-col items-end gap-0.5">
+              <Tooltip2 text={ACTION_MEANING[actionInfo.action] || actionInfo.desc}>
+                <span
+                  className="px-3 py-1.5 rounded-lg text-sm font-bold cursor-help"
+                  style={{ backgroundColor: `${colors.circle}15`, color: colors.circle }}
+                >
+                  {actionInfo.icon} {actionInfo.action} ⓘ
+                </span>
+              </Tooltip2>
+            </div>
           </div>
+        </div>
+
+        {/* Tag explanation row */}
+        <div className="mt-3 flex items-start gap-4 flex-wrap">
+          <div className="flex items-center gap-1.5 bg-white/60 rounded-lg px-3 py-1.5">
+            <span className="text-[11px] font-semibold text-slate-600">{q}:</span>
+            <span className="text-[11px] text-slate-500">{actionInfo.desc}</span>
+          </div>
+          <div className="flex items-center gap-1.5 bg-white/60 rounded-lg px-3 py-1.5">
+            <span className="text-[11px] font-semibold text-slate-600">What to do:</span>
+            <span className="text-[11px] text-slate-500">{ACTION_MEANING[actionInfo.action]}</span>
+          </div>
+          {regimeLabel && (
+            <div className="flex items-center gap-1.5 bg-white/60 rounded-lg px-3 py-1.5">
+              <span className="text-[11px] font-semibold text-slate-600">{regimeLabel} Market:</span>
+              <span className="text-[11px] text-slate-500">{REGIME_MEANING[regimeLabel]}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -380,20 +446,20 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Left: Quadrant Intelligence */}
           <div className="bg-slate-50 rounded-lg p-4 space-y-4">
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Quadrant Intelligence</p>
+            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Quadrant Intelligence</p>
 
             {/* RS Trend with momentum overlay */}
             {trendData.length > 1 && (
               <div>
-                <p className="text-[9px] text-slate-400 mb-1">RS Score Trend</p>
+                <p className="text-xs text-slate-400 mb-1">RS Score Trend</p>
                 <div style={{ height: 90 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={trendData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }} />
-                      <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} domain={['auto', 'auto']} />
+                      <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                      <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} domain={['auto', 'auto']} />
                       <Tooltip
-                        contentStyle={{ fontSize: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}
+                        contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0' }}
                         formatter={(v, name) => [`${Number(v).toFixed(1)}`, name === 'score' ? 'RS Score' : 'Momentum']}
                       />
                       <Line type="monotone" dataKey="score" stroke={colors.circle} strokeWidth={2.5}
@@ -410,7 +476,20 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
                 <ContextRow label="Shift" value={`${trajectory.from} → ${trajectory.to}`} color={colors.circle} />
               )}
               {peerSectors.length > 0 && (
-                <ContextRow label={`Also ${q}`} value={peerSectors.map((s) => s.sector_name).join(', ')} />
+                <div className="flex items-start gap-2">
+                  <span className="text-xs text-slate-400 w-20 flex-shrink-0 pt-0.5">Also {q}</span>
+                  <span className="text-xs font-medium leading-snug text-slate-700 flex flex-wrap gap-1">
+                    {peerSectors.map((s) => (
+                      <button
+                        key={s.sector_name}
+                        onClick={() => onSectorClick && onSectorClick(s)}
+                        className="underline decoration-dotted hover:text-teal-600 transition-colors"
+                      >
+                        {s.sector_name}
+                      </button>
+                    ))}
+                  </span>
+                </div>
               )}
               {sectorRank && (
                 <ContextRow label="RS Rank" value={`#${sectorRank} of 11 sectors`} />
@@ -425,31 +504,33 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
 
           {/* Right: Market Health Gauges */}
           <div className="bg-slate-50 rounded-lg p-4 space-y-4">
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Market Health Context</p>
+            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Market Health Context</p>
 
             {/* Sentiment Layer Bars */}
             {Object.keys(layerScores).length > 0 && (
               <div>
-                <p className="text-[9px] text-slate-400 mb-2">Sentiment Layers (0-100)</p>
+                <p className="text-xs text-slate-400 mb-2">Sentiment Layers (0-100)</p>
                 <div className="space-y-1.5">
                   {Object.entries(layerScores).map(([key, val]) => (
-                    <div key={key} className="flex items-center gap-2">
-                      <span className="text-[9px] text-slate-500 w-20 flex-shrink-0 capitalize">
-                        {key.replace('_', ' ')}
-                      </span>
-                      <div className="flex-1 h-3 bg-slate-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{
-                            width: `${Math.min(100, Math.max(0, val))}%`,
-                            backgroundColor: scoreColor(val),
-                          }}
-                        />
+                    <Tooltip2 key={key} text={`${key.replace(/_/g, ' ')} score: ${Math.round(val)}/100. Higher = more bullish signal from this category of indicators.`}>
+                      <div className="flex items-center gap-2 cursor-help">
+                        <span className="text-xs text-slate-500 w-24 flex-shrink-0 capitalize">
+                          {key.replace(/_/g, ' ')}
+                        </span>
+                        <div className="flex-1 h-3 bg-slate-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${Math.min(100, Math.max(0, val))}%`,
+                              backgroundColor: scoreColor(val),
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs font-bold tabular-nums w-8 text-right" style={{ color: scoreColor(val) }}>
+                          {Math.round(val)}
+                        </span>
                       </div>
-                      <span className="text-[9px] font-bold tabular-nums w-8 text-right" style={{ color: scoreColor(val) }}>
-                        {Math.round(val)}
-                      </span>
-                    </div>
+                    </Tooltip2>
                   ))}
                 </div>
               </div>
@@ -458,12 +539,12 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
             {/* Broad Trend Metrics */}
             {broadTrend.length > 0 && (
               <div>
-                <p className="text-[9px] text-slate-400 mb-1.5">Market Breadth (% of 531 stocks)</p>
+                <p className="text-xs text-slate-400 mb-1.5">Market Breadth (% of 531 stocks)</p>
                 <div className="grid grid-cols-2 gap-x-3 gap-y-1">
                   {broadTrend.slice(0, 6).map((m) => (
                     <div key={m.key} className="flex items-center justify-between">
-                      <span className="text-[9px] text-slate-500 truncate">{m.label?.replace(/\(.*\)/, '').trim()}</span>
-                      <span className={`text-[9px] font-bold tabular-nums ${m.pct >= 50 ? 'text-emerald-600' : m.pct >= 25 ? 'text-amber-600' : 'text-red-500'}`}>
+                      <span className="text-xs text-slate-500 truncate">{m.label?.replace(/\(.*\)/, '').trim()}</span>
+                      <span className={`text-xs font-bold tabular-nums ${m.pct >= 50 ? 'text-emerald-600' : m.pct >= 25 ? 'text-amber-600' : 'text-red-500'}`}>
                         {m.pct?.toFixed(0)}%
                       </span>
                     </div>
@@ -477,9 +558,9 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
               <div className="flex gap-3">
                 {extremes.slice(0, 2).map((e) => (
                   <div key={e.key} className="flex-1 bg-white rounded p-2">
-                    <p className="text-[9px] text-slate-400">{e.label?.replace(/\(.*\)/, '').trim()}</p>
+                    <p className="text-xs text-slate-400">{e.label?.replace(/\(.*\)/, '').trim()}</p>
                     <p className="text-sm font-bold tabular-nums" style={{ color: e.key.includes('overbought') ? '#dc2626' : '#059669' }}>
-                      {e.count} <span className="text-[9px] text-slate-400">({e.pct?.toFixed(1)}%)</span>
+                      {e.count} <span className="text-xs text-slate-400">({e.pct?.toFixed(1)}%)</span>
                     </p>
                   </div>
                 ))}
@@ -488,18 +569,20 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
 
             {/* Breadth EMA21 */}
             {ema21.zone && (
-              <div className="flex items-center gap-2 p-2 bg-white rounded">
-                <span className="text-[9px] text-slate-400">Breadth Zone:</span>
-                <span className={`text-[10px] font-bold ${
-                  ema21.zone === 'Healthy' || ema21.zone === 'Recovery' ? 'text-emerald-600'
-                  : ema21.zone === 'Deterioration' ? 'text-red-500' : 'text-amber-600'
-                }`}>
-                  {ema21.zone}
-                </span>
-                <span className="text-[9px] text-slate-400">
-                  ({ema21.count}/{ema21.total} above EMA21)
-                </span>
-              </div>
+              <Tooltip2 text={BREADTH_ZONE_MEANING[ema21.zone] || `${ema21.count} of ${ema21.total} stocks are above their 21-day EMA.`}>
+                <div className="flex items-center gap-2 p-2 bg-white rounded cursor-help">
+                  <span className="text-xs text-slate-400">Breadth Zone:</span>
+                  <span className={`text-sm font-bold ${
+                    ema21.zone === 'Healthy' || ema21.zone === 'Recovery' ? 'text-emerald-600'
+                    : ema21.zone === 'Deterioration' ? 'text-red-500' : 'text-amber-600'
+                  }`}>
+                    {ema21.zone} ⓘ
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    ({ema21.count}/{ema21.total} above EMA21)
+                  </span>
+                </div>
+              </Tooltip2>
             )}
 
             <InfoBulb title="Market Health" items={[
@@ -510,63 +593,58 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
           </div>
         </div>
 
-        {/* ══ SECTION 3: Category Tailwind/Headwind Map ══ */}
-        {sectorCategoryAlignment.length > 0 && (
+        {/* ══ SECTION 3: Sector Fund Breakdown ══ */}
+        {categoryBreakdown.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="text-xs font-bold text-slate-800">Category Exposure to Sector Rotation</p>
-                <p className="text-[10px] text-slate-400">
-                  Which fund categories ride the tailwind (Leading + Improving) vs face headwind (Weakening + Lagging)
+                <p className="text-sm font-bold text-slate-800">Sector Fund Breakdown</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Which fund categories invest in {sector.sector_name} — fund count and average sector exposure
                 </p>
               </div>
             </div>
-            <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
-              {sectorCategoryAlignment.map((cat) => (
-                <div key={cat.category_name} className="flex items-center gap-2">
-                  <span className="text-[10px] text-slate-600 w-40 flex-shrink-0 truncate" title={cat.category_name}>
-                    {cat.category_name}
-                  </span>
-                  <div className="flex-1 h-5 flex rounded overflow-hidden">
-                    {cat.leading_pct > 0 && (
-                      <div style={{ width: `${cat.leading_pct}%` }} className="bg-emerald-500/70" title={`Leading ${cat.leading_pct.toFixed(0)}%`} />
+            <div className="space-y-2">
+              {categoryBreakdown.map(({ name, count, avgExp }) => {
+                const maxCount = categoryBreakdown[0]?.count || 1;
+                const barPct = (count / maxCount) * 100;
+                return (
+                  <div key={name} className="flex items-center gap-3">
+                    <button
+                      className="text-xs text-slate-700 w-44 flex-shrink-0 truncate text-left hover:text-teal-600 hover:underline transition-colors"
+                      title={name}
+                      onClick={() => router.push(`/universe?category=${encodeURIComponent(name)}`)}
+                    >
+                      {name}
+                    </button>
+                    <div className="flex-1 h-5 bg-slate-100 rounded overflow-hidden">
+                      <div
+                        className="h-full rounded transition-all flex items-center pl-2"
+                        style={{ width: `${Math.max(barPct, 4)}%`, backgroundColor: `${colors.circle}cc` }}
+                      >
+                        {barPct > 20 && (
+                          <span className="text-[10px] font-bold text-white">{count} funds</span>
+                        )}
+                      </div>
+                    </div>
+                    {barPct <= 20 && (
+                      <span className="text-xs font-bold text-slate-600 w-12 flex-shrink-0">{count} funds</span>
                     )}
-                    {cat.improving_pct > 0 && (
-                      <div style={{ width: `${cat.improving_pct}%` }} className="bg-teal-400/70" title={`Improving ${cat.improving_pct.toFixed(0)}%`} />
-                    )}
-                    {cat.weakening_pct > 0 && (
-                      <div style={{ width: `${cat.weakening_pct}%` }} className="bg-amber-400/70" title={`Weakening ${cat.weakening_pct.toFixed(0)}%`} />
-                    )}
-                    {cat.lagging_pct > 0 && (
-                      <div style={{ width: `${cat.lagging_pct}%` }} className="bg-red-400/70" title={`Lagging ${cat.lagging_pct.toFixed(0)}%`} />
-                    )}
+                    {barPct > 20 && <span className="w-12 flex-shrink-0" />}
+                    <span className="text-xs text-slate-400 w-20 text-right flex-shrink-0">
+                      avg <span className="font-semibold text-slate-600">{avgExp.toFixed(1)}%</span> exp
+                    </span>
                   </div>
-                  <span className="text-[9px] font-bold tabular-nums w-12 text-right">
-                    <span className="text-emerald-600">{cat.tailwind_pct.toFixed(0)}</span>
-                    <span className="text-slate-300">/</span>
-                    <span className="text-red-500">{cat.headwind_pct.toFixed(0)}</span>
-                  </span>
-                  <span className="text-[9px] text-slate-400 w-6 text-right">{cat.fund_count}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
-            <div className="flex gap-3 mt-2 text-[9px]">
-              {[
-                { label: 'Leading', color: 'bg-emerald-500/70' },
-                { label: 'Improving', color: 'bg-teal-400/70' },
-                { label: 'Weakening', color: 'bg-amber-400/70' },
-                { label: 'Lagging', color: 'bg-red-400/70' },
-              ].map(({ label, color }) => (
-                <span key={label} className="flex items-center gap-1">
-                  <span className={`w-3 h-2 rounded ${color}`} />
-                  <span className="text-slate-500">{label}</span>
-                </span>
-              ))}
-            </div>
-            <InfoBulb title="Category Alignment" items={[
-              { icon: '🎯', label: 'Tailwind', text: 'Green portion = % of category\'s sector allocation in Leading+Improving quadrants. Higher = favorable positioning.' },
-              { icon: '🌊', label: 'Headwind', text: 'Red/amber = % in Weakening+Lagging quadrants. If your category has high headwind, consider reducing sector-heavy funds.' },
-              { icon: '📐', label: 'Reading', text: 'Format: tailwind/headwind ratio, then fund count. "92/8 120" = 92% tailwind, 8% headwind, across 120 funds.' },
+            <p className="text-[11px] text-slate-400 mt-3">
+              Click a category name to explore those funds in the Universe page.
+            </p>
+            <InfoBulb title="Sector Fund Breakdown" items={[
+              { icon: '📂', label: 'What this shows', text: 'How many funds in each SEBI category invest in this sector. Bar length = relative fund count.' },
+              { icon: '📐', label: 'Avg Exposure', text: 'Average allocation to this sector within that category. Higher = more concentrated sector bet across those funds.' },
+              { icon: '👆', label: 'Click to explore', text: 'Click any category name to open Universe filtered to that category.' },
             ]} />
           </div>
         )}
@@ -606,8 +684,8 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
           <div>
             <div className="flex items-center justify-between mb-2">
               <div>
-                <p className="text-xs font-bold text-slate-800">Fund Risk vs Return — {sector.sector_name}</p>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-sm font-bold text-slate-800">Fund Risk vs Return — {sector.sector_name}</p>
+                <p className="text-xs text-slate-400 mt-0.5">
                   Top-left = sweet spot (high return, low risk). Bubble size = AUM. Color = return score tier.
                 </p>
               </div>
@@ -615,16 +693,16 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
             <div className="relative rounded-xl overflow-hidden bg-slate-50" style={{ height: 380 }}>
               <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 pointer-events-none z-0">
                 <div className="flex items-start justify-start p-2">
-                  <span className="text-[9px] font-bold text-emerald-400/60 uppercase">Sweet Spot</span>
+                  <span className="text-[10px] font-bold text-emerald-400/60 uppercase">Sweet Spot</span>
                 </div>
                 <div className="flex items-start justify-end p-2">
-                  <span className="text-[9px] font-bold text-amber-400/50 uppercase">High Risk/Return</span>
+                  <span className="text-[10px] font-bold text-amber-400/50 uppercase">High Risk/Return</span>
                 </div>
                 <div className="flex items-end justify-start p-2">
-                  <span className="text-[9px] font-bold text-sky-400/50 uppercase">Conservative</span>
+                  <span className="text-[10px] font-bold text-sky-400/50 uppercase">Conservative</span>
                 </div>
                 <div className="flex items-end justify-end p-2">
-                  <span className="text-[9px] font-bold text-red-400/50 uppercase">Avoid</span>
+                  <span className="text-[10px] font-bold text-red-400/50 uppercase">Avoid</span>
                 </div>
               </div>
               <div className="relative z-10 w-full h-full">
@@ -663,7 +741,7 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
         {(drillFunds.length > 0 || drillLoading) && (
           <div>
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-              <p className="text-xs font-bold text-slate-800">
+              <p className="text-sm font-bold text-slate-800">
                 All Funds ({filteredFunds.length})
               </p>
               <div className="flex items-center gap-1 flex-wrap">
@@ -671,7 +749,7 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
                   <button
                     key={f.key}
                     onClick={() => setPresetFilter(f.key)}
-                    className={`px-2 py-1 rounded text-[10px] font-medium transition-colors ${
+                    className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
                       presetFilter === f.key
                         ? 'bg-teal-100 text-teal-700 border border-teal-200'
                         : 'text-slate-500 hover:bg-slate-100 border border-transparent'
@@ -685,7 +763,7 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
 
             {/* Sort row */}
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] text-slate-400">Sort:</span>
+              <span className="text-xs text-slate-400">Sort:</span>
               {[
                 { key: 'composite', label: 'Best Overall' },
                 { key: 'return_1y', label: '1Y Return' },
@@ -696,7 +774,7 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
                 <button
                   key={opt.key}
                   onClick={() => setSortKey(opt.key)}
-                  className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                  className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
                     sortKey === opt.key
                       ? 'bg-slate-200 text-slate-800'
                       : 'text-slate-400 hover:bg-slate-100'
@@ -714,7 +792,7 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="text-[9px] text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                      <tr className="text-[10px] text-slate-500 uppercase tracking-wider border-b border-slate-200">
                         <th className="text-left pb-2 pr-2 font-semibold w-8">#</th>
                         <th className="text-left pb-2 pr-2 font-semibold">Fund</th>
                         <th className="text-left pb-2 pr-2 font-semibold">Category</th>
@@ -740,11 +818,11 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
                             className="hover:bg-slate-50/50 cursor-pointer transition-colors"
                             onClick={() => router.push(`/fund360?fund=${fund.mstar_id}`)}
                           >
-                            <td className="py-2 pr-2 text-slate-400 font-mono text-[10px]">{page * PAGE_SIZE + i + 1}</td>
+                            <td className="py-2 pr-2 text-slate-400 font-mono text-xs">{page * PAGE_SIZE + i + 1}</td>
                             <td className="py-2 pr-2 font-semibold text-slate-800 max-w-[200px] truncate" title={fund.fund_name}>
                               {fund.fund_name}
                             </td>
-                            <td className="py-2 pr-2 text-slate-500 max-w-[120px] truncate text-[10px]">{fund.category_name || '—'}</td>
+                            <td className="py-2 pr-2 text-slate-500 max-w-[120px] truncate text-xs">{fund.category_name || '—'}</td>
                             <td className="py-2 pr-2 text-right font-bold tabular-nums" style={{ color: colors.circle }}>
                               {fund.sector_exposure_pct != null ? `${Number(fund.sector_exposure_pct).toFixed(0)}%` : '—'}
                             </td>
@@ -754,7 +832,7 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
                             <td className={`py-2 pr-2 text-right tabular-nums ${!isNaN(ret3y) && ret3y >= 0 ? 'text-emerald-600' : !isNaN(ret3y) ? 'text-red-500' : 'text-slate-400'}`}>
                               {!isNaN(ret3y) ? formatPct(ret3y) : '—'}
                             </td>
-                            <td className="py-2 pr-2 text-right tabular-nums text-slate-600 text-[10px]">
+                            <td className="py-2 pr-2 text-right tabular-nums text-slate-600 text-xs">
                               {fund.aum ? formatAUMRaw(fund.aum) : '—'}
                             </td>
                             <LensCell val={fund.return_score} />
@@ -773,14 +851,14 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
                 {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-xs text-slate-400">
                       Showing {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, filteredFunds.length)} of {filteredFunds.length}
                     </span>
                     <div className="flex gap-1">
                       <button
                         onClick={() => setPage(Math.max(0, page - 1))}
                         disabled={page === 0}
-                        className="px-2.5 py-1 text-[10px] font-medium rounded border border-slate-200 disabled:opacity-30 hover:bg-slate-50"
+                        className="px-2.5 py-1 text-xs font-medium rounded border border-slate-200 disabled:opacity-30 hover:bg-slate-50"
                       >
                         ← Prev
                       </button>
@@ -791,7 +869,7 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
                           <button
                             key={p}
                             onClick={() => setPage(p)}
-                            className={`w-7 h-7 text-[10px] font-medium rounded ${
+                            className={`w-7 h-7 text-xs font-medium rounded ${
                               p === page ? 'bg-teal-600 text-white' : 'border border-slate-200 hover:bg-slate-50'
                             }`}
                           >
@@ -802,7 +880,7 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
                       <button
                         onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
                         disabled={page >= totalPages - 1}
-                        className="px-2.5 py-1 text-[10px] font-medium rounded border border-slate-200 disabled:opacity-30 hover:bg-slate-50"
+                        className="px-2.5 py-1 text-xs font-medium rounded border border-slate-200 disabled:opacity-30 hover:bg-slate-50"
                       >
                         Next →
                       </button>
@@ -825,52 +903,57 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
         {amcBreakdown.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
-              <p className="text-xs font-bold text-slate-800 mb-2">AMC Concentration — {sector.sector_name}</p>
-              <p className="text-[10px] text-slate-400 mb-3">Which AMCs dominate this sector by AUM</p>
+              <p className="text-sm font-bold text-slate-800 mb-1">AMC Concentration — {sector.sector_name}</p>
+              <p className="text-xs text-slate-400 mb-3">Which AMCs dominate this sector by AUM</p>
               <div className="space-y-1.5">
                 {amcBreakdown.map((amc, i) => {
                   const maxAum = amcBreakdown[0]?.aum || 1;
                   const pct = (amc.aum / maxAum) * 100;
+                  const shortName = amc.name?.replace(/ (Asset Management|Mutual Fund|AMC|Ltd|Private|India|Investment|Management|Company).*/i, '');
                   return (
                     <div key={amc.name} className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-400 font-mono w-4">{i + 1}</span>
-                      <span className="text-[10px] text-slate-700 w-40 truncate" title={amc.name}>
-                        {amc.name?.replace(/ (Asset Management|Mutual Fund|AMC|Ltd|Private|India|Investment|Management|Company).*/i, '')}
-                      </span>
+                      <span className="text-xs text-slate-400 font-mono w-4">{i + 1}</span>
+                      <Tooltip2 text={`${amc.name} — ${amc.count} fund${amc.count !== 1 ? 's' : ''} in ${sector.sector_name}. Total AUM: ${formatAUMRaw(amc.aum)}.`}>
+                        <span className="text-xs text-slate-700 w-40 truncate cursor-help hover:text-teal-700 transition-colors" title={amc.name}>
+                          {shortName}
+                        </span>
+                      </Tooltip2>
                       <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full"
                           style={{ width: `${pct}%`, backgroundColor: colors.circle, opacity: 0.7 }}
                         />
                       </div>
-                      <span className="text-[10px] font-bold tabular-nums text-slate-600 w-16 text-right">
+                      <span className="text-xs font-bold tabular-nums text-slate-600 w-16 text-right">
                         {formatAUMRaw(amc.aum)}
                       </span>
-                      <span className="text-[9px] text-slate-400 w-10 text-right">{amc.count} funds</span>
+                      <span className="text-xs text-slate-400 w-12 text-right">{amc.count} funds</span>
                     </div>
                   );
                 })}
               </div>
               <InfoBulb title="AMC Concentration" items={[
                 { icon: '🏢', label: 'Why it matters', text: 'If 2-3 AMCs dominate a sector, your diversification may be illusory — you\'re depending on the same research teams and stock picks.' },
-                { icon: '📊', label: 'Reading', text: 'Bar length = AUM proportion vs largest AMC. Higher concentration = less actual diversification within this sector.' },
+                { icon: '📊', label: 'Reading', text: 'Bar length = AUM proportion vs largest AMC. Hover on AMC name to see full details.' },
               ]} />
             </div>
 
             {/* Category Breakdown chips */}
             <div>
-              <p className="text-xs font-bold text-slate-800 mb-2">Category Breakdown</p>
-              <p className="text-[10px] text-slate-400 mb-3">Fund types investing in {sector.sector_name}</p>
+              <p className="text-sm font-bold text-slate-800 mb-1">Category Breakdown</p>
+              <p className="text-xs text-slate-400 mb-3">Fund types investing in {sector.sector_name}</p>
               <div className="flex flex-wrap gap-2">
-                {categoryBreakdown.map(([cat, count]) => (
-                  <span
-                    key={cat}
-                    className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
+                {categoryBreakdown.map(({ name, count }) => (
+                  <button
+                    key={name}
+                    onClick={() => router.push(`/universe?category=${encodeURIComponent(name)}`)}
+                    className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200 hover:bg-teal-50 hover:border-teal-200 hover:text-teal-700 transition-colors"
                   >
-                    {cat} <span className="font-bold text-slate-900">{count}</span>
-                  </span>
+                    {name} <span className="font-bold text-slate-900">{count}</span>
+                  </button>
                 ))}
               </div>
+              <p className="text-[11px] text-slate-400 mt-2">Click to explore funds in Universe</p>
             </div>
           </div>
         )}
@@ -905,11 +988,11 @@ export default SectorDeepDive;
 function StatCard({ label, value, color, large = false, sub }) {
   return (
     <div className="bg-slate-50 rounded-lg p-3 text-center">
-      <p className="text-[9px] text-slate-400 uppercase tracking-wider font-medium">{label}</p>
-      <p className={`font-bold tabular-nums mt-1 ${large ? 'text-xl' : 'text-sm'}`} style={{ color }}>
+      <p className="text-[10px] text-slate-400 uppercase tracking-wider font-medium">{label}</p>
+      <p className={`font-bold tabular-nums mt-1 ${large ? 'text-2xl' : 'text-base'}`} style={{ color }}>
         {value ?? '—'}
       </p>
-      {sub && <p className="text-[8px] text-slate-400 mt-0.5">{sub}</p>}
+      {sub && <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -917,8 +1000,8 @@ function StatCard({ label, value, color, large = false, sub }) {
 function ContextRow({ label, value, color }) {
   return (
     <div className="flex items-start gap-2">
-      <span className="text-[10px] text-slate-400 w-20 flex-shrink-0 pt-0.5">{label}</span>
-      <span className="text-[11px] font-medium leading-snug" style={{ color: color || '#334155' }}>
+      <span className="text-xs text-slate-400 w-20 flex-shrink-0 pt-0.5">{label}</span>
+      <span className="text-sm font-medium leading-snug" style={{ color: color || '#334155' }}>
         {value}
       </span>
     </div>
@@ -930,11 +1013,11 @@ function LensCell({ val }) {
   return (
     <td className="py-2 text-center">
       {n != null ? (
-        <span className={`inline-block w-7 h-5 rounded text-[9px] font-bold leading-5 tabular-nums ${scoreBg(n)}`}>
+        <span className={`inline-block w-8 h-5 rounded text-[10px] font-bold leading-5 tabular-nums ${scoreBg(n)}`}>
           {n}
         </span>
       ) : (
-        <span className="text-[9px] text-slate-300">—</span>
+        <span className="text-xs text-slate-300">—</span>
       )}
     </td>
   );
@@ -951,20 +1034,20 @@ function RecoCard({ icon, iconColor, label, fund, colors, sectorName, onClick })
     >
       <span className="text-xl flex-shrink-0 mt-0.5" style={{ color: iconColor }}>{icon}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] text-slate-400 mb-0.5">{label}</p>
-        <p className="text-[11px] font-bold text-slate-800 truncate">{fund.fund_name}</p>
-        <p className="text-[9px] text-slate-500 mt-0.5">{fund.category_name}</p>
+        <p className="text-xs text-slate-400 mb-0.5">{label}</p>
+        <p className="text-sm font-bold text-slate-800 truncate">{fund.fund_name}</p>
+        <p className="text-xs text-slate-500 mt-0.5">{fund.category_name}</p>
         <div className="flex items-center gap-3 mt-1.5">
-          <span className={`text-[11px] font-bold tabular-nums ${ret1y >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+          <span className={`text-sm font-bold tabular-nums ${ret1y >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
             {formatPct(ret1y)}
           </span>
           {fund.sector_exposure_pct != null && (
-            <span className="text-[9px] text-slate-400">{Number(fund.sector_exposure_pct).toFixed(0)}% exp</span>
+            <span className="text-xs text-slate-400">{Number(fund.sector_exposure_pct).toFixed(0)}% exp</span>
           )}
           {fund.aum && (
-            <span className="text-[9px] text-slate-400">{formatAUMRaw(fund.aum)}</span>
+            <span className="text-xs text-slate-400">{formatAUMRaw(fund.aum)}</span>
           )}
-          <span className="text-[9px] font-medium" style={{ color: scoreColor(avgLens) }}>
+          <span className="text-xs font-medium" style={{ color: scoreColor(avgLens) }}>
             Avg {Math.round(avgLens)}
           </span>
         </div>
@@ -979,7 +1062,7 @@ function FundScatterTooltip({ active, payload }) {
   return (
     <div className="bg-white rounded-lg shadow-lg border border-slate-200 px-3 py-2 text-xs">
       <p className="font-bold text-slate-800">{d.name}</p>
-      <p className="text-slate-500 text-[10px]">{d.category}</p>
+      <p className="text-slate-500 text-xs">{d.category}</p>
       <div className="mt-1 space-y-0.5 tabular-nums">
         <p>1Y Return: <span className={`font-bold ${d.y >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{formatPct(d.y)}</span></p>
         <p>Risk Score: {d.x?.toFixed(0)}</p>

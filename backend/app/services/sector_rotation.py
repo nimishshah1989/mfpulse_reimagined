@@ -585,14 +585,22 @@ class SectorRotationService:
 
     def _get_previous_rs_scores(self, target_date: date, months_back: int = 1) -> dict:
         """Get RS scores from a previous snapshot for momentum calculation."""
-        cutoff = target_date - timedelta(days=months_back * 35)
+        ideal_date = target_date - timedelta(days=months_back * 30)
+        cutoff_low = target_date - timedelta(days=months_back * 50)
         row = (
             self.db.query(SectorRotationHistory.snapshot_date)
             .filter(
-                SectorRotationHistory.snapshot_date >= cutoff,
+                SectorRotationHistory.snapshot_date >= cutoff_low,
                 SectorRotationHistory.snapshot_date < target_date,
             )
-            .order_by(SectorRotationHistory.snapshot_date.desc())
+            .order_by(
+                func.abs(
+                    func.extract(
+                        "epoch",
+                        SectorRotationHistory.snapshot_date - ideal_date,
+                    )
+                )
+            )
             .limit(1)
             .first()
         )
@@ -624,6 +632,7 @@ class SectorRotationService:
             .filter(FundSectorExposure.portfolio_date == target_date)
             .filter(FundSectorExposure.net_pct.isnot(None))
             .filter(FundSectorExposure.sector_name.in_(MORNINGSTAR_SECTORS))
+            .filter(FundSectorExposure.net_pct >= 5)
             .group_by(FundSectorExposure.sector_name)
             .all()
         )
