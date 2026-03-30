@@ -342,6 +342,202 @@ class FundRepository:
             "cat_cumulative_10y": cat.cat_cumulative_10y,
         }
 
+    # --- Batch queries for universe enrichment ---
+
+    def get_latest_risk_stats_batch(
+        self, mstar_ids: list[str], chunk_size: int = 1000,
+    ) -> dict[str, dict]:
+        """Latest risk stats (key fields only) for multiple funds — single query per chunk."""
+        if not mstar_ids:
+            return {}
+        result: dict[str, dict] = {}
+        for i in range(0, len(mstar_ids), chunk_size):
+            chunk = mstar_ids[i : i + chunk_size]
+            latest_sub = (
+                self.db.query(
+                    RiskStatsMonthly.mstar_id,
+                    func.max(RiskStatsMonthly.as_of_date).label("max_date"),
+                )
+                .filter(RiskStatsMonthly.mstar_id.in_(chunk))
+                .group_by(RiskStatsMonthly.mstar_id)
+                .subquery()
+            )
+            rows = (
+                self.db.query(RiskStatsMonthly)
+                .join(
+                    latest_sub,
+                    (RiskStatsMonthly.mstar_id == latest_sub.c.mstar_id)
+                    & (RiskStatsMonthly.as_of_date == latest_sub.c.max_date),
+                )
+                .all()
+            )
+            for rs in rows:
+                result[rs.mstar_id] = {
+                    "sharpe_3y": rs.sharpe_3y,
+                    "alpha_3y": rs.alpha_3y,
+                    "beta_3y": rs.beta_3y,
+                    "sortino_3y": rs.sortino_3y,
+                    "max_drawdown_3y": rs.max_drawdown_3y,
+                    "capture_up_3y": rs.capture_up_3y,
+                    "capture_down_3y": rs.capture_down_3y,
+                    "info_ratio_3y": rs.info_ratio_3y,
+                    "tracking_error_3y": rs.tracking_error_3y,
+                    "std_dev_3y": rs.std_dev_3y,
+                }
+        return result
+
+    def get_latest_ranks_batch(
+        self, mstar_ids: list[str], chunk_size: int = 1000,
+    ) -> dict[str, dict]:
+        """Latest quartile ranks for multiple funds — single query per chunk."""
+        if not mstar_ids:
+            return {}
+        result: dict[str, dict] = {}
+        for i in range(0, len(mstar_ids), chunk_size):
+            chunk = mstar_ids[i : i + chunk_size]
+            latest_sub = (
+                self.db.query(
+                    RankMonthly.mstar_id,
+                    func.max(RankMonthly.as_of_date).label("max_date"),
+                )
+                .filter(RankMonthly.mstar_id.in_(chunk))
+                .group_by(RankMonthly.mstar_id)
+                .subquery()
+            )
+            rows = (
+                self.db.query(RankMonthly)
+                .join(
+                    latest_sub,
+                    (RankMonthly.mstar_id == latest_sub.c.mstar_id)
+                    & (RankMonthly.as_of_date == latest_sub.c.max_date),
+                )
+                .all()
+            )
+            for rank in rows:
+                result[rank.mstar_id] = {
+                    "quartile_1m": rank.quartile_1m,
+                    "quartile_3m": rank.quartile_3m,
+                    "quartile_1y": rank.quartile_1y,
+                    "quartile_3y": rank.quartile_3y,
+                    "quartile_5y": rank.quartile_5y,
+                }
+        return result
+
+    def get_latest_asset_allocation_batch(
+        self, mstar_ids: list[str], chunk_size: int = 1000,
+    ) -> dict[str, dict]:
+        """Latest asset allocation (market cap split) for multiple funds — single query per chunk."""
+        from app.models.db.asset_allocation import FundAssetAllocation
+
+        if not mstar_ids:
+            return {}
+        result: dict[str, dict] = {}
+        for i in range(0, len(mstar_ids), chunk_size):
+            chunk = mstar_ids[i : i + chunk_size]
+            latest_sub = (
+                self.db.query(
+                    FundAssetAllocation.mstar_id,
+                    func.max(FundAssetAllocation.portfolio_date).label("max_date"),
+                )
+                .filter(FundAssetAllocation.mstar_id.in_(chunk))
+                .group_by(FundAssetAllocation.mstar_id)
+                .subquery()
+            )
+            rows = (
+                self.db.query(FundAssetAllocation)
+                .join(
+                    latest_sub,
+                    (FundAssetAllocation.mstar_id == latest_sub.c.mstar_id)
+                    & (FundAssetAllocation.portfolio_date == latest_sub.c.max_date),
+                )
+                .all()
+            )
+            for alloc in rows:
+                result[alloc.mstar_id] = {
+                    "india_large_cap_pct": alloc.india_large_cap_pct,
+                    "india_mid_cap_pct": alloc.india_mid_cap_pct,
+                    "india_small_cap_pct": alloc.india_small_cap_pct,
+                }
+        return result
+
+    def get_nav_history_batch(
+        self,
+        mstar_ids: list[str],
+        start_date: Optional[date] = None,
+    ) -> dict[str, list[dict]]:
+        """NAV time series for multiple funds — for comparison charts.
+
+        Returns dict keyed by mstar_id with list of {nav_date, nav} dicts
+        in ascending date order.
+        """
+        if not mstar_ids:
+            return {}
+        query = (
+            self.db.query(
+                NavDaily.mstar_id,
+                NavDaily.nav_date,
+                NavDaily.nav,
+            )
+            .filter(
+                NavDaily.mstar_id.in_(mstar_ids),
+                NavDaily.nav.isnot(None),
+            )
+        )
+        if start_date:
+            query = query.filter(NavDaily.nav_date >= start_date)
+        query = query.order_by(NavDaily.mstar_id, NavDaily.nav_date.asc())
+        rows = query.all()
+
+        result: dict[str, list[dict]] = {mid: [] for mid in mstar_ids}
+        for r in rows:
+            result[r.mstar_id].append({
+                "nav_date": r.nav_date,
+                "nav": r.nav,
+            })
+        return result
+
+    def get_risk_stats_history_batch(
+        self,
+        mstar_ids: list[str],
+        limit: int = 12,
+    ) -> dict[str, list[dict]]:
+        """Monthly risk stats history for multiple funds.
+
+        Returns dict keyed by mstar_id with list of {as_of_date, std_dev_1y} dicts
+        in descending date order, limited to `limit` rows per fund.
+        """
+        if not mstar_ids:
+            return {}
+        from sqlalchemy import and_
+
+        # Use a window function to rank rows per fund
+        from sqlalchemy import over as sa_over
+
+        # Simpler approach: query all recent rows and slice in Python
+        rows = (
+            self.db.query(
+                RiskStatsMonthly.mstar_id,
+                RiskStatsMonthly.as_of_date,
+                RiskStatsMonthly.std_dev_1y,
+            )
+            .filter(RiskStatsMonthly.mstar_id.in_(mstar_ids))
+            .order_by(
+                RiskStatsMonthly.mstar_id,
+                RiskStatsMonthly.as_of_date.desc(),
+            )
+            .all()
+        )
+
+        result: dict[str, list[dict]] = {mid: [] for mid in mstar_ids}
+        for r in rows:
+            entries = result[r.mstar_id]
+            if len(entries) < limit:
+                entries.append({
+                    "as_of_date": r.as_of_date,
+                    "std_dev_1y": r.std_dev_1y,
+                })
+        return result
+
     # --- Peer Comparison ---
 
     def get_category_peers(

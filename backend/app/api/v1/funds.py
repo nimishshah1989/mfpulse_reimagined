@@ -1,5 +1,6 @@
 """Fund read API endpoints — enriched with lens scores and classifications."""
 
+import logging
 import time
 from decimal import Decimal
 from typing import Optional
@@ -12,6 +13,8 @@ from app.models.schemas.responses import APIResponse, Meta
 from app.services.fund_service import FundService
 from app.repositories.lens_repo import LensRepository
 from app.repositories.override_repo import OverrideRepository
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/funds", tags=["funds"])
 
@@ -186,6 +189,82 @@ def natural_language_search(
         "meta": {"timestamp": Meta().timestamp, "count": result["count"]},
         "error": None,
     }
+
+
+@router.get("/compare/nav")
+def compare_nav_history(
+    mstar_ids: str = Query(..., description="Comma-separated mstar_ids (max 5)"),
+    period: str = Query(default="3y", description="Time period: 1m, 3m, 6m, 1y, 3y, 5y, max"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Multi-fund NAV comparison — normalized to base 100 from first common date."""
+    try:
+        ids = [mid.strip() for mid in mstar_ids.split(",") if mid.strip()]
+        if not ids:
+            return {
+                "success": False,
+                "data": None,
+                "error": {"code": "INVALID_INPUT", "message": "No mstar_ids provided"},
+            }
+        if len(ids) > 5:
+            return {
+                "success": False,
+                "data": None,
+                "error": {"code": "INVALID_INPUT", "message": "Maximum 5 funds for comparison"},
+            }
+        service = FundService(db)
+        data = service.compare_nav_history(ids, period=period)
+        return {
+            "success": True,
+            "data": data,
+            "meta": {"timestamp": Meta().timestamp, "count": len(data.get("funds", []))},
+            "error": None,
+        }
+    except Exception as exc:
+        logger.exception("compare_nav_history failed")
+        return {
+            "success": False,
+            "data": None,
+            "error": {"code": "INTERNAL_ERROR", "message": str(exc)},
+        }
+
+
+@router.get("/compare/risk")
+def compare_risk_history(
+    mstar_ids: str = Query(..., description="Comma-separated mstar_ids (max 5)"),
+    limit: int = Query(default=12, le=36, description="Max months of history"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Multi-fund rolling risk (std_dev_1y) comparison over time."""
+    try:
+        ids = [mid.strip() for mid in mstar_ids.split(",") if mid.strip()]
+        if not ids:
+            return {
+                "success": False,
+                "data": None,
+                "error": {"code": "INVALID_INPUT", "message": "No mstar_ids provided"},
+            }
+        if len(ids) > 5:
+            return {
+                "success": False,
+                "data": None,
+                "error": {"code": "INVALID_INPUT", "message": "Maximum 5 funds for comparison"},
+            }
+        service = FundService(db)
+        data = service.compare_risk_history(ids, limit=limit)
+        return {
+            "success": True,
+            "data": data,
+            "meta": {"timestamp": Meta().timestamp, "count": len(data.get("funds", []))},
+            "error": None,
+        }
+    except Exception as exc:
+        logger.exception("compare_risk_history failed")
+        return {
+            "success": False,
+            "data": None,
+            "error": {"code": "INTERNAL_ERROR", "message": str(exc)},
+        }
 
 
 @router.get("/{mstar_id}/intelligence")

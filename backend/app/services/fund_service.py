@@ -233,7 +233,11 @@ class FundService:
         return self.holdings_repo.get_sector_exposure(mstar_id)
 
     def get_universe_data(self) -> list[dict]:
-        """Bulk data for Universe Explorer — active funds (AUM > 0) with lens + returns."""
+        """Bulk data for Universe Explorer — active funds (AUM > 0) with lens + returns.
+
+        Includes risk stats, quartile ranks, and asset allocation for
+        Screener and Analytics sections.
+        """
         from app.repositories.lens_repo import LensRepository
 
         funds, _ = self.fund_repo.get_all_funds(
@@ -255,6 +259,11 @@ class FundService:
         all_scores = lens_repo.get_all_scores_batch(active_ids)
         all_classes = lens_repo.get_all_classifications_batch(active_ids)
 
+        # Batch fetch risk stats, ranks, and asset allocation
+        risk_map = self.fund_repo.get_latest_risk_stats_batch(active_ids)
+        ranks_map = self.fund_repo.get_latest_ranks_batch(active_ids)
+        alloc_map = self.fund_repo.get_latest_asset_allocation_batch(active_ids)
+
         # Filter to funds with minimum data quality: must have at least return_score OR 1Y return
         quality_funds = []
         for f in active_funds:
@@ -271,6 +280,9 @@ class FundService:
             scores = all_scores.get(mid, {})
             cls = all_classes.get(mid, {})
             snap = snapshot_map.get(mid, {})
+            risk = risk_map.get(mid, {})
+            ranks = ranks_map.get(mid, {})
+            alloc = alloc_map.get(mid, {})
             raw_mode = getattr(fund, "purchase_mode", None)
             fund_name = fund.fund_name or fund.legal_name or ""
             result.append({
@@ -302,6 +314,30 @@ class FundService:
                 "avg_market_cap": snap.get("avg_market_cap"),
                 "pe_ratio": snap.get("pe_ratio"),
                 "pb_ratio": snap.get("pb_ratio"),
+                "prospective_div_yield": snap.get("prospective_div_yield"),
+                "turnover_ratio": snap.get("turnover_ratio"),
+                # Risk stats (key 3Y metrics)
+                "sharpe_3y": risk.get("sharpe_3y"),
+                "alpha_3y": risk.get("alpha_3y"),
+                "beta_3y": risk.get("beta_3y"),
+                "sortino_3y": risk.get("sortino_3y"),
+                "max_drawdown_3y": risk.get("max_drawdown_3y"),
+                "capture_up_3y": risk.get("capture_up_3y"),
+                "capture_down_3y": risk.get("capture_down_3y"),
+                "info_ratio_3y": risk.get("info_ratio_3y"),
+                "tracking_error_3y": risk.get("tracking_error_3y"),
+                "std_dev_3y": risk.get("std_dev_3y"),
+                # Quartile ranks
+                "quartile_1m": ranks.get("quartile_1m"),
+                "quartile_3m": ranks.get("quartile_3m"),
+                "quartile_1y": ranks.get("quartile_1y"),
+                "quartile_3y": ranks.get("quartile_3y"),
+                "quartile_5y": ranks.get("quartile_5y"),
+                # Asset allocation (market cap split)
+                "india_large_cap_pct": alloc.get("india_large_cap_pct"),
+                "india_mid_cap_pct": alloc.get("india_mid_cap_pct"),
+                "india_small_cap_pct": alloc.get("india_small_cap_pct"),
+                # Lens scores
                 "return_score": scores.get("return_score"),
                 "risk_score": scores.get("risk_score"),
                 "consistency_score": scores.get("consistency_score"),
@@ -323,6 +359,128 @@ class FundService:
     ) -> list[dict]:
         """Monthly risk stats history."""
         return self.fund_repo.get_risk_stats_history(mstar_id, limit=limit)
+
+    def compare_nav_history(
+        self, mstar_ids: list[str], period: str = "3y",
+    ) -> dict:
+        """Multi-fund NAV comparison normalized to base 100 from first common date.
+
+        Returns fund NAV series and fund names for charting.
+        """
+        if len(mstar_ids) > 5:
+            raise ValidationError(
+                "NAV comparison supports at most 5 funds",
+                details={"count": len(mstar_ids)},
+            )
+        if period not in VALID_PERIODS:
+            raise ValidationError(
+                f"Invalid period '{period}'. Valid: {', '.join(sorted(VALID_PERIODS))}",
+                details={"period": period},
+            )
+
+        start_date = None
+        if period not in ("max", "since_inception"):
+            days = PERIOD_DAYS[period]
+            start_date = date.today() - timedelta(days=days)
+
+        # Batch fetch NAV history for all funds
+        nav_histories = self.fund_repo.get_nav_history_batch(
+            mstar_ids, start_date=start_date,
+        )
+
+        # Find first common date across all funds that have data
+        funds_with_data = [
+            mid for mid in mstar_ids if nav_histories.get(mid)
+        ]
+        if not funds_with_data:
+            return {"funds": [], "benchmark": None}
+
+        # Find the latest start date across all funds (first common date)
+        first_dates = [
+            nav_histories[mid][0]["nav_date"]
+            for mid in funds_with_data
+        ]
+        common_start = max(first_dates)
+
+        # Fetch fund names
+        fund_names: dict[str, str] = {}
+        for mid in funds_with_data:
+            fund = self.fund_repo.get_fund_by_mstar_id(mid)
+            fund_names[mid] = fund.fund_name if fund else mid
+
+        funds_result = []
+        for mid in funds_with_data:
+            series = nav_histories[mid]
+            # Filter to common start date onwards
+            filtered = [
+                r for r in series if r["nav_date"] >= common_start
+            ]
+            if not filtered:
+                continue
+
+            # Normalize to base 100
+            base_nav = Decimal(str(filtered[0]["nav"]))
+            if base_nav == 0:
+                continue
+
+            normalized = []
+            for r in filtered:
+                nav_val = Decimal(str(r["nav"]))
+                norm_val = (nav_val / base_nav * Decimal("100")).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP,
+                )
+                normalized.append({
+                    "date": r["nav_date"],
+                    "value": norm_val,
+                })
+
+            funds_result.append({
+                "mstar_id": mid,
+                "fund_name": fund_names.get(mid, mid),
+                "data": normalized,
+            })
+
+        return {"funds": funds_result, "benchmark": None}
+
+    def compare_risk_history(
+        self, mstar_ids: list[str], limit: int = 12,
+    ) -> dict:
+        """Multi-fund rolling risk (std_dev_1y) comparison over time.
+
+        Returns monthly std_dev_1y for each fund.
+        """
+        if len(mstar_ids) > 5:
+            raise ValidationError(
+                "Risk comparison supports at most 5 funds",
+                details={"count": len(mstar_ids)},
+            )
+
+        risk_histories = self.fund_repo.get_risk_stats_history_batch(
+            mstar_ids, limit=limit,
+        )
+
+        # Fetch fund names
+        fund_names: dict[str, str] = {}
+        for mid in mstar_ids:
+            fund = self.fund_repo.get_fund_by_mstar_id(mid)
+            fund_names[mid] = fund.fund_name if fund else mid
+
+        funds_result = []
+        for mid in mstar_ids:
+            entries = risk_histories.get(mid, [])
+            funds_result.append({
+                "mstar_id": mid,
+                "fund_name": fund_names.get(mid, mid),
+                "data": [
+                    {
+                        "date": e["as_of_date"],
+                        "std_dev_1y": e["std_dev_1y"],
+                    }
+                    for e in entries
+                ],
+            })
+
+        return {"funds": funds_result}
 
     def list_category_funds(
         self,
