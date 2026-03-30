@@ -155,105 +155,105 @@ export default function IntelligencePanel({
   const yLabel = yKey.includes('return_1y') ? '1Y' : yKey.includes('return_3y') ? '3Y' : yKey.includes('return_5y') ? '5Y' : '';
 
   return (
-    <div className="hidden lg:block col-span-3 space-y-3">
+    <div className="hidden lg:block col-span-3 space-y-4">
       {/* Market Context */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
+      <div className="glass-card p-5">
         <div className="flex items-center gap-1 mb-3">
           <p className="section-title">Market Context</p>
           <InfoIcon tip="Current market regime affects which funds perform well. In Risk-On regimes, aggressive funds outperform. In Risk-Off, defensive funds shine." />
         </div>
         {regime ? (
           <>
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-600">Regime</span>
-                <span className={`text-[11px] font-semibold ${regimeColor(regime.market_regime)}`}>
+                <span className="text-[13px] text-slate-600">Regime</span>
+                <span className={`text-[13px] font-bold ${regimeColor(regime.market_regime)}`}>
                   {regime.market_regime || 'Unknown'}
                 </span>
               </div>
               {regime.trend && (
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-slate-600">Trend</span>
-                  <span className="text-[11px] font-semibold text-slate-700">{regime.trend}</span>
+                  <span className="text-[13px] text-slate-600">Trend</span>
+                  <span className="text-[13px] font-bold text-slate-700">{regime.trend}</span>
                 </div>
               )}
               {topCategories.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-slate-100">
-                  <p className="text-[10px] text-slate-500 font-medium mb-1.5">Top Categories (visible)</p>
+                <div className="mt-3 pt-3 border-t border-slate-100">
+                  <p className="text-xs text-slate-500 font-semibold mb-2">Top Categories <span className="font-normal text-slate-400">(% of visible funds)</span></p>
                   {topCategories.map((cat) => (
-                    <div key={cat.name} className="flex items-center justify-between py-0.5">
-                      <span className="text-[10px] text-slate-600 truncate flex-1">{cat.name}</span>
-                      <span className="text-[10px] font-semibold text-teal-600 tabular-nums ml-2">{cat.pct}%</span>
+                    <div key={cat.name} className="flex items-center justify-between py-1">
+                      <span className="text-xs text-slate-600 truncate flex-1">{cat.name}</span>
+                      <div className="flex items-center gap-2 ml-2">
+                        <span className="text-xs font-bold text-teal-600 tabular-nums">{cat.pct}%</span>
+                        <span className="text-[11px] text-slate-400 tabular-nums">{cat.count}</span>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-            <div className={`mt-2 p-2 rounded-lg ${regimeBg(regime.market_regime)}`}>
-              <p className={`text-[9px] leading-relaxed ${regimeTextColor(regime.market_regime)}`}>
+            <div className={`mt-3 p-3 rounded-xl ${regimeBg(regime.market_regime)}`}>
+              <p className={`text-[11px] leading-relaxed ${regimeTextColor(regime.market_regime)}`}>
                 <strong>Implication:</strong> {regimeImplication(regime.market_regime)}
               </p>
             </div>
           </>
         ) : (
-          <p className="text-[10px] text-slate-400">Loading market data...</p>
+          <p className="text-xs text-slate-400">Loading market data...</p>
         )}
       </div>
 
       {/* Top 5 */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
+      <div className="glass-card p-5">
         <p className="section-title mb-3">Top 5 -- Visible Funds</p>
         <div className="space-y-2">
           {top5.map((fund, i) => {
             const retVal = Number(fund[yKey]) || 0;
-            const score = Number(fund[lensKey]) || 0;
             const aumCr = (Number(fund.aum) || 0) / 10000000;
             return (
               <button
                 key={fund.mstar_id}
                 type="button"
                 onClick={() => router.push(`/fund360?fund=${fund.mstar_id}`)}
-                className="fund-row w-full flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer text-left"
+                className="fund-row w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer text-left"
               >
-                <span className="text-[10px] text-slate-400 tabular-nums w-3">{i + 1}</span>
+                <span className="text-xs text-slate-400 font-bold tabular-nums w-4">{i + 1}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-medium text-slate-800 truncate">
+                  <p className="text-[13px] font-medium text-slate-800 truncate">
                     {fund.fund_name || fund.legal_name}
                   </p>
-                  <p className="text-[9px] text-slate-400">
+                  <p className="text-[11px] text-slate-400">
                     {fund.category_name || fund.broad_category} &middot; {formatAUM(aumCr)}
                   </p>
                 </div>
-                <span className={`text-[10px] font-bold tabular-nums ${retVal >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                <span className={`text-xs font-bold tabular-nums ${retVal >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   {formatPct(retVal)}
                 </span>
               </button>
             );
           })}
-          {top5.length === 0 && null}
         </div>
       </div>
 
       {/* Insights */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
+      <div className="glass-card p-5">
         <p className="section-title mb-3">Insights from Data</p>
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {insights.map((ins, i) => (
-            <div key={i} className="flex gap-2">
-              <span className={`${ins.iconColor} text-xs mt-0.5 flex-shrink-0`}>{ins.icon}</span>
-              <p className="text-[10px] text-slate-600 leading-relaxed">
+            <div key={i} className="flex gap-2.5">
+              <span className={`${ins.iconColor} text-sm mt-0.5 flex-shrink-0`}>{ins.icon}</span>
+              <p className="text-xs text-slate-600 leading-relaxed">
                 <strong>{ins.label}</strong>{ins.body}
               </p>
             </div>
           ))}
-          {insights.length === 0 && null}
         </div>
       </div>
 
       {/* How to use */}
-      <div className="bg-slate-50 rounded-xl border border-slate-100 p-3">
-        <p className="text-[10px] font-semibold text-slate-500 mb-1.5">How to Use This Chart</p>
-        <ul className="text-[9px] text-slate-500 space-y-1 leading-relaxed">
+      <div className="glass-card p-4" style={{ background: 'rgba(248, 250, 252, 0.9)' }}>
+        <p className="text-xs font-bold text-slate-500 mb-2">How to Use This Chart</p>
+        <ul className="text-[11px] text-slate-500 space-y-1.5 leading-relaxed">
           <li><strong>Click</strong> any bubble to see fund details</li>
           <li><strong>Double-click</strong> to open full Fund 360 view</li>
           <li><strong>Scroll</strong> to zoom in/out on clusters</li>

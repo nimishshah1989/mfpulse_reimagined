@@ -12,6 +12,7 @@ import TierSummary from '../components/universe/TierSummary';
 import IntelligencePanel from '../components/universe/IntelligencePanel';
 import FundCard from '../components/universe/FundCard';
 import SmartBuckets from '../components/dashboard/SmartBuckets';
+import UniverseInsights from '../components/universe/UniverseInsights';
 import { parseNLQuery, applyNLFilters } from '../lib/nl-search';
 
 const BubbleScatter = dynamic(
@@ -390,7 +391,7 @@ export default function UniversePage() {
   );
 
   return (
-    <div className="max-w-[1400px] mx-auto px-1 space-y-4">
+    <div className="max-w-[1440px] mx-auto px-2 space-y-5" style={{ backgroundColor: '#ffffff' }}>
       {/* NL Search Bar */}
       <div className="animate-in">
         <div className="relative">
@@ -399,28 +400,28 @@ export default function UniversePage() {
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder='Search: "high alpha small cap funds", "return > 20%", "technology sector"...'
-            className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none placeholder:text-slate-400"
+            className="w-full px-5 py-3 text-sm glass-card focus:ring-2 focus:ring-teal-400/40 focus:border-teal-400 outline-none placeholder:text-slate-400"
           />
           {searchQuery && (
             <button
               onClick={() => handleSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-lg"
             >
               ×
             </button>
           )}
         </div>
         {nlFilters && (
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span className="text-[10px] text-slate-400">Active filters:</span>
+          <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+            <span className="text-xs text-slate-400">Active filters:</span>
             {nlFilters.sectors.map((s) => (
-              <span key={s} className="text-[10px] px-2 py-0.5 bg-teal-50 text-teal-700 rounded-full">{s}</span>
+              <span key={s} className="text-xs px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded-full font-medium">{s}</span>
             ))}
             {nlFilters.categories.map((c) => (
-              <span key={c} className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">{c}</span>
+              <span key={c} className="text-xs px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full font-medium">{c}</span>
             ))}
             {nlFilters.numericFilters.map((nf, i) => (
-              <span key={i} className="text-[10px] px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full">
+              <span key={i} className="text-xs px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded-full font-medium">
                 {nf.field} {nf.operator === 'gt' ? '>' : '<'} {nf.value}
               </span>
             ))}
@@ -428,9 +429,9 @@ export default function UniversePage() {
         )}
       </div>
 
-      {/* Global Filters — matching dashboard */}
-      <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-2.5 animate-in">
-        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Filters</span>
+      {/* Global Filters */}
+      <div className="flex flex-wrap items-center gap-3 glass-card px-5 py-3 animate-in">
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filters</span>
         {GLOBAL_TOGGLES.map(({ key, label }) => {
           const active = globalFilters[key];
           return (
@@ -438,22 +439,22 @@ export default function UniversePage() {
               key={key}
               type="button"
               onClick={() => setGlobalFilters((prev) => ({ ...prev, [key]: !prev[key] }))}
-              className={`px-2.5 py-1 text-[10px] font-medium rounded-lg border transition-all ${
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
                 active
                   ? 'bg-teal-50 text-teal-700 border-teal-300 shadow-sm'
-                  : 'bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-600'
+                  : 'bg-white text-slate-400 border-slate-200 hover:text-slate-600'
               }`}
             >
               {active ? '\u2713 ' : ''}{label}
             </button>
           );
         })}
-        <span className="text-[10px] text-slate-400 ml-auto tabular-nums">
+        <span className="text-xs text-slate-400 ml-auto tabular-nums font-medium">
           {taggedFunds.length.toLocaleString('en-IN')} of {allFunds.length.toLocaleString('en-IN')} funds
         </span>
       </div>
 
-      {/* Section 1: Smart Screener Presets */}
+      {/* Smart Screener Presets */}
       <SmartPresets
         allFunds={globallyFiltered}
         activePreset={activePreset}
@@ -462,8 +463,8 @@ export default function UniversePage() {
         onViewModeChange={setViewMode}
       />
 
-      {/* Section 2: Filter Bar */}
-      <div ref={filterBarRef} className={activePreset === 'custom' ? 'ring-2 ring-teal-400 rounded-xl transition-all' : 'transition-all'}>
+      {/* Filter Bar */}
+      <div ref={filterBarRef} className={activePreset === 'custom' ? 'ring-2 ring-teal-400 rounded-2xl transition-all' : 'transition-all'}>
       <HorizontalFilterBar
         filters={filters}
         onFiltersChange={setFilters}
@@ -479,11 +480,11 @@ export default function UniversePage() {
       />
       </div>
 
-      {/* Fund Archetype Cards — Smart Buckets */}
+      {/* Fund Archetype Cards */}
       <SmartBuckets universe={globallyFiltered} />
 
-      {/* Section 3: Main 3-Column Layout (2:7:3) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 animate-in" style={{ animationDelay: '0.1s' }}>
+      {/* Main 3-Column Layout (2:7:3) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 animate-in" style={{ animationDelay: '0.1s' }}>
         {/* LEFT: Stats sidebar */}
         <TierSummary
           funds={taggedFunds}
@@ -496,17 +497,17 @@ export default function UniversePage() {
 
         {/* CENTER: Visualization */}
         <div className="col-span-12 lg:col-span-7">
-          <div className="flex items-center justify-between mb-2 px-1">
-            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="flex items-center justify-between mb-2.5 px-1">
+            <p className="text-[13px] font-bold text-slate-500 uppercase tracking-wider">
               Fund Universe{viewMode !== 'scatter' ? ` \u2014 ${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} View` : ''}
             </p>
-            <span className="text-xs font-bold text-teal-600 tabular-nums">
+            <span className="text-sm font-bold text-teal-600 tabular-nums">
               {taggedFunds.length.toLocaleString('en-IN')} funds
             </span>
           </div>
           <div
             ref={chartContainerRef}
-            className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden relative"
+            className="glass-card overflow-hidden relative"
             style={{
               height: viewMode === 'heatmap' ? 'auto' : Math.min(560, typeof window !== 'undefined' ? window.innerHeight - 240 : 560),
               minHeight: viewMode === 'heatmap' ? 400 : undefined,
@@ -562,9 +563,9 @@ export default function UniversePage() {
           </div>
           {/* Chart Guide — scatter only */}
           {viewMode === 'scatter' && (
-            <details className="mt-2 text-[10px] text-slate-400">
+            <details className="mt-2.5 text-xs text-slate-400">
               <summary className="cursor-pointer hover:text-slate-600 font-medium">Chart Guide</summary>
-              <ul className="mt-1 space-y-0.5 pl-3 list-disc">
+              <ul className="mt-1.5 space-y-1 pl-4 list-disc text-[11px]">
                 <li>Click a bubble to see fund details</li>
                 <li>Double-click to open Fund 360 view</li>
                 <li>Scroll to zoom in/out</li>
@@ -588,6 +589,15 @@ export default function UniversePage() {
         />
       </div>
 
+      {/* Below-scatter: Universe Insights */}
+      <UniverseInsights
+        funds={taggedFunds}
+        onCategoryClick={(cat) => {
+          setFilters((prev) => ({ ...prev, categories: [cat] }));
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
+
       {/* FundCard popup */}
       {selectedFund && (
         <>
@@ -610,16 +620,16 @@ export default function UniversePage() {
             top: Math.max(hoverPos.y - 40, 8),
           }}
         >
-          <div className="bg-white/97 border border-slate-200 rounded-xl shadow-lg px-3 py-2.5 max-w-64">
-            <p className="text-xs font-bold text-slate-800 truncate">
+          <div className="glass-card px-3.5 py-3 max-w-72 shadow-xl">
+            <p className="text-sm font-bold text-slate-800 truncate">
               {hoverFund.fund_name || hoverFund.legal_name}
             </p>
-            <p className="text-[9px] text-slate-400 truncate">
+            <p className="text-[11px] text-slate-400 truncate">
               {hoverFund.category_name || hoverFund.broad_category} &middot; AUM {formatAUM((Number(hoverFund.aum) || 0) / 10000000)}
             </p>
-            <div className="flex gap-3 mt-1.5 text-[10px]">
+            <div className="flex gap-3 mt-2 text-xs">
               <span>
-                <span className="text-slate-400">1Y Return: </span>
+                <span className="text-slate-400">1Y: </span>
                 <span className={`font-bold tabular-nums ${(Number(hoverFund.return_1y) || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   {formatPct(hoverFund.return_1y)}
                 </span>

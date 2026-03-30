@@ -97,16 +97,16 @@ export default function SmartPresets({ allFunds, activePreset, onPresetClick, vi
                 key={p.id}
                 type="button"
                 onClick={() => onPresetClick(activePreset === p.id ? null : p.id)}
-                className={`preset-card px-3.5 py-2 rounded-lg bg-white border ${p.borderClass} flex items-center gap-2 ${
+                className={`preset-card glass-card px-3.5 py-2.5 flex items-center gap-2 ${
                   activePreset === p.id ? 'ring-2 ring-teal-400 border-teal-300' : ''
                 }`}
               >
-                <span className={`${p.iconColor} text-sm`}>{p.icon}</span>
+                <span className={`${p.iconColor} text-base`}>{p.icon}</span>
                 <div>
-                  <p className="text-[11px] font-semibold text-slate-700">{p.label}</p>
-                  <p className="text-[9px] text-slate-400">{p.desc}</p>
+                  <p className="text-[13px] font-semibold text-slate-700">{p.label}</p>
+                  <p className="text-[11px] text-slate-400">{p.desc}</p>
                 </div>
-                <span className={`text-[10px] font-bold ${p.countColor} tabular-nums ml-1`}>
+                <span className={`text-xs font-bold ${p.countColor} tabular-nums ml-1`}>
                   {counts[p.id]}
                 </span>
               </button>
@@ -114,7 +114,7 @@ export default function SmartPresets({ allFunds, activePreset, onPresetClick, vi
             <button
               type="button"
               onClick={() => onPresetClick('custom')}
-              className={`px-3.5 py-2 rounded-lg border border-dashed text-[11px] transition-colors ${
+              className={`px-3.5 py-2.5 rounded-2xl border border-dashed text-[13px] transition-colors ${
                 activePreset === 'custom'
                   ? 'border-teal-400 text-teal-600 bg-teal-50'
                   : 'border-slate-300 text-slate-400 hover:border-teal-300 hover:text-teal-600'
@@ -137,7 +137,7 @@ export default function SmartPresets({ allFunds, activePreset, onPresetClick, vi
                 key={mode.id}
                 type="button"
                 onClick={() => onViewModeChange(mode.id)}
-                className={`px-2.5 py-1.5 text-[10px] font-medium rounded-md transition-colors whitespace-nowrap ${
+                className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                   viewMode === mode.id
                     ? 'bg-white shadow-sm text-teal-700 font-semibold'
                     : 'text-slate-500 hover:text-slate-700'

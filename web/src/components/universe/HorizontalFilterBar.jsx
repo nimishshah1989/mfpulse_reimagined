@@ -37,11 +37,11 @@ const COLOR_OPTIONS = [
 function FilterSelect({ label, value, onChange, children, className = '' }) {
   return (
     <div className={`flex items-center gap-1.5 ${className}`}>
-      {label && <span className="text-[9px] text-slate-400 uppercase font-semibold">{label}</span>}
+      {label && <span className="text-[11px] text-slate-400 uppercase font-bold">{label}</span>}
       <select
         value={value}
         onChange={onChange}
-        className="text-[11px] font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 min-w-0"
+        className="text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 min-w-0"
       >
         {children}
       </select>
@@ -112,7 +112,7 @@ export default function HorizontalFilterBar({
       key={m}
       type="button"
       onClick={() => update({ purchaseMode: m })}
-      className={`filter-pill px-2.5 py-1 text-[10px] font-medium border rounded-full ${
+      className={`filter-pill px-3 py-1.5 text-xs font-semibold border rounded-full ${
         purchaseMode === m
           ? 'active bg-teal-50 border-teal-500 text-teal-700'
           : 'border-slate-200 text-slate-500'
@@ -128,7 +128,7 @@ export default function HorizontalFilterBar({
       <select
         value={categories.length === 1 ? categories[0] : ''}
         onChange={(e) => update({ categories: e.target.value ? [e.target.value] : [] })}
-        className="text-[10px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1"
+        className="text-xs text-slate-600 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5"
       >
         <option value="">All Categories</option>
         {categoryList.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -136,7 +136,7 @@ export default function HorizontalFilterBar({
       <select
         value={amcs.length === 1 ? amcs[0] : ''}
         onChange={(e) => update({ amcs: e.target.value ? [e.target.value] : [] })}
-        className="text-[10px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1"
+        className="text-xs text-slate-600 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5"
       >
         <option value="">All AMCs</option>
         {amcList.map((a) => <option key={a} value={a}>{a}</option>)}
@@ -144,7 +144,7 @@ export default function HorizontalFilterBar({
       <select
         value={aumRange}
         onChange={(e) => update({ aumRange: e.target.value })}
-        className="text-[10px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1"
+        className="text-xs text-slate-600 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5"
       >
         {AUM_RANGES.map((r) => <option key={r.label} value={r.label}>{r.label}</option>)}
       </select>
@@ -152,7 +152,7 @@ export default function HorizontalFilterBar({
   );
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 animate-in" style={{ animationDelay: '0.05s' }}>
+    <div className="glass-card px-5 py-3.5 animate-in" style={{ animationDelay: '0.05s' }}>
       {/* Desktop layout */}
       <div className="hidden md:flex items-center gap-3 flex-wrap">
         {axisSelectors}
@@ -165,8 +165,8 @@ export default function HorizontalFilterBar({
           {dataFilters}
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-xs font-bold text-teal-600 tabular-nums">{filteredCount.toLocaleString('en-IN')}</p>
-          <p className="text-[9px] text-slate-400">of {totalCount.toLocaleString('en-IN')} shown</p>
+          <p className="text-sm font-bold text-teal-600 tabular-nums">{filteredCount.toLocaleString('en-IN')}</p>
+          <p className="text-[11px] text-slate-400">of {totalCount.toLocaleString('en-IN')} shown</p>
         </div>
       </div>
 
