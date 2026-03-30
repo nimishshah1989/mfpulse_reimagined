@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import SectionTitle from '../shared/SectionTitle';
+import InfoBulb from '../shared/InfoBulb';
 
 const QUADRANT_CELL = {
   Leading: {
@@ -319,6 +320,13 @@ export default function RotationHeatmap({
         </div>
         <RotationCommentary sectorData={sectorData} sectorDataMap={sectorDataMap} numMonths={NUM_MONTHS} />
       </div>
+
+      <InfoBulb title="Rotation Heatmap" items={[
+        { icon: '🔄', label: 'Rotation cycle', text: 'Sectors follow a clockwise rotation: Lagging → Improving → Leading → Weakening → Lagging. This takes months to complete.' },
+        { icon: '📊', label: 'How to read', text: 'Each cell shows which quadrant a sector was in for that month. Track left-to-right to see the journey. "Now" column is current.' },
+        { icon: '🎯', label: 'What to look for', text: 'Sectors moving from LAG→IMP are early buy signals. LED→WKN means take profits. Persistent LED = strong trend. Persistent LAG = avoid.' },
+        { icon: '↗️', label: 'Trend column', text: 'Shows the direction of movement: improving (↗), stable leading (→), declining (↘), or stuck lagging (×).' },
+      ]} />
     </div>
   );
 }

@@ -364,6 +364,8 @@ class SectorRotationService:
                 "risk_score": float(lens.risk_score) if lens and lens.risk_score else None,
                 "alpha_score": float(lens.alpha_score) if lens and lens.alpha_score else None,
                 "consistency_score": float(lens.consistency_score) if lens and lens.consistency_score else None,
+                "efficiency_score": float(lens.efficiency_score) if lens and lens.efficiency_score else None,
+                "resilience_score": float(lens.resilience_score) if lens and lens.resilience_score else None,
             })
 
         return result

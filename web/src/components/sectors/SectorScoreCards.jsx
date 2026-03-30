@@ -6,6 +6,7 @@
 import { useMemo } from 'react';
 import { QUADRANT_COLORS } from '../../lib/sectors';
 import { formatAUMRaw, formatPct } from '../../lib/format';
+import InfoBulb from '../shared/InfoBulb';
 
 const QUADRANT_ACTIONS = {
   Leading: { text: 'Overweight', icon: '↑' },
@@ -167,6 +168,13 @@ export default function SectorScoreCards({ sectors, onSectorClick }) {
           />
         ))}
       </div>
+
+      <InfoBulb title="Score Cards" items={[
+        { icon: '📊', label: 'RS Score', text: 'Relative Strength (0-100). Measures this sector\'s AUM-weighted 1Y return vs the average of all 11 Morningstar sectors. >50 = outperforming.' },
+        { icon: '📈', label: 'Momentum arrow', text: 'Direction of RS Score change. Green up = sector gaining strength. Red down = losing strength.' },
+        { icon: '🏷️', label: 'Action', text: 'Overweight = add more. Accumulate = start building. Reduce = trim exposure. Avoid = stay away until trajectory changes.' },
+        { icon: '👆', label: 'Click', text: 'Click any card to open the full sector deep-dive with fund analysis, recommendations, and market context.' },
+      ]} />
     </div>
   );
 }

@@ -36,6 +36,7 @@ import MoneyFlowChart from '../components/sectors/MoneyFlowChart';
 import RotationHeatmap from '../components/sectors/RotationHeatmap';
 import FundExposureMatrix from '../components/sectors/FundExposureMatrix';
 import SectorDeepDive from '../components/sectors/SectorDeepDive';
+import InfoBulb from '../components/shared/InfoBulb';
 
 function buildRotationNarrative(sectors) {
   if (!sectors || sectors.length === 0) return null;
@@ -129,6 +130,9 @@ export default function SectorsPage() {
           rs_score: h.rs_score,
           rs_momentum: h.momentum_1m,
           snapshot_date: h.snapshot_date,
+          total_aum_exposed: h.total_aum_exposed,
+          weighted_return: h.weighted_return,
+          momentum_3m: h.momentum_3m,
         });
       }
       for (const name of Object.keys(historyMap)) {
@@ -343,6 +347,15 @@ export default function SectorsPage() {
               </p>
             </div>
           )}
+
+          <InfoBulb title="Sector Rotation Compass" items={[
+            { icon: '🧭', label: 'Axes', text: 'X-axis = RS Score (Relative Strength, 0-100). Measures this sector\'s AUM-weighted return vs all 11 sectors. Y-axis = RS Momentum (score change vs last month). Higher = strengthening.' },
+            { icon: '📐', label: 'Quadrants', text: 'Top-right (Leading) = strong + gaining → overweight. Top-left (Improving) = weak but gaining → early entry. Bottom-right (Weakening) = strong but fading → reduce. Bottom-left (Lagging) = weak + fading → avoid.' },
+            { icon: '- - -', label: 'Dotted lines', text: 'The dashed lines are QUADRANT DIVIDERS at RS=50 (vertical) and Momentum=0 (horizontal). They split the chart into 4 zones. RS>50 means outperforming the average sector.' },
+            { icon: '···', label: 'Trail dots', text: 'Small dots connected by dashed lines behind each bubble show the sector\'s HISTORICAL PATH through the compass over previous months. This reveals the direction of travel — e.g., a sector moving from bottom-left to top-left is improving.' },
+            { icon: '⭕', label: 'Bubble size', text: 'Proportional to the number of funds with exposure to that sector. Larger = more widely held.' },
+            { icon: '👆', label: 'Click', text: 'Click any sector bubble to open its full deep-dive section below with fund analysis, recommendations, and market context.' },
+          ]} />
         </div>
       )}
 

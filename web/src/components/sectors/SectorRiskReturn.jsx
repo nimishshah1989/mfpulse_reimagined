@@ -7,6 +7,7 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { QUADRANT_COLORS } from '../../lib/sectors';
 import { formatPct, formatAUMRaw } from '../../lib/format';
+import InfoBulb from '../shared/InfoBulb';
 
 const MARGIN = { top: 24, right: 24, bottom: 40, left: 52 };
 
@@ -251,6 +252,13 @@ export default function SectorRiskReturn({ sectors, onSectorClick }) {
           </div>
         )}
       </div>
+
+      <InfoBulb title="Strength vs Momentum" items={[
+        { icon: '📊', label: 'X-axis', text: 'RS Score (0-100): how this sector\'s weighted return compares to the average across all 11 sectors. >50 = outperforming.' },
+        { icon: '📈', label: 'Y-axis', text: 'RS Momentum: change in RS Score vs last month. Positive = sector is gaining relative strength, negative = losing.' },
+        { icon: '⭕', label: 'Bubble size', text: 'Total AUM deployed in each sector (fund AUM × sector exposure %). Larger = more capital at stake.' },
+        { icon: '🎯', label: 'Best position', text: 'Top-right = strong AND accelerating. These sectors have both high relative returns and improving trajectory.' },
+      ]} />
     </div>
   );
 }

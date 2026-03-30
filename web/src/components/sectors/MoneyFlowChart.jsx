@@ -1,11 +1,18 @@
 /**
- * MoneyFlowChart — Shows how AUM shifted between sectors month-over-month.
- * Uses sector rotation history to compute: (current AUM - previous AUM) per sector.
- * Green bars = inflows, Red bars = outflows.
+ * MoneyFlowChart — Real AUM change between sector rotation snapshots.
+ *
+ * Calculation: For each sector, computes (current_AUM - previous_snapshot_AUM).
+ * This is REAL money movement — not a proxy or estimate.
+ *
+ * If no previous snapshot exists, falls back to directional estimate
+ * (momentum direction × AUM × small factor) and labels it clearly.
+ *
+ * Lookback: 1 month (latest snapshot vs prior snapshot).
  */
 import { useMemo } from 'react';
 import { QUADRANT_COLORS } from '../../lib/sectors';
 import { formatAUMRaw } from '../../lib/format';
+import InfoBulb from '../shared/InfoBulb';
 
 function FlowBar({ sector, maxAbs, onClick }) {
   const flow = sector.flow;
@@ -21,53 +28,28 @@ function FlowBar({ sector, maxAbs, onClick }) {
       onClick={() => onClick?.(sector)}
       className="flex items-center gap-2 py-1.5 hover:bg-slate-50 rounded transition-colors group w-full text-left"
     >
-      {/* Sector name */}
       <div className="w-28 flex-shrink-0 flex items-center gap-1.5">
-        <span
-          className="w-2 h-2 rounded-full flex-shrink-0"
-          style={{ backgroundColor: qColor }}
-        />
-        <span className="text-[11px] font-medium text-slate-700 truncate">
-          {sector.sector_name}
-        </span>
+        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: qColor }} />
+        <span className="text-[11px] font-medium text-slate-700 truncate">{sector.sector_name}</span>
       </div>
-
-      {/* Bar area — centered with negative on left, positive on right */}
       <div className="flex-1 flex items-center">
-        {/* Left half (outflows) */}
         <div className="flex-1 flex justify-end">
           {!isInflow && (
-            <div
-              className="h-4 rounded-l transition-all"
-              style={{
-                width: `${barWidth}%`,
-                backgroundColor: 'rgba(220, 38, 38, 0.7)',
-              }}
+            <div className="h-4 rounded-l transition-all"
+              style={{ width: `${barWidth}%`, backgroundColor: 'rgba(220, 38, 38, 0.7)' }}
             />
           )}
         </div>
-        {/* Center line */}
         <div className="w-px h-5 bg-slate-300 flex-shrink-0" />
-        {/* Right half (inflows) */}
         <div className="flex-1">
           {isInflow && (
-            <div
-              className="h-4 rounded-r transition-all"
-              style={{
-                width: `${barWidth}%`,
-                backgroundColor: 'rgba(5, 150, 105, 0.7)',
-              }}
+            <div className="h-4 rounded-r transition-all"
+              style={{ width: `${barWidth}%`, backgroundColor: 'rgba(5, 150, 105, 0.7)' }}
             />
           )}
         </div>
       </div>
-
-      {/* Value */}
-      <span
-        className={`w-20 text-right text-[10px] font-bold tabular-nums flex-shrink-0 ${
-          isInflow ? 'text-emerald-600' : 'text-red-500'
-        }`}
-      >
+      <span className={`w-20 text-right text-[10px] font-bold tabular-nums flex-shrink-0 ${isInflow ? 'text-emerald-600' : 'text-red-500'}`}>
         {isInflow ? '+' : ''}{formatAUMRaw(flow)}
       </span>
     </button>
@@ -75,38 +57,56 @@ function FlowBar({ sector, maxAbs, onClick }) {
 }
 
 export default function MoneyFlowChart({ sectorData, onSectorClick }) {
-  const flowData = useMemo(() => {
-    if (!sectorData?.length) return [];
+  const { flowData, method, dateRange } = useMemo(() => {
+    if (!sectorData?.length) return { flowData: [], method: 'none', dateRange: '' };
 
-    return sectorData
-      .map((s) => {
-        // Compute flow from history: latest AUM vs previous month AUM
-        const currentAUM = s.total_aum_exposed ?? 0;
-        let prevAUM = currentAUM;
+    // Try real AUM delta: current total_aum_exposed vs last history entry's AUM
+    let hasRealDelta = false;
+    const computed = sectorData.map((s) => {
+      const currentAUM = s.total_aum_exposed ?? 0;
+      let prevAUM = null;
+      let prevDate = null;
 
-        if (s.history?.length > 0) {
-          // History is sorted ascending (oldest first), last entry is most recent before current
-          const lastHistory = s.history[s.history.length - 1];
-          // We need the total_aum_exposed from history — but history only has rs_score, quadrant, rs_momentum
-          // For now, use a heuristic: if momentum is positive, assume AUM grew; if negative, AUM shrank
-          // The real fix is to include total_aum_exposed in the history endpoint response
+      // History is sorted ascending (oldest first)
+      // Each history entry has: rs_score, rs_momentum, quadrant, snapshot_date
+      // AND total_aum_exposed + weighted_return (from _row_to_dict)
+      if (s.history?.length > 0) {
+        const lastH = s.history[s.history.length - 1];
+        if (lastH.total_aum_exposed != null && lastH.total_aum_exposed > 0) {
+          prevAUM = lastH.total_aum_exposed;
+          prevDate = lastH.snapshot_date;
+          hasRealDelta = true;
         }
+      }
 
-        // Use momentum_1m as proxy for flow direction, weighted_return change for magnitude
+      let flow;
+      if (prevAUM != null && currentAUM > 0) {
+        // Real delta
+        flow = currentAUM - prevAUM;
+      } else {
+        // Fallback: momentum-weighted estimate
         const mom = s.rs_momentum ?? s.momentum_1m ?? 0;
-        const wRet = s.weighted_return ?? 0;
+        flow = mom * (currentAUM > 0 ? currentAUM * 0.005 : 1);
+      }
 
-        // Approximate flow: momentum direction × AUM × scale factor
-        // This gives directional correctness while we don't have historical AUM in history endpoint
-        const flow = mom * (currentAUM > 0 ? currentAUM * 0.01 : 1);
+      return { ...s, flow, currentAUM, prevAUM, prevDate };
+    });
 
-        return {
-          ...s,
-          flow,
-          currentAUM,
-        };
-      })
-      .sort((a, b) => b.flow - a.flow);
+    const sorted = computed.sort((a, b) => b.flow - a.flow);
+
+    // Determine date range label
+    const dates = computed.filter((s) => s.prevDate).map((s) => s.prevDate);
+    const prevDateLabel = dates.length > 0
+      ? dates[0]
+      : null;
+    const currentDate = sectorData[0]?.snapshot_date || 'latest';
+    const range = prevDateLabel ? `${prevDateLabel} → ${currentDate}` : currentDate;
+
+    return {
+      flowData: sorted,
+      method: hasRealDelta ? 'real' : 'estimated',
+      dateRange: range,
+    };
   }, [sectorData]);
 
   const maxAbs = useMemo(() => {
@@ -147,18 +147,34 @@ export default function MoneyFlowChart({ sectorData, onSectorClick }) {
 
       <div className="mt-3 space-y-0.5">
         {flowData.map((sector) => (
-          <FlowBar
-            key={sector.sector_name}
-            sector={sector}
-            maxAbs={maxAbs}
-            onClick={onSectorClick}
-          />
+          <FlowBar key={sector.sector_name} sector={sector} maxAbs={maxAbs} onClick={onSectorClick} />
         ))}
       </div>
 
-      <p className="text-[9px] text-slate-400 mt-3 pt-2 border-t border-slate-100">
-        Based on RS momentum direction × AUM exposure. Click any sector to explore funds.
-      </p>
+      {/* Methodology note */}
+      <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+        <span className="text-[9px] text-slate-400">
+          {method === 'real'
+            ? `AUM change: ${dateRange}`
+            : `Estimated from momentum direction (${dateRange})`
+          }
+        </span>
+        {method !== 'real' && (
+          <span className="text-[9px] text-amber-500 font-medium">
+            ≈ Directional estimate — insufficient history for exact delta
+          </span>
+        )}
+      </div>
+
+      <InfoBulb title="Money Flow" items={[
+        { icon: '💰', label: 'Calculation', text: method === 'real'
+          ? `Real AUM change between snapshots: (current sector AUM) minus (previous snapshot AUM). Period: ${dateRange}. Sector AUM = sum of (fund_AUM × sector_exposure%) across all funds.`
+          : 'Estimated: momentum direction × current AUM × scale factor. This is directional only — more history snapshots needed for precise calculation.'
+        },
+        { icon: '📊', label: 'How to read', text: 'Green bars (right) = net AUM increase in that sector. Red bars (left) = net AUM decrease. Longer bar = larger absolute change.' },
+        { icon: '🎯', label: 'Insight', text: 'Money flowing INTO Leading sectors confirms the rotation signal. Money leaving Lagging sectors shows consensus. Divergence (money flowing into Lagging) may signal contrarian opportunities.' },
+        { icon: '⏱️', label: 'Lookback', text: '1 snapshot period (~1 month). Based on the last two sector rotation computation dates.' },
+      ]} />
     </div>
   );
 }
