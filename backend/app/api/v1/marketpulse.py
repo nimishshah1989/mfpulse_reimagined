@@ -101,9 +101,24 @@ def get_nifty() -> APIResponse:
         elif isinstance(indices_data, dict):
             nifty = indices_data.get("NIFTY") or indices_data.get("nifty") or indices_data
 
+    # Build all_indices map keyed by normalized name (e.g. BANKNIFTY, NIFTYIT)
+    all_indices = {}
+    if indices_data:
+        if isinstance(indices_data, list):
+            for idx in indices_data:
+                if isinstance(idx, dict):
+                    name = (idx.get("name") or idx.get("symbol") or "").upper().replace(" ", "").replace("_", "")
+                    if name:
+                        all_indices[name] = idx
+        elif isinstance(indices_data, dict):
+            for key, val in indices_data.items():
+                norm = key.upper().replace(" ", "").replace("_", "")
+                all_indices[norm] = val if isinstance(val, dict) else {"value": val}
+
     combined = {
         "index": nifty,
         "returns": returns_data,
+        "all_indices": all_indices,
     }
     return APIResponse(data=combined)
 

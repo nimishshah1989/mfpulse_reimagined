@@ -69,7 +69,8 @@ function applyGlobalFilters(funds, filters) {
   if (filters.regularOnly) {
     result = result.filter((f) => {
       if (f.purchase_mode) return f.purchase_mode === 'Regular';
-      return !(f.fund_name || '').includes('Dir ');
+      const name = (f.fund_name || '').toLowerCase();
+      return !name.includes('direct') && !name.includes('dir ') && !name.includes('dir-');
     });
   }
 
@@ -95,6 +96,7 @@ export default function DashboardPage() {
 
   const [loading, setLoading] = useState(true);
   const [nifty, setNifty] = useState(null);
+  const [allIndices, setAllIndices] = useState(null);
   const [regime, setRegime] = useState(null);
   const [sentiment, setSentiment] = useState(null);
   const [sentimentRaw, setSentimentRaw] = useState(null);
@@ -112,10 +114,32 @@ export default function DashboardPage() {
     minAum: true,
   });
 
-  // Apply global filters to universe
+  // Apply global filters to universe + inject derived alpha
   const filteredUniverse = useMemo(() => {
     if (!universe) return null;
-    return applyGlobalFilters(universe, filters);
+    const filtered = applyGlobalFilters(universe, filters);
+
+    // Compute category average return_1y for derived alpha
+    const catReturns = {};
+    filtered.forEach((f) => {
+      const cat = f.category_name;
+      if (!cat || f.return_1y == null) return;
+      if (!catReturns[cat]) catReturns[cat] = { sum: 0, count: 0 };
+      catReturns[cat].sum += Number(f.return_1y);
+      catReturns[cat].count += 1;
+    });
+    const catAvg = {};
+    Object.entries(catReturns).forEach(([cat, { sum, count }]) => {
+      catAvg[cat] = sum / count;
+    });
+
+    return filtered.map((f) => {
+      if (f.return_1y != null && f.category_name && catAvg[f.category_name] != null) {
+        const derivedAlpha = Number(f.return_1y) - catAvg[f.category_name];
+        return { ...f, derived_alpha: derivedAlpha, cat_avg_return_1y: catAvg[f.category_name] };
+      }
+      return f;
+    });
   }, [universe, filters]);
 
   // Also filter the matrix data
@@ -142,7 +166,10 @@ export default function DashboardPage() {
         fetchFundArchetypes(),                               // 7: archetypes
       ]);
 
-      if (results[0].status === 'fulfilled') setNifty(results[0].value.data);
+      if (results[0].status === 'fulfilled') {
+        setNifty(results[0].value.data);
+        setAllIndices(results[0].value.data?.all_indices || null);
+      }
       if (results[1].status === 'fulfilled') setRegime(results[1].value.data);
       if (results[2].status === 'fulfilled') {
         const raw = results[2].value.data;
@@ -194,7 +221,7 @@ export default function DashboardPage() {
       />
 
       {/* Row 1: Market Pulse Strip */}
-      <MarketPulseStrip nifty={nifty} regime={regime} sentiment={sentiment} sentimentRaw={sentimentRaw} breadth={breadthData} loading={loading} />
+      <MarketPulseStrip nifty={nifty} regime={regime} sentiment={sentiment} sentimentRaw={sentimentRaw} breadth={breadthData} allIndices={allIndices} loading={loading} />
 
       {/* Row 2: Sector Rotation + Category Bubble */}
       <SectorRotation sectors={sectors} universe={filteredUniverse} loading={loading} onFundClick={handleFundClick} />

@@ -87,14 +87,28 @@ export default function LensFingerprint({ universe: rawUniverse, archetypes: ser
   const archetypeGrid = useMemo(() => {
     if (serverArchetypes?.length) return [...serverArchetypes].sort((a, b) => b.count - a.count);
     if (!universe.length) return [];
-    const counts = {};
+    const groups = {};
     universe.forEach(f => {
       const id = classifyArchetype(f);
-      if (!counts[id]) counts[id] = { archetype_id: id, name: id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), count: 0, lens_pattern: {} };
-      counts[id].count += 1;
+      if (!groups[id]) groups[id] = { archetype_id: id, name: id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), count: 0, funds: [] };
+      groups[id].count += 1;
+      groups[id].funds.push(f);
     });
     const total = universe.length || 1;
-    return Object.values(counts).map(a => ({ ...a, percentage: (a.count / total) * 100 })).sort((a, b) => b.count - a.count);
+    return Object.values(groups).map(a => {
+      // Pick the dominant lens pattern from the archetype's funds (most common tier per lens)
+      const pattern = {};
+      LENS_KEYS.forEach(k => {
+        const tierCounts = {};
+        a.funds.forEach(f => {
+          const tier = f[k];
+          if (tier) tierCounts[tier] = (tierCounts[tier] || 0) + 1;
+        });
+        const best = Object.entries(tierCounts).sort((x, y) => y[1] - x[1])[0];
+        pattern[k] = best ? best[0] : null;
+      });
+      return { archetype_id: a.archetype_id, name: a.name, count: a.count, percentage: (a.count / total) * 100, lens_pattern: pattern };
+    }).sort((a, b) => b.count - a.count);
   }, [universe, serverArchetypes]);
 
   const SORT_OPTIONS = [

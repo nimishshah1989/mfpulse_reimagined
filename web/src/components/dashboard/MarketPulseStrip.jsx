@@ -88,25 +88,21 @@ function CardShell({ children }) {
   );
 }
 
-function NiftyCard({ nifty }) {
+function NiftyCard({ nifty, allIndices }) {
   const idx = nifty?.index ?? {};
-  const returns = nifty?.returns ?? {};
-
-  // Period returns from MarketPulse /api/indices/latest
-  const periodReturns = [];
-  if (returns.return_1m != null) periodReturns.push({ label: '1M', value: returns.return_1m });
-  if (returns.return_3m != null) periodReturns.push({ label: '3M', value: returns.return_3m });
-  if (returns.return_6m != null) periodReturns.push({ label: '6M', value: returns.return_6m });
-  if (returns.return_1y != null) periodReturns.push({ label: '1Y', value: returns.return_1y });
-  if (returns.return_ytd != null) periodReturns.push({ label: 'YTD', value: returns.return_ytd });
-
-  // Day range bar
+  const current = idx.current_price;
   const dayLow = idx.low;
   const dayHigh = idx.high;
-  const current = idx.current_price;
   const dayPct = (dayLow != null && dayHigh != null && current != null && dayHigh > dayLow)
     ? ((current - dayLow) / (dayHigh - dayLow)) * 100
     : null;
+
+  // Key sector indices from MarketPulse
+  const SECTOR_INDICES = ['BANKNIFTY', 'NIFTYIT', 'NIFTYPHARMA', 'NIFTYFMCG'];
+  const SECTOR_LABELS = { BANKNIFTY: 'Bank Nifty', NIFTYIT: 'IT', NIFTYPHARMA: 'Pharma', NIFTYFMCG: 'FMCG' };
+  const sectorIndices = SECTOR_INDICES
+    .map((key) => allIndices?.[key] ? { label: SECTOR_LABELS[key], ...allIndices[key] } : null)
+    .filter(Boolean);
 
   return (
     <CardShell>
@@ -124,7 +120,7 @@ function NiftyCard({ nifty }) {
 
       {/* Day Range Bar */}
       {dayPct != null && (
-        <div className="mt-2.5">
+        <div className="mt-2">
           <div className="flex items-center justify-between text-[9px] text-slate-400 mb-0.5">
             <span>{formatPrice(dayLow)}</span>
             <span className="text-[8px] uppercase">Day Range</span>
@@ -136,44 +132,33 @@ function NiftyCard({ nifty }) {
         </div>
       )}
 
-      {/* OHLC Row */}
-      <div className="flex gap-3 mt-2.5">
-        {[
-          { key: 'open', label: 'Open' },
-          { key: 'prev_close', label: 'Prev' },
-        ].map(({ key, label }) => (
-          <div key={key} className="flex flex-col">
-            <span className="text-[9px] uppercase text-slate-400">{label}</span>
-            <span className="text-[11px] font-mono tabular-nums text-slate-700">
-              {formatPrice(idx[key])}
-            </span>
-          </div>
-        ))}
-        {idx.volume != null && (
-          <div className="flex flex-col">
-            <span className="text-[9px] uppercase text-slate-400">Volume</span>
-            <span className="text-[11px] font-mono tabular-nums text-slate-700">
-              {(Number(idx.volume) / 1e6).toFixed(1)}M
-            </span>
-          </div>
-        )}
+      {/* Open / Prev Close */}
+      <div className="flex gap-4 mt-2">
+        <div className="flex flex-col">
+          <span className="text-[9px] uppercase text-slate-400">Open</span>
+          <span className="text-[11px] font-mono tabular-nums text-slate-700">{formatPrice(idx.open)}</span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[9px] uppercase text-slate-400">Prev Close</span>
+          <span className="text-[11px] font-mono tabular-nums text-slate-700">{formatPrice(idx.prev_close)}</span>
+        </div>
       </div>
 
-      {/* Period Returns from MarketPulse */}
-      {periodReturns.length > 0 && (
-        <div className="border-t border-slate-100 mt-2.5 pt-2">
-          <div className="flex gap-2 flex-wrap">
-            {periodReturns.map(({ label, value }) => {
-              const v = Number(value);
-              return (
-                <div key={label} className="flex flex-col items-center">
-                  <span className="text-[8px] uppercase text-slate-400">{label}</span>
-                  <span className={`text-[11px] font-mono tabular-nums font-semibold ${v >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                    {v >= 0 ? '+' : ''}{v.toFixed(1)}%
+      {/* Sector Indices */}
+      {sectorIndices.length > 0 && (
+        <div className="border-t border-slate-100 mt-2 pt-2">
+          <div className="space-y-1">
+            {sectorIndices.map((si) => (
+              <div key={si.label} className="flex items-center justify-between">
+                <span className="text-[10px] text-slate-600">{si.label}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono tabular-nums text-slate-700">{formatPrice(si.current_price)}</span>
+                  <span className={`text-[10px] font-mono tabular-nums font-semibold ${changePctColor(si.change_pct)}`}>
+                    {formatChangePct(si.change_pct)}
                   </span>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -276,17 +261,20 @@ function SentimentCard({ sentiment, sentimentRaw }) {
         <div className="mb-2.5">
           <p className="text-[9px] uppercase text-slate-400 font-semibold mb-1">Short Term</p>
           <div className="space-y-1">
-            {shortTermMetrics.map((m) => (
-              <div key={m.key} className="flex items-center justify-between">
-                <span className="text-[10px] text-slate-600 truncate mr-2">{formatMetricLabel(m.key)}</span>
-                <span
-                  className="text-[11px] font-mono tabular-nums font-semibold shrink-0"
-                  style={{ color: scoreColor(m.pct) }}
-                >
-                  {Number(m.pct).toFixed(1)}%
-                </span>
-              </div>
-            ))}
+            {shortTermMetrics.map((m) => {
+              const count = Math.round((Number(m.pct) / 100) * 500);
+              return (
+                <div key={m.key} className="flex items-center justify-between">
+                  <span className="text-[10px] text-slate-600 truncate mr-2">{formatMetricLabel(m.key)}</span>
+                  <span
+                    className="text-[11px] font-mono tabular-nums font-semibold shrink-0"
+                    style={{ color: scoreColor(m.pct) }}
+                  >
+                    {count}/500
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -296,17 +284,20 @@ function SentimentCard({ sentiment, sentimentRaw }) {
         <div>
           <p className="text-[9px] uppercase text-slate-400 font-semibold mb-1">Long Term</p>
           <div className="space-y-1">
-            {longTermMetrics.map((m) => (
-              <div key={m.key} className="flex items-center justify-between">
-                <span className="text-[10px] text-slate-600 truncate mr-2">{formatMetricLabel(m.key)}</span>
-                <span
-                  className="text-[11px] font-mono tabular-nums font-semibold shrink-0"
-                  style={{ color: scoreColor(m.pct) }}
-                >
-                  {Number(m.pct).toFixed(1)}%
-                </span>
-              </div>
-            ))}
+            {longTermMetrics.map((m) => {
+              const count = Math.round((Number(m.pct) / 100) * 500);
+              return (
+                <div key={m.key} className="flex items-center justify-between">
+                  <span className="text-[10px] text-slate-600 truncate mr-2">{formatMetricLabel(m.key)}</span>
+                  <span
+                    className="text-[11px] font-mono tabular-nums font-semibold shrink-0"
+                    style={{ color: scoreColor(m.pct) }}
+                  >
+                    {count}/500
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -378,7 +369,7 @@ function LoadingSkeleton() {
   );
 }
 
-export default function MarketPulseStrip({ nifty, regime, sentiment, sentimentRaw, breadth, loading }) {
+export default function MarketPulseStrip({ nifty, regime, sentiment, sentimentRaw, breadth, allIndices, loading }) {
   if (loading) return <LoadingSkeleton />;
 
   return (
@@ -387,7 +378,7 @@ export default function MarketPulseStrip({ nifty, regime, sentiment, sentimentRa
         Market Pulse
       </h2>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <NiftyCard nifty={nifty} />
+        <NiftyCard nifty={nifty} allIndices={allIndices} />
         <RegimeCard regime={regime} />
         <SentimentCard sentiment={sentiment} sentimentRaw={sentimentRaw} />
         <BreadthCard breadth={breadth} />
