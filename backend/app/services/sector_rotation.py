@@ -584,23 +584,39 @@ class SectorRotationService:
         return result
 
     def _get_previous_rs_scores(self, target_date: date, months_back: int = 1) -> dict:
-        """Get RS scores from a previous snapshot for momentum calculation."""
-        ideal_date = target_date - timedelta(days=months_back * 30)
-        cutoff_low = target_date - timedelta(days=months_back * 50)
-        row = (
-            self.db.query(SectorRotationHistory.snapshot_date)
-            .filter(
-                SectorRotationHistory.snapshot_date >= cutoff_low,
-                SectorRotationHistory.snapshot_date < target_date,
+        """Get RS scores from a previous snapshot for momentum calculation.
+
+        For 1M: pick the most recent snapshot before target (short-term momentum).
+        For 3M+: find the snapshot closest to N months ago (longer-term momentum).
+        This ensures 1M and 3M reference different snapshots when possible.
+        """
+        if months_back <= 1:
+            # 1M: most recent snapshot before target
+            row = (
+                self.db.query(SectorRotationHistory.snapshot_date)
+                .filter(SectorRotationHistory.snapshot_date < target_date)
+                .order_by(SectorRotationHistory.snapshot_date.desc())
+                .limit(1)
+                .first()
             )
-            .order_by(
-                func.abs(
-                    SectorRotationHistory.snapshot_date - ideal_date
+        else:
+            # 3M+: find snapshot closest to ideal_date
+            ideal_date = target_date - timedelta(days=months_back * 30)
+            cutoff_low = target_date - timedelta(days=months_back * 50)
+            row = (
+                self.db.query(SectorRotationHistory.snapshot_date)
+                .filter(
+                    SectorRotationHistory.snapshot_date >= cutoff_low,
+                    SectorRotationHistory.snapshot_date < target_date,
                 )
+                .order_by(
+                    func.abs(
+                        SectorRotationHistory.snapshot_date - ideal_date
+                    )
+                )
+                .limit(1)
+                .first()
             )
-            .limit(1)
-            .first()
-        )
         if not row:
             return {}
 
