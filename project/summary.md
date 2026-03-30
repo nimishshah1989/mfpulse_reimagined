@@ -1,11 +1,11 @@
 # mfpulse_reimagined — Auto-Generated Summary
-_Last updated: 2026-03-29 18:39 (auto-generated — Claude did not write a proper summary)_
+_Last updated: 2026-03-30 12:11 (auto-generated — Claude did not write a proper summary)_
 
 ## Current state
-Branch: feature/pr-14b-strategies-dashboard | Last commit: 7a76ea2 fix(models): replace Mapped[None] with proper types across all 11 ORM models
-Recent changes:  38 files changed, 395 insertions(+), 351 deletions(-)
-QA: not run
+Branch: feature/pr-14b-strategies-dashboard | Last commit: b4440d4 feat(dashboard): full clickability overhaul — every fund → fund360, every sector → sectors page
+Recent changes:  10 files changed, 919 insertions(+), 1195 deletions(-)
+QA: CRITICAL
 
 ## Next session starts here
 **First thing to do:** Check this auto-summary and write a proper project/summary.md
-**QA status:** not run
+**QA status:** CRITICAL

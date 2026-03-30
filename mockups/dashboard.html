@@ -1,928 +1,240 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MF Pulse — Dashboard Mockup</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<style>
-  * { font-family: 'Inter', system-ui, sans-serif; }
-  .tabular-nums { font-variant-numeric: tabular-nums; }
-  .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); }
-  .section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; }
-  @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
-  .animate-in { animation: slideUp 0.4s ease forwards; }
-  .lens-bar { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
-  .gradient-hero { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); }
-  .regime-glow { box-shadow: 0 0 30px rgba(16,185,129,0.15); }
-  .sentiment-ring { transition: stroke-dasharray 1s ease; }
-  .bucket-card { transition: all 0.2s ease; }
-  .bucket-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
-  .sector-bar { transition: width 0.6s ease; }
-  .sparkline-container { width: 80px; height: 24px; }
-  .stat-grid > div { border-right: 1px solid rgba(255,255,255,0.1); }
-  .stat-grid > div:last-child { border-right: none; }
-  .health-bar { transition: width 0.8s ease; }
-  .signal-pulse { animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
-  .freshness-dot { width: 6px; height: 6px; border-radius: 50%; }
-  .scroll-x { overflow-x: auto; scrollbar-width: none; }
-  .scroll-x::-webkit-scrollbar { display: none; }
-</style>
-</head>
-<body class="bg-slate-50 text-slate-800">
+P
+MF Pulse
+Dashboard Fund 360 Universe Sectors Simulate
+Closed
+28 Mar 15:30
+Morning Briefing
+Saturday, 29 March 2026
+↑ Risk-On
+Regime Since
+12 Mar 2026
+Nifty 50
+23,519 +1.24%
+1M
++3.8%
+3M
+-2.1%
+1Y
++12.4%
+Market Sentiment
+52
+Neutral
+Mixed signals
+Market Breadth
+Above 200 EMA 68%
 
-<!-- Top Nav Bar -->
-<nav class="sticky top-0 z-50 glass border-b border-slate-200/50 px-6 py-3">
-  <div class="max-w-7xl mx-auto flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div class="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center">
-        <span class="text-white font-bold text-sm">P</span>
-      </div>
-      <span class="text-sm font-semibold text-slate-700">MF Pulse</span>
-    </div>
-    <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
-      <a href="#" class="px-3 py-1.5 text-xs font-medium bg-white rounded-md shadow-sm text-teal-700">Dashboard</a>
-      <a href="./fund360.html" class="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">Fund 360</a>
-      <a href="#" class="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">Universe</a>
-      <a href="#" class="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">Sectors</a>
-      <a href="#" class="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">Simulate</a>
-    </div>
-    <div class="flex items-center gap-2">
-      <div class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-500/10 border border-slate-500/20 rounded-full">
-        <span class="w-2 h-2 rounded-full bg-slate-400"></span>
-        <span class="text-xs font-medium text-slate-500">Closed</span>
-      </div>
-      <span class="text-[10px] text-slate-400 tabular-nums">28 Mar 15:30</span>
-    </div>
-  </div>
-</nav>
+Above 50 EMA 55%
 
-<main class="max-w-7xl mx-auto px-6 py-6 space-y-6">
+A/D Ratio 1.35
+Universe Scored
+2,588 / 2,705
+96% coverage
+Leaders
+312
+Strong
+645
+Weak
+891
+Risk-On regime with improving breadth. 68% of stocks above 200 EMA — SIP accumulation zone. Technology and Healthcare leading sector rotation.
+SMART BUCKETS
+View All in Universe →
+★
+Consistent Alpha
+Alpha + Consistency top tier
+47 funds
+Top: Parag Parikh Flexi Cap
++18.4% 1Y
+◯
+Low-Risk Leaders
+Low Risk + Strong Return
+83 funds
+Top: HDFC Balanced Advantage
++14.7% 1Y
+⚡
+High Efficiency
+Best return per rupee of cost
+129 funds
+Top: UTI Nifty 50 Index
++16.2% 1Y
+☉
+Fortress Funds
+Resilience + Consistency top
+34 funds
+Top: SBI Balanced Advantage
++12.9% 1Y
+↻
+Turnaround Watch
+Improving from weak
+56 funds
+Top: Axis Small Cap Fund
++22.1% 3M
+⚠
+Avoid Zone
+Multiple weak lenses
+198 funds
+High risk, low return, erratic
+SECTOR ROTATION
+Full Compass →
 
-  <!-- ==================== SECTION 1: Morning Briefing Hero ==================== -->
-  <section class="gradient-hero rounded-2xl overflow-hidden animate-in">
-    <div class="px-8 pt-7 pb-6">
-      <!-- Top row: Date + Regime badge -->
-      <div class="flex items-center justify-between mb-5">
-        <div>
-          <p class="text-slate-400 text-xs font-medium tracking-wide uppercase">Morning Briefing</p>
-          <p class="text-white/50 text-[11px] mt-0.5">Saturday, 29 March 2026</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/15 border border-emerald-500/30 regime-glow">
-            <span class="text-emerald-400 text-base">&#8593;</span>
-            <span class="text-emerald-400 text-sm font-semibold">Risk-On</span>
-          </div>
-          <div class="px-3 py-2 rounded-lg bg-white/5 border border-white/10">
-            <p class="text-[10px] text-slate-400 uppercase tracking-wider">Regime Since</p>
-            <p class="text-white text-xs font-semibold tabular-nums">12 Mar 2026</p>
-          </div>
-        </div>
-      </div>
+Technology Leading +4.2
+Healthcare Leading +3.8
+Financials Improving +2.1
+Energy Weakening -1.4
+Real Estate Lagging -3.2
+Rotation Playbook
+Technology & Healthcare entering Leading quadrant — consider overweight. Financials improving — early entry window. Energy weakening — reduce exposure.
+TOP FUNDS BY LENS
+Return Risk Alpha Consistency Efficiency Resilience
+#
+Fund Name
+Category
+Score
+1Y Return
+AUM (Cr)
+1
+Quant Small Cap Fund
+Direct Growth
+Small Cap
+94
++28.4%
+26,841
+2
+Motilal Oswal Midcap Fund
+Direct Growth
+Mid Cap
+91
++25.7%
+18,432
+3
+Parag Parikh Flexi Cap
+Direct Growth
+Flexi Cap
+89
++18.4%
+75,210
+4
+HDFC Mid-Cap Opportunities
+Direct Growth
+Mid Cap
+86
++21.9%
+48,920
+5
+Nippon India Small Cap
+Direct Growth
+Small Cap
+84
++26.3%
+61,540
+UNIVERSE HEALTH — LENS DISTRIBUTION
+Explore Universe →
+Return
+312 Leaders 645 Strong
 
-      <!-- 4-stat hero grid -->
-      <div class="grid grid-cols-4 gap-6 stat-grid">
-        <!-- Nifty 50 -->
-        <div class="pr-6">
-          <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Nifty 50</p>
-          <div class="flex items-baseline gap-2">
-            <span class="text-2xl font-bold text-white tabular-nums">23,519</span>
-            <span class="text-sm font-semibold text-emerald-400 tabular-nums">+1.24%</span>
-          </div>
-          <div class="mt-2 flex gap-3">
-            <div>
-              <p class="text-[10px] text-slate-500">1M</p>
-              <p class="text-xs font-medium text-emerald-400 tabular-nums">+3.8%</p>
-            </div>
-            <div>
-              <p class="text-[10px] text-slate-500">3M</p>
-              <p class="text-xs font-medium text-red-400 tabular-nums">-2.1%</p>
-            </div>
-            <div>
-              <p class="text-[10px] text-slate-500">1Y</p>
-              <p class="text-xs font-medium text-emerald-400 tabular-nums">+12.4%</p>
-            </div>
-          </div>
-        </div>
 
-        <!-- Sentiment Gauge -->
-        <div class="pr-6">
-          <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Market Sentiment</p>
-          <div class="flex items-center gap-4">
-            <svg viewBox="0 0 120 68" class="w-20">
-              <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8" stroke-dasharray="157 314" stroke-linecap="round" transform="rotate(180 60 60)"/>
-              <circle cx="60" cy="60" r="50" fill="none" stroke="#f59e0b" stroke-width="8" stroke-dasharray="82 314" stroke-linecap="round" transform="rotate(180 60 60)" class="sentiment-ring"/>
-              <text x="60" y="55" text-anchor="middle" font-size="20" font-weight="700" font-family="ui-monospace, monospace" fill="white">52</text>
-            </svg>
-            <div>
-              <p class="text-amber-400 text-sm font-semibold">Neutral</p>
-              <p class="text-[10px] text-slate-500 mt-0.5">Mixed signals</p>
-            </div>
-          </div>
-        </div>
 
-        <!-- Market Breadth -->
-        <div class="pr-6">
-          <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Market Breadth</p>
-          <div class="space-y-2 mt-1">
-            <div>
-              <div class="flex justify-between text-[10px] mb-0.5">
-                <span class="text-slate-400">Above 200 EMA</span>
-                <span class="text-white font-semibold tabular-nums">68%</span>
-              </div>
-              <div class="h-1.5 bg-white/10 rounded-full">
-                <div class="h-1.5 bg-emerald-500 rounded-full" style="width: 68%"></div>
-              </div>
-            </div>
-            <div>
-              <div class="flex justify-between text-[10px] mb-0.5">
-                <span class="text-slate-400">Above 50 EMA</span>
-                <span class="text-white font-semibold tabular-nums">55%</span>
-              </div>
-              <div class="h-1.5 bg-white/10 rounded-full">
-                <div class="h-1.5 bg-sky-500 rounded-full" style="width: 55%"></div>
-              </div>
-            </div>
-            <div>
-              <div class="flex justify-between text-[10px] mb-0.5">
-                <span class="text-slate-400">A/D Ratio</span>
-                <span class="text-white font-semibold tabular-nums">1.35</span>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <!-- Universe Coverage -->
-        <div>
-          <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Universe Scored</p>
-          <div class="flex items-baseline gap-1">
-            <span class="text-2xl font-bold text-white tabular-nums">2,588</span>
-            <span class="text-slate-500 text-sm">/ 2,705</span>
-          </div>
-          <p class="text-[10px] text-slate-500 mt-1">96% coverage</p>
-          <div class="mt-2 flex gap-4">
-            <div>
-              <p class="text-[10px] text-slate-500">Leaders</p>
-              <p class="text-xs font-semibold text-emerald-400 tabular-nums">312</p>
-            </div>
-            <div>
-              <p class="text-[10px] text-slate-500">Strong</p>
-              <p class="text-xs font-semibold text-teal-400 tabular-nums">645</p>
-            </div>
-            <div>
-              <p class="text-[10px] text-slate-500">Weak</p>
-              <p class="text-xs font-semibold text-red-400 tabular-nums">891</p>
-            </div>
-          </div>
-        </div>
-      </div>
+Risk
+428 Low Risk 712 Moderate
 
-      <!-- One-liner insight -->
-      <div class="mt-5 pt-4 border-t border-white/10">
-        <p class="text-slate-300 text-sm leading-relaxed">
-          <span class="text-emerald-400 font-semibold">Risk-On regime</span> with improving breadth.
-          68% of stocks above 200 EMA — SIP accumulation zone.
-          <span class="text-sky-400">Technology</span> and <span class="text-sky-400">Healthcare</span> leading sector rotation.
-        </p>
-      </div>
-    </div>
-  </section>
 
-  <!-- ==================== SECTION 2: Smart Buckets ==================== -->
-  <section class="animate-in" style="animation-delay: 0.1s">
-    <div class="flex items-center justify-between mb-3">
-      <p class="section-title">Smart Buckets</p>
-      <a href="#" class="text-[11px] text-teal-600 font-medium hover:text-teal-700">View All in Universe &rarr;</a>
-    </div>
-    <div class="scroll-x">
-      <div class="flex gap-3 pb-1" style="min-width: max-content;">
-        <!-- Bucket 1: Consistent Alpha Generators -->
-        <div class="bucket-card w-52 bg-white rounded-xl border border-slate-200 p-4 cursor-pointer">
-          <div class="flex items-center gap-2 mb-3">
-            <div class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
-              <span class="text-violet-600 text-sm">&#9733;</span>
-            </div>
-            <div>
-              <p class="text-xs font-semibold text-slate-800">Consistent Alpha</p>
-              <p class="text-[10px] text-slate-400">Alpha + Consistency top tier</p>
-            </div>
-          </div>
-          <div class="flex items-baseline gap-1 mb-2">
-            <span class="text-xl font-bold text-violet-600 tabular-nums">47</span>
-            <span class="text-[10px] text-slate-400">funds</span>
-          </div>
-          <div class="bg-violet-50/50 rounded-lg px-2.5 py-1.5">
-            <p class="text-[10px] text-slate-500 truncate">Top: Parag Parikh Flexi Cap</p>
-            <p class="text-[10px] text-emerald-600 font-semibold tabular-nums">+18.4% 1Y</p>
-          </div>
-        </div>
 
-        <!-- Bucket 2: Low-Risk Leaders -->
-        <div class="bucket-card w-52 bg-white rounded-xl border border-slate-200 p-4 cursor-pointer">
-          <div class="flex items-center gap-2 mb-3">
-            <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-              <span class="text-emerald-600 text-sm">&#9711;</span>
-            </div>
-            <div>
-              <p class="text-xs font-semibold text-slate-800">Low-Risk Leaders</p>
-              <p class="text-[10px] text-slate-400">Low Risk + Strong Return</p>
-            </div>
-          </div>
-          <div class="flex items-baseline gap-1 mb-2">
-            <span class="text-xl font-bold text-emerald-600 tabular-nums">83</span>
-            <span class="text-[10px] text-slate-400">funds</span>
-          </div>
-          <div class="bg-emerald-50/50 rounded-lg px-2.5 py-1.5">
-            <p class="text-[10px] text-slate-500 truncate">Top: HDFC Balanced Advantage</p>
-            <p class="text-[10px] text-emerald-600 font-semibold tabular-nums">+14.7% 1Y</p>
-          </div>
-        </div>
 
-        <!-- Bucket 3: High Efficiency -->
-        <div class="bucket-card w-52 bg-white rounded-xl border border-slate-200 p-4 cursor-pointer">
-          <div class="flex items-center gap-2 mb-3">
-            <div class="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center">
-              <span class="text-sky-600 text-sm">&#9889;</span>
-            </div>
-            <div>
-              <p class="text-xs font-semibold text-slate-800">High Efficiency</p>
-              <p class="text-[10px] text-slate-400">Best return per rupee of cost</p>
-            </div>
-          </div>
-          <div class="flex items-baseline gap-1 mb-2">
-            <span class="text-xl font-bold text-sky-600 tabular-nums">129</span>
-            <span class="text-[10px] text-slate-400">funds</span>
-          </div>
-          <div class="bg-sky-50/50 rounded-lg px-2.5 py-1.5">
-            <p class="text-[10px] text-slate-500 truncate">Top: UTI Nifty 50 Index</p>
-            <p class="text-[10px] text-emerald-600 font-semibold tabular-nums">+16.2% 1Y</p>
-          </div>
-        </div>
+Consistency
+198 Rock Solid 510 Consistent
 
-        <!-- Bucket 4: Fortress Funds -->
-        <div class="bucket-card w-52 bg-white rounded-xl border border-slate-200 p-4 cursor-pointer">
-          <div class="flex items-center gap-2 mb-3">
-            <div class="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center">
-              <span class="text-teal-600 text-sm">&#9737;</span>
-            </div>
-            <div>
-              <p class="text-xs font-semibold text-slate-800">Fortress Funds</p>
-              <p class="text-[10px] text-slate-400">Resilience + Consistency top</p>
-            </div>
-          </div>
-          <div class="flex items-baseline gap-1 mb-2">
-            <span class="text-xl font-bold text-teal-600 tabular-nums">34</span>
-            <span class="text-[10px] text-slate-400">funds</span>
-          </div>
-          <div class="bg-teal-50/50 rounded-lg px-2.5 py-1.5">
-            <p class="text-[10px] text-slate-500 truncate">Top: SBI Balanced Advantage</p>
-            <p class="text-[10px] text-emerald-600 font-semibold tabular-nums">+12.9% 1Y</p>
-          </div>
-        </div>
 
-        <!-- Bucket 5: Turnaround Watch -->
-        <div class="bucket-card w-52 bg-white rounded-xl border border-slate-200 p-4 cursor-pointer">
-          <div class="flex items-center gap-2 mb-3">
-            <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
-              <span class="text-amber-600 text-sm">&#8635;</span>
-            </div>
-            <div>
-              <p class="text-xs font-semibold text-slate-800">Turnaround Watch</p>
-              <p class="text-[10px] text-slate-400">Improving from weak</p>
-            </div>
-          </div>
-          <div class="flex items-baseline gap-1 mb-2">
-            <span class="text-xl font-bold text-amber-600 tabular-nums">56</span>
-            <span class="text-[10px] text-slate-400">funds</span>
-          </div>
-          <div class="bg-amber-50/50 rounded-lg px-2.5 py-1.5">
-            <p class="text-[10px] text-slate-500 truncate">Top: Axis Small Cap Fund</p>
-            <p class="text-[10px] text-emerald-600 font-semibold tabular-nums">+22.1% 3M</p>
-          </div>
-        </div>
 
-        <!-- Bucket 6: Avoid Zone -->
-        <div class="bucket-card w-52 bg-white rounded-xl border border-red-100 p-4 cursor-pointer">
-          <div class="flex items-center gap-2 mb-3">
-            <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
-              <span class="text-red-500 text-sm">&#9888;</span>
-            </div>
-            <div>
-              <p class="text-xs font-semibold text-slate-800">Avoid Zone</p>
-              <p class="text-[10px] text-slate-400">Multiple weak lenses</p>
-            </div>
-          </div>
-          <div class="flex items-baseline gap-1 mb-2">
-            <span class="text-xl font-bold text-red-500 tabular-nums">198</span>
-            <span class="text-[10px] text-slate-400">funds</span>
-          </div>
-          <div class="bg-red-50/50 rounded-lg px-2.5 py-1.5">
-            <p class="text-[10px] text-slate-500">High risk, low return, erratic</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
 
-  <!-- ==================== SECTION 3: Two-Column - Sectors + Top Funds ==================== -->
-  <div class="grid grid-cols-12 gap-6 animate-in" style="animation-delay: 0.2s">
+Alpha
+145 Alpha Machine 380 Positive
 
-    <!-- LEFT: Sector Rotation Intelligence -->
-    <div class="col-span-5">
-      <div class="bg-white rounded-xl border border-slate-200 p-5">
-        <div class="flex items-center justify-between mb-4">
-          <p class="section-title">Sector Rotation</p>
-          <a href="#" class="text-[10px] text-teal-600 font-medium hover:text-teal-700">Full Compass &rarr;</a>
-        </div>
 
-        <!-- Mini Compass (simplified quadrant) -->
-        <div class="relative w-full aspect-square max-w-[240px] mx-auto mb-4">
-          <canvas id="miniCompass" width="240" height="240"></canvas>
-        </div>
 
-        <!-- Sector list -->
-        <div class="space-y-2">
-          <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50/50 border border-emerald-100">
-            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span class="text-xs font-medium text-slate-700 flex-1">Technology</span>
-            <span class="text-[10px] font-semibold text-emerald-600 px-2 py-0.5 rounded bg-emerald-100">Leading</span>
-            <span class="text-xs font-semibold text-emerald-600 tabular-nums">+4.2</span>
-          </div>
-          <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50/50 border border-emerald-100">
-            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span class="text-xs font-medium text-slate-700 flex-1">Healthcare</span>
-            <span class="text-[10px] font-semibold text-emerald-600 px-2 py-0.5 rounded bg-emerald-100">Leading</span>
-            <span class="text-xs font-semibold text-emerald-600 tabular-nums">+3.8</span>
-          </div>
-          <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-sky-50/50 border border-sky-100">
-            <span class="w-2 h-2 rounded-full bg-sky-500"></span>
-            <span class="text-xs font-medium text-slate-700 flex-1">Financials</span>
-            <span class="text-[10px] font-semibold text-sky-600 px-2 py-0.5 rounded bg-sky-100">Improving</span>
-            <span class="text-xs font-semibold text-sky-600 tabular-nums">+2.1</span>
-          </div>
-          <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50/50 border border-amber-100">
-            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-            <span class="text-xs font-medium text-slate-700 flex-1">Energy</span>
-            <span class="text-[10px] font-semibold text-amber-600 px-2 py-0.5 rounded bg-amber-100">Weakening</span>
-            <span class="text-xs font-semibold text-red-500 tabular-nums">-1.4</span>
-          </div>
-          <div class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50">
-            <span class="w-2 h-2 rounded-full bg-red-400"></span>
-            <span class="text-xs font-medium text-slate-700 flex-1">Real Estate</span>
-            <span class="text-[10px] font-semibold text-red-500 px-2 py-0.5 rounded bg-red-50">Lagging</span>
-            <span class="text-xs font-semibold text-red-500 tabular-nums">-3.2</span>
-          </div>
-        </div>
 
-        <!-- Rotation playbook -->
-        <div class="mt-4 p-3 rounded-lg bg-teal-50 border border-teal-100">
-          <p class="text-[10px] font-semibold text-teal-700 uppercase tracking-wider mb-1">Rotation Playbook</p>
-          <p class="text-xs text-teal-800 leading-relaxed">
-            Technology &amp; Healthcare entering <strong>Leading quadrant</strong> — consider overweight. Financials improving — early entry window.
-            Energy weakening — reduce exposure.
-          </p>
-        </div>
-      </div>
-    </div>
+Efficiency
+345 Lean 690 Fair
 
-    <!-- RIGHT: Top Funds by Lens -->
-    <div class="col-span-7">
-      <div class="bg-white rounded-xl border border-slate-200 p-5">
-        <div class="flex items-center justify-between mb-4">
-          <p class="section-title">Top Funds by Lens</p>
-        </div>
 
-        <!-- Lens tabs -->
-        <div class="flex gap-1 bg-slate-100 rounded-lg p-0.5 mb-4">
-          <button class="flex-1 py-1.5 text-[11px] font-semibold bg-white rounded-md shadow-sm text-teal-700" id="tabReturn">Return</button>
-          <button class="flex-1 py-1.5 text-[11px] font-medium text-slate-500" id="tabRisk">Risk</button>
-          <button class="flex-1 py-1.5 text-[11px] font-medium text-slate-500" id="tabAlpha">Alpha</button>
-          <button class="flex-1 py-1.5 text-[11px] font-medium text-slate-500" id="tabConsistency">Consistency</button>
-          <button class="flex-1 py-1.5 text-[11px] font-medium text-slate-500" id="tabEfficiency">Efficiency</button>
-          <button class="flex-1 py-1.5 text-[11px] font-medium text-slate-500" id="tabResilience">Resilience</button>
-        </div>
 
-        <!-- Fund table -->
-        <table class="w-full text-xs">
-          <thead>
-            <tr class="text-[10px] text-slate-400 uppercase tracking-wider">
-              <th class="text-left pb-2 pl-2">#</th>
-              <th class="text-left pb-2">Fund Name</th>
-              <th class="text-left pb-2">Category</th>
-              <th class="text-right pb-2">Score</th>
-              <th class="text-right pb-2">1Y Return</th>
-              <th class="text-right pb-2 pr-2">AUM (Cr)</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr class="hover:bg-slate-50 cursor-pointer">
-              <td class="py-2.5 pl-2 text-slate-400 tabular-nums">1</td>
-              <td class="py-2.5">
-                <div>
-                  <p class="font-medium text-slate-800">Quant Small Cap Fund</p>
-                  <p class="text-[10px] text-slate-400">Direct Growth</p>
-                </div>
-              </td>
-              <td class="py-2.5 text-slate-500">Small Cap</td>
-              <td class="py-2.5 text-right">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700">94</span>
-              </td>
-              <td class="py-2.5 text-right font-semibold text-emerald-600 tabular-nums">+28.4%</td>
-              <td class="py-2.5 text-right pr-2 text-slate-500 tabular-nums">26,841</td>
-            </tr>
-            <tr class="hover:bg-slate-50 cursor-pointer">
-              <td class="py-2.5 pl-2 text-slate-400 tabular-nums">2</td>
-              <td class="py-2.5">
-                <div>
-                  <p class="font-medium text-slate-800">Motilal Oswal Midcap Fund</p>
-                  <p class="text-[10px] text-slate-400">Direct Growth</p>
-                </div>
-              </td>
-              <td class="py-2.5 text-slate-500">Mid Cap</td>
-              <td class="py-2.5 text-right">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700">91</span>
-              </td>
-              <td class="py-2.5 text-right font-semibold text-emerald-600 tabular-nums">+25.7%</td>
-              <td class="py-2.5 text-right pr-2 text-slate-500 tabular-nums">18,432</td>
-            </tr>
-            <tr class="hover:bg-slate-50 cursor-pointer">
-              <td class="py-2.5 pl-2 text-slate-400 tabular-nums">3</td>
-              <td class="py-2.5">
-                <div>
-                  <p class="font-medium text-slate-800">Parag Parikh Flexi Cap</p>
-                  <p class="text-[10px] text-slate-400">Direct Growth</p>
-                </div>
-              </td>
-              <td class="py-2.5 text-slate-500">Flexi Cap</td>
-              <td class="py-2.5 text-right">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700">89</span>
-              </td>
-              <td class="py-2.5 text-right font-semibold text-emerald-600 tabular-nums">+18.4%</td>
-              <td class="py-2.5 text-right pr-2 text-slate-500 tabular-nums">75,210</td>
-            </tr>
-            <tr class="hover:bg-slate-50 cursor-pointer">
-              <td class="py-2.5 pl-2 text-slate-400 tabular-nums">4</td>
-              <td class="py-2.5">
-                <div>
-                  <p class="font-medium text-slate-800">HDFC Mid-Cap Opportunities</p>
-                  <p class="text-[10px] text-slate-400">Direct Growth</p>
-                </div>
-              </td>
-              <td class="py-2.5 text-slate-500">Mid Cap</td>
-              <td class="py-2.5 text-right">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-50 text-teal-700">86</span>
-              </td>
-              <td class="py-2.5 text-right font-semibold text-emerald-600 tabular-nums">+21.9%</td>
-              <td class="py-2.5 text-right pr-2 text-slate-500 tabular-nums">48,920</td>
-            </tr>
-            <tr class="hover:bg-slate-50 cursor-pointer">
-              <td class="py-2.5 pl-2 text-slate-400 tabular-nums">5</td>
-              <td class="py-2.5">
-                <div>
-                  <p class="font-medium text-slate-800">Nippon India Small Cap</p>
-                  <p class="text-[10px] text-slate-400">Direct Growth</p>
-                </div>
-              </td>
-              <td class="py-2.5 text-slate-500">Small Cap</td>
-              <td class="py-2.5 text-right">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-50 text-teal-700">84</span>
-              </td>
-              <td class="py-2.5 text-right font-semibold text-emerald-600 tabular-nums">+26.3%</td>
-              <td class="py-2.5 text-right pr-2 text-slate-500 tabular-nums">61,540</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
 
-  <!-- ==================== SECTION 4: Universe Health + Regime Intelligence ==================== -->
-  <div class="grid grid-cols-12 gap-6 animate-in" style="animation-delay: 0.3s">
+Resilience
+220 Fortress 540 Sturdy
 
-    <!-- LEFT: Universe Health — Lens Distribution -->
-    <div class="col-span-7">
-      <div class="bg-white rounded-xl border border-slate-200 p-5">
-        <div class="flex items-center justify-between mb-4">
-          <p class="section-title">Universe Health — Lens Distribution</p>
-          <a href="#" class="text-[10px] text-teal-600 font-medium hover:text-teal-700">Explore Universe &rarr;</a>
-        </div>
 
-        <!-- Stacked bar chart for each lens -->
-        <div class="space-y-3">
-          <!-- Return -->
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <span class="text-[11px] font-medium text-slate-600 w-20">Return</span>
-              <div class="flex gap-3 text-[10px] text-slate-400">
-                <span class="tabular-nums">312 Leaders</span>
-                <span class="tabular-nums">645 Strong</span>
-              </div>
-            </div>
-            <div class="flex h-5 rounded-md overflow-hidden">
-              <div class="bg-emerald-500 health-bar" style="width: 12%" title="Leader: 312"></div>
-              <div class="bg-teal-400 health-bar" style="width: 25%" title="Strong: 645"></div>
-              <div class="bg-amber-400 health-bar" style="width: 29%" title="Average: 740"></div>
-              <div class="bg-red-400 health-bar" style="width: 34%" title="Weak: 891"></div>
-            </div>
-          </div>
 
-          <!-- Risk -->
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <span class="text-[11px] font-medium text-slate-600 w-20">Risk</span>
-              <div class="flex gap-3 text-[10px] text-slate-400">
-                <span class="tabular-nums">428 Low Risk</span>
-                <span class="tabular-nums">712 Moderate</span>
-              </div>
-            </div>
-            <div class="flex h-5 rounded-md overflow-hidden">
-              <div class="bg-emerald-500 health-bar" style="width: 17%" title="Low Risk: 428"></div>
-              <div class="bg-teal-400 health-bar" style="width: 28%" title="Moderate: 712"></div>
-              <div class="bg-amber-400 health-bar" style="width: 31%" title="Elevated: 790"></div>
-              <div class="bg-red-400 health-bar" style="width: 24%" title="High Risk: 658"></div>
-            </div>
-          </div>
 
-          <!-- Consistency -->
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <span class="text-[11px] font-medium text-slate-600 w-20">Consistency</span>
-              <div class="flex gap-3 text-[10px] text-slate-400">
-                <span class="tabular-nums">198 Rock Solid</span>
-                <span class="tabular-nums">510 Consistent</span>
-              </div>
-            </div>
-            <div class="flex h-5 rounded-md overflow-hidden">
-              <div class="bg-emerald-500 health-bar" style="width: 8%" title="Rock Solid: 198"></div>
-              <div class="bg-teal-400 health-bar" style="width: 20%" title="Consistent: 510"></div>
-              <div class="bg-amber-400 health-bar" style="width: 35%" title="Mixed: 910"></div>
-              <div class="bg-red-400 health-bar" style="width: 37%" title="Erratic: 970"></div>
-            </div>
-          </div>
-
-          <!-- Alpha -->
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <span class="text-[11px] font-medium text-slate-600 w-20">Alpha</span>
-              <div class="flex gap-3 text-[10px] text-slate-400">
-                <span class="tabular-nums">145 Alpha Machine</span>
-                <span class="tabular-nums">380 Positive</span>
-              </div>
-            </div>
-            <div class="flex h-5 rounded-md overflow-hidden">
-              <div class="bg-emerald-500 health-bar" style="width: 6%" title="Alpha Machine: 145"></div>
-              <div class="bg-teal-400 health-bar" style="width: 15%" title="Positive: 380"></div>
-              <div class="bg-amber-400 health-bar" style="width: 32%" title="Neutral: 830"></div>
-              <div class="bg-red-400 health-bar" style="width: 47%" title="Negative: 1233"></div>
-            </div>
-          </div>
-
-          <!-- Efficiency -->
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <span class="text-[11px] font-medium text-slate-600 w-20">Efficiency</span>
-              <div class="flex gap-3 text-[10px] text-slate-400">
-                <span class="tabular-nums">345 Lean</span>
-                <span class="tabular-nums">690 Fair</span>
-              </div>
-            </div>
-            <div class="flex h-5 rounded-md overflow-hidden">
-              <div class="bg-emerald-500 health-bar" style="width: 13%" title="Lean: 345"></div>
-              <div class="bg-teal-400 health-bar" style="width: 27%" title="Fair: 690"></div>
-              <div class="bg-amber-400 health-bar" style="width: 35%" title="Expensive: 903"></div>
-              <div class="bg-red-400 health-bar" style="width: 25%" title="Bloated: 650"></div>
-            </div>
-          </div>
-
-          <!-- Resilience -->
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <span class="text-[11px] font-medium text-slate-600 w-20">Resilience</span>
-              <div class="flex gap-3 text-[10px] text-slate-400">
-                <span class="tabular-nums">220 Fortress</span>
-                <span class="tabular-nums">540 Sturdy</span>
-              </div>
-            </div>
-            <div class="flex h-5 rounded-md overflow-hidden">
-              <div class="bg-emerald-500 health-bar" style="width: 9%" title="Fortress: 220"></div>
-              <div class="bg-teal-400 health-bar" style="width: 21%" title="Sturdy: 540"></div>
-              <div class="bg-amber-400 health-bar" style="width: 38%" title="Fragile: 978"></div>
-              <div class="bg-red-400 health-bar" style="width: 32%" title="Vulnerable: 850"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Legend -->
-        <div class="flex gap-4 mt-4 pt-3 border-t border-slate-100">
-          <div class="flex items-center gap-1.5"><span class="w-3 h-2 rounded-sm bg-emerald-500"></span><span class="text-[10px] text-slate-500">Top Tier</span></div>
-          <div class="flex items-center gap-1.5"><span class="w-3 h-2 rounded-sm bg-teal-400"></span><span class="text-[10px] text-slate-500">Good</span></div>
-          <div class="flex items-center gap-1.5"><span class="w-3 h-2 rounded-sm bg-amber-400"></span><span class="text-[10px] text-slate-500">Average</span></div>
-          <div class="flex items-center gap-1.5"><span class="w-3 h-2 rounded-sm bg-red-400"></span><span class="text-[10px] text-slate-500">Weak</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- RIGHT: Regime Intelligence + Data Freshness -->
-    <div class="col-span-5 space-y-4">
-      <!-- Regime-Aware Recommendations -->
-      <div class="bg-white rounded-xl border border-slate-200 p-5">
-        <p class="section-title mb-3">Regime-Aware Actions</p>
-        <div class="space-y-3">
-          <div class="p-3 rounded-lg bg-emerald-50 border border-emerald-100">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-emerald-600 text-sm">&#9650;</span>
-              <p class="text-xs font-semibold text-emerald-800">Increase Equity SIP</p>
-            </div>
-            <p class="text-[11px] text-emerald-700 leading-relaxed">
-              Risk-On regime + improving breadth. SIPs started now benefit from momentum. Consider stepping up by 20%.
-            </p>
-          </div>
-          <div class="p-3 rounded-lg bg-sky-50 border border-sky-100">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-sky-600 text-sm">&#9679;</span>
-              <p class="text-xs font-semibold text-sky-800">Rotate into Leading Sectors</p>
-            </div>
-            <p class="text-[11px] text-sky-700 leading-relaxed">
-              Technology &amp; Healthcare in Leading quadrant. Funds with overweight in these sectors have 3M momentum.
-            </p>
-          </div>
-          <div class="p-3 rounded-lg bg-amber-50 border border-amber-100">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-amber-600 text-sm">&#9660;</span>
-              <p class="text-xs font-semibold text-amber-800">Reduce Energy Exposure</p>
-            </div>
-            <p class="text-[11px] text-amber-700 leading-relaxed">
-              Energy sector weakening. Funds with &gt;25% energy exposure flagged. Review portfolio allocation.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Data Freshness -->
-      <div class="bg-white rounded-xl border border-slate-200 p-5">
-        <p class="section-title mb-3">Data Freshness</p>
-        <div class="space-y-2.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="freshness-dot bg-emerald-500"></span>
-              <span class="text-xs text-slate-600">NAV Data</span>
-            </div>
-            <div class="text-right">
-              <span class="text-xs font-medium text-slate-700 tabular-nums">28 Mar 2026</span>
-              <span class="text-[10px] text-emerald-600 ml-1">Fresh</span>
-            </div>
-          </div>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="freshness-dot bg-emerald-500"></span>
-              <span class="text-xs text-slate-600">Lens Scores</span>
-            </div>
-            <div class="text-right">
-              <span class="text-xs font-medium text-slate-700 tabular-nums">28 Mar 2026</span>
-              <span class="text-[10px] text-emerald-600 ml-1">Fresh</span>
-            </div>
-          </div>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="freshness-dot bg-amber-500"></span>
-              <span class="text-xs text-slate-600">Holdings</span>
-            </div>
-            <div class="text-right">
-              <span class="text-xs font-medium text-slate-700 tabular-nums">28 Feb 2026</span>
-              <span class="text-[10px] text-amber-600 ml-1">Monthly</span>
-            </div>
-          </div>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="freshness-dot bg-emerald-500"></span>
-              <span class="text-xs text-slate-600">Risk Stats</span>
-            </div>
-            <div class="text-right">
-              <span class="text-xs font-medium text-slate-700 tabular-nums">5 Mar 2026</span>
-              <span class="text-[10px] text-emerald-600 ml-1">Monthly</span>
-            </div>
-          </div>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="freshness-dot bg-emerald-500"></span>
-              <span class="text-xs text-slate-600">MarketPulse</span>
-            </div>
-            <div class="text-right">
-              <span class="text-xs font-medium text-slate-700 tabular-nums">28 Mar 2026</span>
-              <span class="text-[10px] text-emerald-600 ml-1">Live</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="flex gap-2 mt-4 pt-3 border-t border-slate-100">
-          <button class="flex-1 py-2 text-[11px] font-medium text-teal-700 bg-teal-50 rounded-lg border border-teal-200 hover:bg-teal-100 transition-colors">
-            Refresh NAV
-          </button>
-          <button class="flex-1 py-2 text-[11px] font-medium text-slate-600 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors">
-            Recompute Lens
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== SECTION 5: Category Heatmap ==================== -->
-  <section class="animate-in" style="animation-delay: 0.4s">
-    <div class="bg-white rounded-xl border border-slate-200 p-5">
-      <div class="flex items-center justify-between mb-4">
-        <p class="section-title">Category Performance Heatmap — 1Y Returns</p>
-        <div class="flex gap-1 bg-slate-100 rounded-md p-0.5">
-          <button class="px-2.5 py-1 text-[10px] font-medium text-slate-500 hover:text-slate-700">1M</button>
-          <button class="px-2.5 py-1 text-[10px] font-medium text-slate-500 hover:text-slate-700">3M</button>
-          <button class="px-2.5 py-1 text-[10px] font-semibold bg-white rounded shadow-sm text-teal-700">1Y</button>
-          <button class="px-2.5 py-1 text-[10px] font-medium text-slate-500 hover:text-slate-700">3Y</button>
-        </div>
-      </div>
-
-      <!-- Heatmap grid — Treemap style -->
-      <div class="grid grid-cols-6 gap-1.5">
-        <!-- Large Cap -->
-        <div class="col-span-2 row-span-2 rounded-lg p-3 bg-emerald-100 border border-emerald-200 cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all" style="min-height: 100px">
-          <p class="text-xs font-semibold text-emerald-900">Large Cap</p>
-          <p class="text-2xl font-bold text-emerald-800 tabular-nums mt-1">+14.2%</p>
-          <p class="text-[10px] text-emerald-700 mt-0.5">87 funds</p>
-        </div>
-        <!-- Flexi Cap -->
-        <div class="col-span-2 rounded-lg p-3 bg-emerald-50 border border-emerald-100 cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all">
-          <p class="text-xs font-semibold text-emerald-800">Flexi Cap</p>
-          <p class="text-lg font-bold text-emerald-700 tabular-nums">+16.8%</p>
-          <p class="text-[10px] text-emerald-600">42 funds</p>
-        </div>
-        <!-- Mid Cap -->
-        <div class="col-span-2 rounded-lg p-3 bg-emerald-200/70 border border-emerald-200 cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all">
-          <p class="text-xs font-semibold text-emerald-900">Mid Cap</p>
-          <p class="text-lg font-bold text-emerald-800 tabular-nums">+22.1%</p>
-          <p class="text-[10px] text-emerald-700">34 funds</p>
-        </div>
-        <!-- Small Cap -->
-        <div class="col-span-2 rounded-lg p-3 bg-emerald-300/50 border border-emerald-200 cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all">
-          <p class="text-xs font-semibold text-emerald-900">Small Cap</p>
-          <p class="text-lg font-bold text-emerald-800 tabular-nums">+28.6%</p>
-          <p class="text-[10px] text-emerald-700">28 funds</p>
-        </div>
-        <!-- ELSS -->
-        <div class="col-span-2 rounded-lg p-3 bg-teal-50 border border-teal-100 cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all">
-          <p class="text-xs font-semibold text-teal-800">ELSS</p>
-          <p class="text-lg font-bold text-teal-700 tabular-nums">+15.3%</p>
-          <p class="text-[10px] text-teal-600">38 funds</p>
-        </div>
-        <!-- Balanced Advantage -->
-        <div class="rounded-lg p-2.5 bg-teal-50/50 border border-slate-200 cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all">
-          <p class="text-[10px] font-semibold text-slate-700">BAF</p>
-          <p class="text-sm font-bold text-teal-700 tabular-nums">+10.4%</p>
-          <p class="text-[9px] text-slate-400">25</p>
-        </div>
-        <!-- Equity Hybrid -->
-        <div class="rounded-lg p-2.5 bg-emerald-50/50 border border-slate-200 cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all">
-          <p class="text-[10px] font-semibold text-slate-700">Equity Hybrid</p>
-          <p class="text-sm font-bold text-emerald-600 tabular-nums">+12.7%</p>
-          <p class="text-[9px] text-slate-400">31</p>
-        </div>
-        <!-- Sectoral/Thematic -->
-        <div class="rounded-lg p-2.5 bg-amber-50 border border-amber-100 cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all">
-          <p class="text-[10px] font-semibold text-slate-700">Sectoral</p>
-          <p class="text-sm font-bold text-amber-700 tabular-nums">+8.2%</p>
-          <p class="text-[9px] text-slate-400">56</p>
-        </div>
-        <!-- Short Duration -->
-        <div class="rounded-lg p-2.5 bg-sky-50/50 border border-slate-200 cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all">
-          <p class="text-[10px] font-semibold text-slate-700">Short Dur</p>
-          <p class="text-sm font-bold text-sky-700 tabular-nums">+7.1%</p>
-          <p class="text-[9px] text-slate-400">22</p>
-        </div>
-        <!-- Corporate Bond -->
-        <div class="rounded-lg p-2.5 bg-slate-50 border border-slate-200 cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all">
-          <p class="text-[10px] font-semibold text-slate-700">Corp Bond</p>
-          <p class="text-sm font-bold text-slate-600 tabular-nums">+6.8%</p>
-          <p class="text-[9px] text-slate-400">18</p>
-        </div>
-        <!-- Liquid -->
-        <div class="rounded-lg p-2.5 bg-slate-50 border border-slate-200 cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all">
-          <p class="text-[10px] font-semibold text-slate-700">Liquid</p>
-          <p class="text-sm font-bold text-slate-500 tabular-nums">+5.2%</p>
-          <p class="text-[9px] text-slate-400">24</p>
-        </div>
-        <!-- Value/Contra -->
-        <div class="col-span-2 rounded-lg p-2.5 bg-emerald-100/70 border border-emerald-100 cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all">
-          <p class="text-[10px] font-semibold text-emerald-800">Value / Contra</p>
-          <p class="text-sm font-bold text-emerald-700 tabular-nums">+19.4%</p>
-          <p class="text-[9px] text-emerald-600">18 funds</p>
-        </div>
-        <!-- Credit Risk -->
-        <div class="rounded-lg p-2.5 bg-red-50 border border-red-100 cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all">
-          <p class="text-[10px] font-semibold text-red-700">Credit Risk</p>
-          <p class="text-sm font-bold text-red-600 tabular-nums">-1.2%</p>
-          <p class="text-[9px] text-slate-400">8</p>
-        </div>
-        <!-- Multi-Asset -->
-        <div class="rounded-lg p-2.5 bg-teal-50/50 border border-slate-200 cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all">
-          <p class="text-[10px] font-semibold text-slate-700">Multi-Asset</p>
-          <p class="text-sm font-bold text-teal-600 tabular-nums">+11.5%</p>
-          <p class="text-[9px] text-slate-400">15</p>
-        </div>
-        <!-- Focused -->
-        <div class="rounded-lg p-2.5 bg-emerald-50 border border-emerald-100 cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all">
-          <p class="text-[10px] font-semibold text-slate-700">Focused</p>
-          <p class="text-sm font-bold text-emerald-600 tabular-nums">+13.8%</p>
-          <p class="text-[9px] text-slate-400">22</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-</main>
-
-<!-- Footer -->
-<footer class="max-w-7xl mx-auto px-6 py-6 text-center">
-  <p class="text-[10px] text-slate-400">MF Pulse &mdash; Jhaveri Securities Limited &mdash; Dashboard Mockup</p>
-</footer>
-
-<!-- Chart.js Scripts -->
-<script>
-// Mini Compass Chart (Sector Rotation)
-const compassCtx = document.getElementById('miniCompass').getContext('2d');
-
-// Draw quadrant background
-function drawQuadrants(ctx) {
-  const w = 240, h = 240, mx = w/2, my = h/2;
-
-  // Quadrant fills
-  ctx.fillStyle = 'rgba(16,185,129,0.06)'; // Leading (top-right)
-  ctx.fillRect(mx, 0, mx, my);
-  ctx.fillStyle = 'rgba(14,165,233,0.06)'; // Improving (top-left)
-  ctx.fillRect(0, 0, mx, my);
-  ctx.fillStyle = 'rgba(245,158,11,0.06)'; // Weakening (bottom-right)
-  ctx.fillRect(mx, my, mx, my);
-  ctx.fillStyle = 'rgba(239,68,68,0.06)'; // Lagging (bottom-left)
-  ctx.fillRect(0, my, mx, my);
-
-  // Grid lines
-  ctx.strokeStyle = '#e2e8f0';
-  ctx.lineWidth = 0.5;
-  ctx.beginPath();
-  ctx.moveTo(mx, 0); ctx.lineTo(mx, h);
-  ctx.moveTo(0, my); ctx.lineTo(w, my);
-  ctx.stroke();
-
-  // Labels
-  ctx.font = '9px Inter, sans-serif';
-  ctx.fillStyle = '#94a3b8';
-  ctx.textAlign = 'center';
-  ctx.fillText('Leading', mx + mx/2, 14);
-  ctx.fillText('Improving', mx/2, 14);
-  ctx.fillText('Weakening', mx + mx/2, h - 6);
-  ctx.fillText('Lagging', mx/2, h - 6);
-}
-
-drawQuadrants(compassCtx);
-
-// Plot sectors
-const sectors = [
-  { name: 'Tech', x: 0.72, y: 0.25, color: '#059669', size: 8 },
-  { name: 'Health', x: 0.68, y: 0.3, color: '#059669', size: 7 },
-  { name: 'Fin', x: 0.35, y: 0.35, color: '#0ea5e9', size: 9 },
-  { name: 'Energy', x: 0.65, y: 0.62, color: '#f59e0b', size: 7 },
-  { name: 'Realty', x: 0.3, y: 0.7, color: '#ef4444', size: 6 },
-  { name: 'FMCG', x: 0.55, y: 0.42, color: '#059669', size: 6 },
-  { name: 'Auto', x: 0.6, y: 0.35, color: '#059669', size: 7 },
-  { name: 'Metal', x: 0.4, y: 0.58, color: '#ef4444', size: 5 },
-  { name: 'Pharma', x: 0.62, y: 0.28, color: '#059669', size: 6 },
-  { name: 'IT', x: 0.25, y: 0.45, color: '#0ea5e9', size: 7 },
-  { name: 'Infra', x: 0.45, y: 0.55, color: '#f59e0b', size: 6 },
-];
-
-sectors.forEach(s => {
-  const x = s.x * 240;
-  const y = s.y * 240;
-
-  compassCtx.beginPath();
-  compassCtx.arc(x, y, s.size, 0, Math.PI * 2);
-  compassCtx.fillStyle = s.color + '33';
-  compassCtx.fill();
-  compassCtx.strokeStyle = s.color;
-  compassCtx.lineWidth = 1.5;
-  compassCtx.stroke();
-
-  compassCtx.fillStyle = s.color;
-  compassCtx.beginPath();
-  compassCtx.arc(x, y, 2.5, 0, Math.PI * 2);
-  compassCtx.fill();
-
-  compassCtx.font = '8px Inter, sans-serif';
-  compassCtx.fillStyle = '#475569';
-  compassCtx.textAlign = 'center';
-  compassCtx.fillText(s.name, x, y - s.size - 3);
-});
-</script>
-
-</body>
-</html>
+Top Tier
+Good
+Average
+Weak
+REGIME-AWARE ACTIONS
+▲
+Increase Equity SIP
+Risk-On regime + improving breadth. SIPs started now benefit from momentum. Consider stepping up by 20%.
+●
+Rotate into Leading Sectors
+Technology & Healthcare in Leading quadrant. Funds with overweight in these sectors have 3M momentum.
+▼
+Reduce Energy Exposure
+Energy sector weakening. Funds with >25% energy exposure flagged. Review portfolio allocation.
+DATA FRESHNESS
+NAV Data
+28 Mar 2026 Fresh
+Lens Scores
+28 Mar 2026 Fresh
+Holdings
+28 Feb 2026 Monthly
+Risk Stats
+5 Mar 2026 Monthly
+MarketPulse
+28 Mar 2026 Live
+Refresh NAV Recompute Lens
+CATEGORY PERFORMANCE HEATMAP — 1Y RETURNS
+1M 3M 1Y 3Y
+Large Cap
++14.2%
+87 funds
+Flexi Cap
++16.8%
+42 funds
+Mid Cap
++22.1%
+34 funds
+Small Cap
++28.6%
+28 funds
+ELSS
++15.3%
+38 funds
+BAF
++10.4%
+25
+Equity Hybrid
++12.7%
+31
+Sectoral
++8.2%
+56
+Short Dur
++7.1%
+22
+Corp Bond
++6.8%
+18
+Liquid
++5.2%
+24
+Value / Contra
++19.4%
+18 funds
+Credit Risk
+-1.2%
+8
+Multi-Asset
++11.5%
+15
+Focused
++13.8%
+22
+MF Pulse — Jhaveri Securities Limited — Dashboard Mockup
