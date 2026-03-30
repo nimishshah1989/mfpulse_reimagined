@@ -67,22 +67,17 @@ class SectorRotationService:
         RS Score = (sector_weighted_return - avg_all_sectors_return) / std_dev
         normalized to 0-100 scale. Uses AUM-weighted sector returns from
         fund_sector_exposure × nav_daily.return_1y.
+
+        Momentum = change in RS score between snapshots (not weight change).
         """
         # Get AUM-weighted sector returns
         sector_returns = self._get_sector_weighted_returns(target_date)
 
-        # Get sector weights for momentum calculation
+        # Get sector weights for fund count
         current_weights = self._get_sector_weights(target_date)
         if not current_weights:
             logger.warning("No sector weights for date %s", target_date)
             return []
-
-        # Get previous snapshots for momentum calculation
-        prev_1m_date = target_date - timedelta(days=35)
-        prev_3m_date = target_date - timedelta(days=100)
-
-        prev_1m_weights = self._get_sector_weights_nearest(prev_1m_date)
-        prev_3m_weights = self._get_sector_weights_nearest(prev_3m_date)
 
         # Compute RS score: relative performance approach
         all_returns = [
@@ -94,28 +89,38 @@ class SectorRotationService:
         std_return = stdev(all_returns_float) if len(all_returns_float) > 1 else Decimal("1")
         std_return = max(std_return, 0.01)  # avoid division by zero
 
+        # Compute RS scores for all sectors first
+        rs_scores: dict[str, Decimal] = {}
+        for sector in MORNINGSTAR_SECTORS:
+            sec_ret = sector_returns.get(sector, {})
+            weighted_ret = sec_ret.get("weighted_return", Decimal("0"))
+            raw_rs = (float(weighted_ret) - avg_return) / std_return
+            rs = max(Decimal("0"), min(Decimal("100"),
+                Decimal(str(50 + raw_rs * 16.67)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            ))
+            rs_scores[sector] = rs
+
+        # Get previous RS scores for momentum (RS score change, not weight change)
+        prev_1m_rs = self._get_previous_rs_scores(target_date, months_back=1)
+        prev_3m_rs = self._get_previous_rs_scores(target_date, months_back=3)
+
         results = []
         for sector in MORNINGSTAR_SECTORS:
             cur = current_weights.get(sector, {})
             avg_wt = cur.get("avg_weight", Decimal("0"))
             fund_ct = cur.get("fund_count", 0)
 
-            # Momentum
-            prev_1m_wt = prev_1m_weights.get(sector, {}).get("avg_weight", avg_wt)
-            prev_3m_wt = prev_3m_weights.get(sector, {}).get("avg_weight", avg_wt)
-            mom_1m = avg_wt - prev_1m_wt
-            mom_3m = avg_wt - prev_3m_wt
+            rs = rs_scores[sector]
 
-            # RS score based on relative performance
+            # Momentum = RS score change (meaningful for quadrant assignment)
+            prev_1m_val = prev_1m_rs.get(sector, rs)  # default to current if no history
+            prev_3m_val = prev_3m_rs.get(sector, rs)
+            mom_1m = rs - prev_1m_val
+            mom_3m = rs - prev_3m_val
+
             sec_ret = sector_returns.get(sector, {})
             weighted_ret = sec_ret.get("weighted_return", Decimal("0"))
             total_aum = sec_ret.get("total_aum", Decimal("0"))
-
-            raw_rs = (float(weighted_ret) - avg_return) / std_return
-            # Normalize from z-score (-3 to +3 typically) to 0-100
-            rs = max(Decimal("0"), min(Decimal("100"),
-                Decimal(str(50 + raw_rs * 16.67)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            ))
 
             # Quadrant: based on RS (above/below 50) and momentum (positive/negative)
             quadrant = self._assign_quadrant(rs, mom_1m)
@@ -576,6 +581,36 @@ class SectorRotationService:
 
         return result
 
+    def _get_previous_rs_scores(self, target_date: date, months_back: int = 1) -> dict:
+        """Get RS scores from a previous snapshot for momentum calculation."""
+        cutoff = target_date - timedelta(days=months_back * 35)
+        row = (
+            self.db.query(SectorRotationHistory.snapshot_date)
+            .filter(
+                SectorRotationHistory.snapshot_date >= cutoff,
+                SectorRotationHistory.snapshot_date < target_date,
+            )
+            .order_by(SectorRotationHistory.snapshot_date.desc())
+            .limit(1)
+            .first()
+        )
+        if not row:
+            return {}
+
+        prev_date = row[0]
+        rows = (
+            self.db.query(
+                SectorRotationHistory.sector_name,
+                SectorRotationHistory.rs_score,
+            )
+            .filter(SectorRotationHistory.snapshot_date == prev_date)
+            .all()
+        )
+        return {
+            r.sector_name: Decimal(str(r.rs_score)) if r.rs_score else Decimal("50")
+            for r in rows
+        }
+
     def _get_sector_weights(self, target_date: date) -> dict:
         """Get average sector weights for a specific date."""
         rows = (
@@ -598,30 +633,6 @@ class SectorRotationService:
             }
             for r in rows
         }
-
-    def _get_sector_weights_nearest(self, target_date: date) -> dict:
-        """Get sector weights for the nearest date to target (within 15 days)."""
-        nearest_date = (
-            self.db.query(FundSectorExposure.portfolio_date)
-            .filter(
-                FundSectorExposure.portfolio_date.between(
-                    target_date - timedelta(days=15),
-                    target_date + timedelta(days=15),
-                )
-            )
-            .order_by(
-                func.abs(
-                    func.extract("epoch", FundSectorExposure.portfolio_date) -
-                    func.extract("epoch", func.cast(target_date, FundSectorExposure.portfolio_date.type))
-                )
-            )
-            .limit(1)
-            .scalar()
-        )
-
-        if nearest_date:
-            return self._get_sector_weights(nearest_date)
-        return {}
 
     @staticmethod
     def _assign_quadrant(rs_score: Decimal, momentum_1m: Decimal) -> str:
