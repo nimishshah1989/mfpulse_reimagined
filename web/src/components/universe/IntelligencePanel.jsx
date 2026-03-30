@@ -250,17 +250,6 @@ export default function IntelligencePanel({
         </div>
       </div>
 
-      {/* How to use */}
-      <div className="glass-card p-4" style={{ background: 'rgba(248, 250, 252, 0.9)' }}>
-        <p className="text-xs font-bold text-slate-500 mb-2">How to Use This Chart</p>
-        <ul className="text-[11px] text-slate-500 space-y-1.5 leading-relaxed">
-          <li><strong>Click</strong> any bubble to see fund details</li>
-          <li><strong>Double-click</strong> to open full Fund 360 view</li>
-          <li><strong>Scroll</strong> to zoom in/out on clusters</li>
-          <li><strong>Drag</strong> to pan across the universe</li>
-          <li><strong>Click a tier bar</strong> (left) to spotlight those funds</li>
-        </ul>
-      </div>
     </div>
   );
 }

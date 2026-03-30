@@ -121,7 +121,7 @@ function BucketCard({ bucket, count, topFund, onClick, onFundClick }) {
   return (
     <div
       onClick={onClick}
-      className={`bucket-card glass-card p-3.5 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200`}
+      className={`bucket-card glass-card w-[195px] p-3.5 cursor-pointer flex-shrink-0 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200`}
     >
       {/* Icon + name header */}
       <div className="flex items-center gap-2 mb-3">
@@ -211,9 +211,9 @@ export default function SmartBuckets({ universe: externalUniverse }) {
         <SectionTitle tip="Pre-built fund categories based on multi-lens classifications">
           SMART BUCKETS
         </SectionTitle>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        <div className="flex gap-3 overflow-hidden">
           {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-            <SkeletonLoader key={i} className="h-40 rounded-xl" />
+            <SkeletonLoader key={i} className="h-40 w-[195px] rounded-xl flex-shrink-0" />
           ))}
         </div>
       </div>
@@ -236,17 +236,19 @@ export default function SmartBuckets({ universe: externalUniverse }) {
       >
         SMART BUCKETS
       </SectionTitle>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        {BUCKET_DEFINITIONS.map((bucket) => (
-          <BucketCard
-            key={bucket.id}
-            bucket={bucket}
-            count={bucketData[bucket.id]?.count || 0}
-            topFund={bucketData[bucket.id]?.topFund}
-            onClick={() => handleBucketClick(bucket)}
-            onFundClick={(mstarId) => router.push(`/fund360?fund=${mstarId}`)}
-          />
-        ))}
+      <div className="scroll-x">
+        <div className="flex gap-3 pb-1" style={{ minWidth: 'max-content' }}>
+          {BUCKET_DEFINITIONS.map((bucket) => (
+            <BucketCard
+              key={bucket.id}
+              bucket={bucket}
+              count={bucketData[bucket.id]?.count || 0}
+              topFund={bucketData[bucket.id]?.topFund}
+              onClick={() => handleBucketClick(bucket)}
+              onFundClick={(mstarId) => router.push(`/fund360?fund=${mstarId}`)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -114,37 +114,41 @@ export default function SmartPresets({ allFunds, activePreset, onPresetClick, vi
           </div>
         )}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        {PRESETS.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => onPresetClick(activePreset === p.id ? null : p.id)}
-            className={`preset-card glass-card px-3.5 py-3 flex items-center gap-2.5 text-left ${
-              activePreset === p.id ? 'ring-2 ring-teal-400 border-teal-300' : ''
-            }`}
-          >
-            <span className={`${p.iconColor} text-base flex-shrink-0`}>{p.icon}</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold text-slate-700 truncate">{p.label}</p>
-              <p className="text-[11px] text-slate-400 truncate">{p.desc}</p>
-            </div>
-            <span className={`text-xs font-bold ${p.countColor} tabular-nums flex-shrink-0`}>
-              {counts[p.id]}
-            </span>
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => onPresetClick('custom')}
-          className={`px-3.5 py-3 rounded-2xl border border-dashed text-[13px] font-medium transition-colors ${
-            activePreset === 'custom'
-              ? 'border-teal-400 text-teal-600 bg-teal-50'
-              : 'border-slate-300 text-slate-400 hover:border-teal-300 hover:text-teal-600'
-          }`}
-        >
-          + Custom Filter
-        </button>
+      <div className="flex items-center gap-3">
+        <div className="scroll-x flex-1 min-w-0">
+          <div className="flex gap-2.5 pb-1" style={{ minWidth: 'max-content' }}>
+            {PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => onPresetClick(activePreset === p.id ? null : p.id)}
+                className={`preset-card glass-card px-4 py-3 flex items-center gap-2.5 text-left whitespace-nowrap ${
+                  activePreset === p.id ? 'ring-2 ring-teal-400 border-teal-300' : ''
+                }`}
+              >
+                <span className={`${p.iconColor} text-base flex-shrink-0`}>{p.icon}</span>
+                <div>
+                  <p className="text-[13px] font-semibold text-slate-700">{p.label}</p>
+                  <p className="text-[11px] text-slate-400">{p.desc}</p>
+                </div>
+                <span className={`text-xs font-bold ${p.countColor} tabular-nums ml-1`}>
+                  {counts[p.id]}
+                </span>
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => onPresetClick('custom')}
+              className={`px-4 py-3 rounded-2xl border border-dashed text-[13px] font-medium transition-colors whitespace-nowrap ${
+                activePreset === 'custom'
+                  ? 'border-teal-400 text-teal-600 bg-teal-50'
+                  : 'border-slate-300 text-slate-400 hover:border-teal-300 hover:text-teal-600'
+              }`}
+            >
+              + Custom Filter
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   );
