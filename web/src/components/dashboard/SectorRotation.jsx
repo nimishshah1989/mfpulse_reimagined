@@ -18,15 +18,21 @@ function getName(s) {
   return s.display_name || s.sector_name || s.name || '';
 }
 
-/* Return score → vivid color gradient */
+/* Return score → red-to-green gradient (matching universe page) */
 function returnScoreColor(score) {
   if (score == null) return '#94a3b8';
-  if (score >= 75) return '#059669'; // deep green
-  if (score >= 60) return '#10b981'; // green
-  if (score >= 50) return '#6366f1'; // indigo
-  if (score >= 40) return '#f59e0b'; // amber
-  if (score >= 25) return '#f97316'; // orange
-  return '#ef4444'; // red
+  if (score >= 75) return 'rgba(5, 150, 105, 0.85)';   // deep green
+  if (score >= 50) return 'rgba(13, 148, 136, 0.80)';   // teal
+  if (score >= 25) return 'rgba(245, 158, 11, 0.75)';   // amber
+  return 'rgba(239, 68, 68, 0.80)';                      // red
+}
+
+function returnScoreBorder(score) {
+  if (score == null) return '#94a3b8';
+  if (score >= 75) return 'rgba(5,150,105,0.9)';
+  if (score >= 50) return 'rgba(13,148,136,0.85)';
+  if (score >= 25) return 'rgba(245,158,11,0.8)';
+  return 'rgba(239,68,68,0.85)';
 }
 
 /* Exclude non-equity categories from bubble chart */
@@ -47,7 +53,7 @@ function isEquityCategory(catName) {
 
 /* ──────────────── Category Bubble Chart (SVG) ──────────────── */
 
-function CategoryBubbleChart({ universe }) {
+function CategoryBubbleChart({ universe, onCategoryClick }) {
   const [hovered, setHovered] = useState(null);
 
   const categories = useMemo(() => {
@@ -56,7 +62,7 @@ function CategoryBubbleChart({ universe }) {
     universe.forEach((f) => {
       const cat = f.category_name;
       if (!cat || !isEquityCategory(cat)) return;
-      if (!grouped[cat]) grouped[cat] = { returns: [], risks: [], returnScores: [], count: 0 };
+      if (!grouped[cat]) grouped[cat] = { returns: [], risks: [], returnScores: [], count: 0, originalName: cat };
       grouped[cat].count += 1;
       if (f.return_1y != null) grouped[cat].returns.push(Number(f.return_1y));
       if (f.risk_score != null) grouped[cat].risks.push(Number(f.risk_score));
@@ -69,6 +75,7 @@ function CategoryBubbleChart({ universe }) {
       .filter(([, d]) => d.count >= 3 && d.returns.length > 0 && d.risks.length > 0)
       .map(([name, d]) => ({
         name: name.replace(/ Fund$/, '').replace(/Equity - /, ''),
+        originalName: d.originalName,
         count: d.count,
         avgReturn: avg(d.returns),
         avgRisk: avg(d.risks),
@@ -78,10 +85,10 @@ function CategoryBubbleChart({ universe }) {
       .slice(0, 20);
   }, [universe]);
 
-  if (categories.length === 0) return <div className="w-full h-[320px] bg-slate-50 rounded-lg flex items-center justify-center text-xs text-slate-400">No equity category data available</div>;
+  if (categories.length === 0) return <div className="w-full h-[440px] bg-slate-50 rounded-lg flex items-center justify-center text-xs text-slate-400">No equity category data available</div>;
 
-  const W = 520, H = 340;
-  const pad = { top: 28, right: 24, bottom: 40, left: 52 };
+  const W = 700, H = 460;
+  const pad = { top: 20, right: 20, bottom: 36, left: 48 };
   const plotW = W - pad.left - pad.right;
   const plotH = H - pad.top - pad.bottom;
 
@@ -93,18 +100,18 @@ function CategoryBubbleChart({ universe }) {
   const riskP5 = percentile(risks, 0.05), riskP95 = percentile(risks, 0.95);
   const retRange = retP95 - retP5 || 10;
   const riskRange = riskP95 - riskP5 || 20;
-  const minR = retP5 - retRange * 0.15, maxR = retP95 + retRange * 0.15;
-  const minRk = riskP5 - riskRange * 0.15, maxRk = riskP95 + riskRange * 0.15;
+  const minR = retP5 - retRange * 0.12, maxR = retP95 + retRange * 0.12;
+  const minRk = riskP5 - riskRange * 0.12, maxRk = riskP95 + riskRange * 0.12;
   const maxCount = Math.max(...categories.map((c) => c.count));
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const scaleX = (rk) => pad.left + clamp((rk - minRk) / (maxRk - minRk), 0, 1) * plotW;
   const scaleY = (ret) => pad.top + plotH - clamp((ret - minR) / (maxR - minR), 0, 1) * plotH;
-  const scaleR = (count) => 8 + (count / maxCount) * 28;
+  const scaleR = (count) => 12 + (count / maxCount) * 36;
 
   return (
-    <div className="flex-1 min-w-0">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" style={{ maxHeight: 320 }}>
+    <div className="w-full">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
         {/* Grid lines */}
         {[0.25, 0.5, 0.75].map((t) => (
           <line key={`h${t}`} x1={pad.left} x2={W - pad.right} y1={pad.top + plotH * t} y2={pad.top + plotH * t}
@@ -120,11 +127,11 @@ function CategoryBubbleChart({ universe }) {
         <line x1={pad.left} x2={pad.left} y1={pad.top} y2={H - pad.bottom} stroke="#cbd5e1" strokeWidth="1" />
 
         {/* Axis labels */}
-        <text x={W / 2} y={H - 4} textAnchor="middle" fontSize="11" fill="#64748b" fontWeight="500">
+        <text x={W / 2} y={H - 2} textAnchor="middle" fontSize="11" fill="#64748b" fontWeight="500">
           Avg Risk Score →
         </text>
-        <text x={12} y={H / 2} textAnchor="middle" fontSize="11" fill="#64748b" fontWeight="500"
-          transform={`rotate(-90, 12, ${H / 2})`}>
+        <text x={10} y={H / 2} textAnchor="middle" fontSize="11" fill="#64748b" fontWeight="500"
+          transform={`rotate(-90, 10, ${H / 2})`}>
           Avg 1Y Return % →
         </text>
 
@@ -146,23 +153,27 @@ function CategoryBubbleChart({ universe }) {
           );
         })}
 
-        {/* Bubbles */}
+        {/* Bubbles — clickable */}
         {categories.map((cat) => {
           const cx = scaleX(cat.avgRisk);
           const cy = scaleY(cat.avgReturn);
           const r = scaleR(cat.count);
           const fill = returnScoreColor(cat.avgReturnScore);
+          const border = returnScoreBorder(cat.avgReturnScore);
           const isHovered = hovered === cat.name;
           return (
-            <g key={cat.name} onMouseEnter={() => setHovered(cat.name)} onMouseLeave={() => setHovered(null)}
-              style={{ cursor: 'default' }}>
-              <circle cx={cx} cy={cy} r={r} fill={fill} opacity={isHovered ? 0.95 : 0.7}
-                stroke={isHovered ? '#0f172a' : '#fff'} strokeWidth={isHovered ? 2 : 1}
+            <g key={cat.name}
+              onMouseEnter={() => setHovered(cat.name)}
+              onMouseLeave={() => setHovered(null)}
+              onClick={() => onCategoryClick?.(cat.originalName)}
+              style={{ cursor: 'pointer' }}>
+              <circle cx={cx} cy={cy} r={r} fill={fill} opacity={isHovered ? 1 : 0.85}
+                stroke={isHovered ? '#0f172a' : border} strokeWidth={isHovered ? 2.5 : 1.5}
                 style={{ transition: 'all 0.15s' }} />
-              {(r >= 12 || isHovered) && (
-                <text x={cx} y={cy + 1} textAnchor="middle" fontSize={isHovered ? '10' : '8'} fontWeight="600"
-                  fill="#fff" pointerEvents="none">
-                  {cat.name.length > 10 ? cat.name.slice(0, 8) + '…' : cat.name}
+              {(r >= 14 || isHovered) && (
+                <text x={cx} y={cy + 1} textAnchor="middle" fontSize={isHovered ? '11' : '9'} fontWeight="700"
+                  fill="#fff" pointerEvents="none" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                  {cat.name.length > 12 ? cat.name.slice(0, 10) + '…' : cat.name}
                 </text>
               )}
             </g>
@@ -173,11 +184,11 @@ function CategoryBubbleChart({ universe }) {
         {hovered && (() => {
           const cat = categories.find((c) => c.name === hovered);
           if (!cat) return null;
-          const tx = Math.min(scaleX(cat.avgRisk) + 20, W - 140);
+          const tx = Math.min(scaleX(cat.avgRisk) + 20, W - 160);
           const ty = Math.max(scaleY(cat.avgReturn) - 10, pad.top);
           return (
             <g>
-              <rect x={tx} y={ty - 12} width={130} height={50} rx={6} fill="#0f172a" opacity={0.92} />
+              <rect x={tx} y={ty - 12} width={150} height={56} rx={6} fill="#0f172a" opacity={0.92} />
               <text x={tx + 8} y={ty + 4} fontSize="11" fontWeight="600" fill="#fff">{cat.name}</text>
               <text x={tx + 8} y={ty + 18} fontSize="10" fill="#94a3b8">
                 {cat.count} funds · Ret {cat.avgReturn?.toFixed(1)}%
@@ -185,6 +196,7 @@ function CategoryBubbleChart({ universe }) {
               <text x={tx + 8} y={ty + 30} fontSize="10" fill="#94a3b8">
                 Risk {cat.avgRisk?.toFixed(0)} · Score {cat.avgReturnScore?.toFixed(0)}
               </text>
+              <text x={tx + 8} y={ty + 42} fontSize="9" fill="#67e8f9">Click to drill down</text>
             </g>
           );
         })()}
@@ -195,9 +207,8 @@ function CategoryBubbleChart({ universe }) {
         <span className="text-[11px] text-slate-600 font-medium">Return Score:</span>
         {[
           { color: '#059669', label: '75+' },
-          { color: '#10b981', label: '60+' },
-          { color: '#6366f1', label: '50+' },
-          { color: '#f59e0b', label: '40+' },
+          { color: '#0d9488', label: '50+' },
+          { color: '#f59e0b', label: '25+' },
           { color: '#ef4444', label: '<25' },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center gap-1">
@@ -205,7 +216,7 @@ function CategoryBubbleChart({ universe }) {
             <span className="text-[10px] text-slate-500">{label}</span>
           </div>
         ))}
-        <span className="text-[10px] text-slate-400 ml-2">Bubble size = fund count</span>
+        <span className="text-[10px] text-slate-400 ml-2">Bubble size = fund count · Click to explore</span>
       </div>
     </div>
   );
@@ -301,22 +312,75 @@ function PlaybookBar({ sectors }) {
   );
 }
 
+/* ──────────────── Category Drill-Down Panel ──────────────── */
+
+function CategoryDrillDown({ categoryName, universe, onFundClick, onClose }) {
+  const funds = useMemo(() => {
+    if (!universe || !categoryName) return [];
+    return universe
+      .filter((f) => f.category_name === categoryName)
+      .sort((a, b) => (b.return_1y || 0) - (a.return_1y || 0))
+      .slice(0, 15);
+  }, [universe, categoryName]);
+
+  if (!categoryName) return null;
+
+  return (
+    <div className="mt-4 border border-teal-200 rounded-xl bg-teal-50/30 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold text-slate-800">
+          {categoryName} — {funds.length} funds
+        </p>
+        <button type="button" onClick={onClose}
+          className="text-slate-400 hover:text-slate-600 text-xs font-medium px-2 py-0.5 rounded hover:bg-slate-100">
+          Close
+        </button>
+      </div>
+      {funds.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+          {funds.map((f) => (
+            <div key={f.mstar_id}
+              onClick={() => onFundClick?.(f.mstar_id)}
+              className="bg-white rounded-lg border border-slate-200 px-3 py-2 cursor-pointer hover:shadow-sm hover:border-teal-300 transition-all">
+              <p className="text-[11px] font-medium text-slate-800 truncate">{f.fund_name}</p>
+              <div className="flex items-center gap-3 mt-1">
+                {f.return_1y != null && (
+                  <span className={`text-[10px] font-semibold tabular-nums ${Number(f.return_1y) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {Number(f.return_1y) >= 0 ? '+' : ''}{Number(f.return_1y).toFixed(1)}% 1Y
+                  </span>
+                )}
+                {f.return_score != null && (
+                  <span className="text-[10px] text-slate-500 tabular-nums">Score {Number(f.return_score).toFixed(0)}</span>
+                )}
+                {f.aum != null && (
+                  <span className="text-[10px] text-slate-400 tabular-nums">{(Number(f.aum) / 1e7).toFixed(0)} Cr</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-slate-400">No funds in this category</p>
+      )}
+    </div>
+  );
+}
+
 /* ──────────────── Main Component ──────────────── */
 
-export default function SectorRotation({ sectors, universe, loading }) {
+export default function SectorRotation({ sectors, universe, loading, onFundClick }) {
   const router = useRouter();
+  const [drillCategory, setDrillCategory] = useState(null);
 
   if (loading) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 p-5">
         <SkeletonLoader className="h-6 w-48 rounded mb-4" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <SkeletonLoader className="h-[320px] rounded-lg" />
-          <div className="space-y-2">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <SkeletonLoader key={i} className="h-8 rounded" />
-            ))}
-          </div>
+        <SkeletonLoader className="h-[440px] rounded-lg mb-4" />
+        <div className="space-y-2">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <SkeletonLoader key={i} className="h-8 rounded" />
+          ))}
         </div>
       </div>
     );
@@ -341,20 +405,33 @@ export default function SectorRotation({ sectors, universe, loading }) {
         </button>
       </div>
 
-      {/* 2-column: Bubble Chart | Table */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <CategoryBubbleChart universe={universe} />
+      {/* Bubble Chart — full width for maximum impact */}
+      <CategoryBubbleChart universe={universe} onCategoryClick={setDrillCategory} />
+
+      {/* Drill-down panel (shows when a bubble is clicked) */}
+      {drillCategory && (
+        <CategoryDrillDown
+          categoryName={drillCategory}
+          universe={universe}
+          onFundClick={(mstarId) => { router.push(`/fund360?fund=${mstarId}`); }}
+          onClose={() => setDrillCategory(null)}
+        />
+      )}
+
+      {/* Sector Table — below chart */}
+      <div className="mt-5">
+        <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Morningstar Sector Rotation</p>
         <SectorTable sectors={normalized} />
       </div>
 
-      {/* Playbook — immediately below the 2x2 */}
+      {/* Playbook — immediately below the table */}
       <PlaybookBar sectors={normalized} />
 
       {/* Fund Wt explanation */}
       <div className="mt-3 bg-slate-50 rounded-lg px-4 py-2.5">
         <p className="text-[11px] text-slate-600 leading-relaxed">
-          <span className="font-semibold text-slate-700">Fund Wt%</span> = average portfolio allocation that mutual funds hold in each Morningstar sector (computed from {normalized.length > 0 ? '~1,096' : ''} fund holdings).
-          Higher weight = more institutional capital concentrated. <span className="font-semibold text-slate-700">Bubble chart</span>: X = avg risk score, Y = avg 1Y return, size = fund count, color = return score (green = strong, red = weak). Equity categories only.
+          <span className="font-semibold text-slate-700">Bubble chart</span>: X = avg risk score, Y = avg 1Y return, size = fund count, color = return score (green = strong, red = weak). Click any bubble to see funds.{' '}
+          <span className="font-semibold text-slate-700">Fund Wt%</span> = average portfolio allocation across {normalized.length > 0 ? '~1,096' : ''} fund holdings.
         </p>
       </div>
     </div>

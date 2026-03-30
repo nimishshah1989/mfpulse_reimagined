@@ -97,6 +97,7 @@ export default function DashboardPage() {
   const [nifty, setNifty] = useState(null);
   const [regime, setRegime] = useState(null);
   const [sentiment, setSentiment] = useState(null);
+  const [sentimentRaw, setSentimentRaw] = useState(null);
   const [breadthData, setBreadthData] = useState(null);
   const [sectors, setSectors] = useState([]);
   const [matrixData, setMatrixData] = useState([]);
@@ -123,6 +124,10 @@ export default function DashboardPage() {
     return applyGlobalFilters(matrixData, filters);
   }, [matrixData, filters]);
 
+  // When any global filter is active, force client-side archetype computation
+  const isFiltered = filters.regularOnly || filters.equityOnly || filters.minAum;
+  const effectiveArchetypes = isFiltered ? [] : archetypes;
+
   useEffect(() => {
     async function loadAll() {
       setLoading(true);
@@ -141,6 +146,7 @@ export default function DashboardPage() {
       if (results[1].status === 'fulfilled') setRegime(results[1].value.data);
       if (results[2].status === 'fulfilled') {
         const raw = results[2].value.data;
+        setSentimentRaw(raw);
         const ls = raw?.layer_scores || {};
         const layers = Object.entries(ls).map(([name, score]) => ({ name, score }));
         setSentiment({ composite_score: raw?.composite_score, zone: raw?.zone, layers });
@@ -188,31 +194,31 @@ export default function DashboardPage() {
       />
 
       {/* Row 1: Market Pulse Strip */}
-      <MarketPulseStrip nifty={nifty} regime={regime} sentiment={sentiment} breadth={breadthData} loading={loading} />
+      <MarketPulseStrip nifty={nifty} regime={regime} sentiment={sentiment} sentimentRaw={sentimentRaw} breadth={breadthData} loading={loading} />
 
-      {/* Row 2: Sector Rotation */}
-      <SectorRotation sectors={sectors} universe={filteredUniverse} loading={loading} />
+      {/* Row 2: Sector Rotation + Category Bubble */}
+      <SectorRotation sectors={sectors} universe={filteredUniverse} loading={loading} onFundClick={handleFundClick} />
 
       {/* Row 3: Sector-Fund Bridge */}
       <FundExposureBridge matrixData={filteredMatrix} sectors={sectors} universe={filteredUniverse} loading={loading} />
 
-      {/* Row 3b: Quadrant Alignment */}
-      <QuadrantAlignment alignmentData={alignmentData} universe={filteredUniverse} onFundClick={handleFundClick} loading={loading} />
+      {/* Row 4: Fund Archetypes & Lens Fingerprints (moved UP) */}
+      <LensFingerprint universe={filteredUniverse} archetypes={effectiveArchetypes} loading={!filteredUniverse} />
 
-      {/* Row 4: Universe Snapshot Strip */}
+      {/* Row 5: Universe Snapshot Strip */}
       <UniverseSnapshotStrip universe={filteredUniverse} loading={loading} />
 
-      {/* Row 5: Smart Buckets */}
+      {/* Row 6: Smart Buckets */}
       <SmartBuckets universe={filteredUniverse} />
 
-      {/* Row 6: Top Funds + Category Heatmap */}
+      {/* Row 7: Top Funds + Category Heatmap */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TopFundsByLens universe={filteredUniverse} onFundClick={handleFundClick} loading={!filteredUniverse} />
         <CategoryHeatmap universe={filteredUniverse} loading={!filteredUniverse} />
       </div>
 
-      {/* Row 7: Lens Fingerprints */}
-      <LensFingerprint universe={filteredUniverse} archetypes={archetypes} loading={!filteredUniverse} />
+      {/* Row 8: Quadrant Alignment (moved DOWN) */}
+      <QuadrantAlignment alignmentData={alignmentData} universe={filteredUniverse} onFundClick={handleFundClick} loading={loading} />
     </div>
   );
 }
