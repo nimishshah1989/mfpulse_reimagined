@@ -103,8 +103,8 @@ function CategoryBubbleChart({ categories, onCategoryClick }) {
         {/* Axes */}
         <line x1={pad.left} x2={W - pad.right} y1={H - pad.bottom} y2={H - pad.bottom} stroke="#cbd5e1" strokeWidth="1" />
         <line x1={pad.left} x2={pad.left} y1={pad.top} y2={H - pad.bottom} stroke="#cbd5e1" strokeWidth="1" />
-        <text x={W / 2} y={H - 2} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500">Risk Score \u2192</text>
-        <text x={10} y={H / 2} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500" transform={`rotate(-90, 10, ${H / 2})`}>1Y Return % \u2192</text>
+        <text x={W / 2} y={H - 2} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500">{'Risk Score \u2192'}</text>
+        <text x={10} y={H / 2} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500" transform={`rotate(-90, 10, ${H / 2})`}>{'1Y Return % \u2192'}</text>
 
         {[0, 0.5, 1].map((t) => (
           <text key={`xt${t}`} x={pad.left + plotW * t} y={H - pad.bottom + 13} textAnchor="middle" fontSize="9" fill="#94a3b8">
@@ -219,7 +219,10 @@ function CategoryTable({ categories, onCategoryClick }) {
 
 function SectorTable({ sectors, onSectorClick }) {
   const sorted = useMemo(() => {
-    return [...sectors].sort((a, b) => (b.avg_weight_pct || 0) - (a.avg_weight_pct || 0));
+    return [...sectors]
+      .filter((s) => getName(s).toLowerCase() !== 'other')
+      .sort((a, b) => (b.avg_weight_pct || 0) - (a.avg_weight_pct || 0))
+      .concat(sectors.filter((s) => getName(s).toLowerCase() === 'other'));
   }, [sectors]);
 
   const maxWt = Math.max(...sorted.map((s) => Number(s.avg_weight_pct) || 0), 1);
@@ -322,6 +325,7 @@ function PlaybookBar({ sectors }) {
 
 function CategoryDrillDown({ categoryName, universe, onFundClick, onClose }) {
   const [showAll, setShowAll] = useState(false);
+  const [hoveredFund, setHoveredFund] = useState(null);
 
   const allFunds = useMemo(() => {
     if (!universe || !categoryName) return [];
@@ -350,7 +354,7 @@ function CategoryDrillDown({ categoryName, universe, onFundClick, onClose }) {
   return (
     <div className="mt-4 border border-teal-200 rounded-xl bg-teal-50/30 p-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-slate-800">{categoryName} \u2014 {allFunds.length} funds</p>
+        <p className="text-xs font-semibold text-slate-800">{categoryName} {'\u2014'} {allFunds.length} funds</p>
         <button type="button" onClick={onClose}
           className="text-slate-400 hover:text-slate-600 text-xs font-medium px-2 py-0.5 rounded hover:bg-slate-100">Close</button>
       </div>
@@ -369,15 +373,40 @@ function CategoryDrillDown({ categoryName, universe, onFundClick, onClose }) {
               if (isNaN(ret) || isNaN(risk)) return null;
               const aum = Number(f.aum) || 0;
               const r = 4 + Math.min(Math.sqrt(aum / 1e9), 10);
+              const isH = hoveredFund === f.mstar_id;
               return (
-                <circle key={f.mstar_id} cx={sX(risk)} cy={sY(ret)} r={r}
-                  fill={returnScoreColor(f.return_score)} opacity={0.75} stroke="#fff" strokeWidth={0.5}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => onFundClick?.(f.mstar_id)}>
-                  <title>{f.fund_name}: {ret.toFixed(1)}% 1Y, Risk {risk.toFixed(0)}</title>
-                </circle>
+                <circle key={f.mstar_id} cx={sX(risk)} cy={sY(ret)} r={isH ? r + 2 : r}
+                  fill={returnScoreColor(f.return_score)} opacity={isH ? 1 : 0.75}
+                  stroke={isH ? '#0f172a' : '#fff'} strokeWidth={isH ? 2 : 0.5}
+                  style={{ cursor: 'pointer', transition: 'all 0.15s' }}
+                  onMouseEnter={() => setHoveredFund(f.mstar_id)}
+                  onMouseLeave={() => setHoveredFund(null)}
+                  onClick={() => onFundClick?.(f.mstar_id)} />
               );
             })}
+
+            {/* Hover tooltip */}
+            {hoveredFund && (() => {
+              const f = allFunds.find(x => x.mstar_id === hoveredFund);
+              if (!f) return null;
+              const ret = Number(f.return_1y);
+              const risk = Number(f.risk_score);
+              if (isNaN(ret) || isNaN(risk)) return null;
+              const tx = Math.min(sX(risk) + 12, W - 170);
+              const ty = Math.max(sY(ret) - 10, pad.top);
+              return (
+                <g pointerEvents="none">
+                  <rect x={tx} y={ty - 12} width={165} height={42} rx={6} fill="#0f172a" opacity={0.92} />
+                  <text x={tx + 6} y={ty + 2} fontSize="9" fontWeight="600" fill="#fff">
+                    {(f.fund_name || '').length > 28 ? (f.fund_name || '').slice(0, 27) + '\u2026' : f.fund_name}
+                  </text>
+                  <text x={tx + 6} y={ty + 14} fontSize="8" fill="#94a3b8">
+                    {ret >= 0 ? '+' : ''}{ret.toFixed(1)}% 1Y {'\u00b7'} Risk {risk.toFixed(0)} {'\u00b7'} {f.aum ? `${(Number(f.aum) / 1e7).toFixed(0)} Cr` : ''}
+                  </text>
+                  <text x={tx + 6} y={ty + 24} fontSize="7" fill="#67e8f9">Click to view fund</text>
+                </g>
+              );
+            })()}
           </svg>
         </div>
       )}
@@ -488,7 +517,7 @@ export default function SectorRotation({ sectors, universe, loading, onFundClick
         <p className="section-title">Sector & Category Landscape</p>
         <button type="button" onClick={() => router.push('/sectors')}
           className="text-[11px] text-teal-600 font-semibold hover:text-teal-700">
-          Explore Sectors \u2192
+          {'Explore Sectors \u2192'}
         </button>
       </div>
 

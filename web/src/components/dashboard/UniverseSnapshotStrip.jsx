@@ -1,11 +1,12 @@
+import { useRouter } from 'next/router';
 import Link from 'next/link';
 import SkeletonLoader from '../shared/SkeletonLoader';
 
 const TIERS = [
-  { key: 'LEADER', label: 'Leaders', color: '#059669' },
-  { key: 'STRONG', label: 'Strong', color: '#10b981' },
-  { key: 'AVERAGE', label: 'Average', color: '#d97706' },
-  { key: 'WEAK', label: 'Weak', color: '#ef4444' },
+  { key: 'LEADER', label: 'Leaders', color: '#059669', filterParam: 'return_class=LEADER' },
+  { key: 'STRONG', label: 'Strong', color: '#10b981', filterParam: 'return_class=STRONG' },
+  { key: 'AVERAGE', label: 'Average', color: '#d97706', filterParam: 'return_class=AVERAGE' },
+  { key: 'WEAK', label: 'Weak', color: '#ef4444', filterParam: 'return_class=WEAK' },
 ];
 
 function countTiers(universe) {
@@ -19,12 +20,18 @@ function countTiers(universe) {
 }
 
 export default function UniverseSnapshotStrip({ universe, loading }) {
+  const router = useRouter();
+
   if (loading) {
     return <SkeletonLoader className="h-24 rounded-xl" />;
   }
 
   const counts = countTiers(universe);
   const total = Object.values(counts).reduce((s, n) => s + n, 0);
+
+  const handleTierClick = (filterParam) => {
+    router.push(`/universe?${filterParam}`);
+  };
 
   return (
     <section>
@@ -42,18 +49,20 @@ export default function UniverseSnapshotStrip({ universe, loading }) {
 
       <div className="bg-white border border-slate-200 rounded-xl px-5 py-4">
         <div className="flex items-center gap-6">
-          {/* Big number */}
-          <div className="flex items-baseline gap-1.5 shrink-0">
+          {/* Big number — clickable to full universe */}
+          <div className="flex items-baseline gap-1.5 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => router.push('/universe')}>
             <span className="text-[22px] font-bold font-mono tabular-nums text-[#0f172a]">
               {total}
             </span>
             <span className="text-xs font-normal text-[#94a3b8]">scored</span>
           </div>
 
-          {/* Tier counts */}
+          {/* Tier counts — each clickable to filtered universe */}
           <div className="flex items-center gap-6 shrink-0">
-            {TIERS.map(({ key, label, color }) => (
-              <div key={key} className="flex flex-col items-center">
+            {TIERS.map(({ key, label, color, filterParam }) => (
+              <div key={key} className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => handleTierClick(filterParam)}>
                 <span
                   className="text-base font-bold font-mono tabular-nums"
                   style={{ color }}
@@ -65,17 +74,18 @@ export default function UniverseSnapshotStrip({ universe, loading }) {
             ))}
           </div>
 
-          {/* Stacked bar */}
+          {/* Stacked bar — segments clickable */}
           <div className="flex-1 flex rounded-[5px] overflow-hidden h-2.5">
             {total > 0 &&
-              TIERS.map(({ key, color }) => {
+              TIERS.map(({ key, color, filterParam }) => {
                 const pct = (counts[key] / total) * 100;
                 if (pct === 0) return null;
                 return (
                   <div
                     key={key}
-                    className="h-full transition-all duration-300"
+                    className="h-full transition-all duration-300 cursor-pointer hover:brightness-110"
                     style={{ width: `${pct}%`, backgroundColor: color }}
+                    onClick={() => handleTierClick(filterParam)}
                   />
                 );
               })}

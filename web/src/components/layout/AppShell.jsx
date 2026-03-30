@@ -48,7 +48,7 @@ function MarketStatusBadge() {
       <span className={`text-xs font-medium ${
         market.market_open ? 'text-emerald-600' : 'text-slate-500'
       }`}>
-        {market.market_open ? 'Live' : 'Closed'}
+        {market.market_open ? 'Market Live' : 'Market Closed'}
       </span>
     </div>
   );

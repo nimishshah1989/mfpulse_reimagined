@@ -124,10 +124,10 @@ function DrillDownPanel({ category, zone, universe, onFundClick, onClose }) {
         <div className="flex items-center gap-2">
           <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: zoneColor }} />
           <span className="text-xs font-semibold text-slate-700">{category}</span>
-          <span className="text-[10px] text-slate-400 capitalize">\u00b7 {zone} zone</span>
-          <span className="text-[10px] text-slate-400">\u00b7 {allFunds.length} funds</span>
+          <span className="text-[10px] text-slate-400 capitalize">{'\u00b7'} {zone} zone</span>
+          <span className="text-[10px] text-slate-400">{'\u00b7'} {allFunds.length} funds</span>
         </div>
-        <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xs">\u2715</button>
+        <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xs">{'\u2715'}</button>
       </div>
       {allFunds.length === 0 ? (
         <p className="text-[10px] text-slate-400 py-2">No fund data available for this category.</p>
@@ -197,7 +197,7 @@ export default function QuadrantAlignment({ alignmentData, universe, onFundClick
       {/* Header */}
       <p className="section-title">Quadrant Alignment</p>
       <p className="text-xs text-slate-500 -mt-1 mb-4">
-        How fund categories are distributed across sector rotation zones \u2014 <span className="font-medium text-emerald-600">Strength</span> = % in Leading + Improving, <span className="font-medium text-red-500">Pressure</span> = % in Weakening + Lagging.
+        How fund categories are distributed across sector rotation zones {'\u2014'}<span className="font-medium text-emerald-600">Strength</span> = % in Leading + Improving, <span className="font-medium text-red-500">Pressure</span> = % in Weakening + Lagging.
       </p>
 
       {/* Column headers */}
