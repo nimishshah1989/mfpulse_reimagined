@@ -88,7 +88,7 @@ deploy_frontend() {
     ssh_cmd "cd $PROJECT_DIR/web && pnpm install --frozen-lockfile 2>/dev/null && pnpm build"
 
     echo ">>> Copying static files into container..."
-    ssh_cmd "docker cp $PROJECT_DIR/web/out/. $CONTAINER:/app/web/out/"
+    ssh_cmd "docker exec $CONTAINER rm -rf /app/web/out && docker cp $PROJECT_DIR/web/out/. $CONTAINER:/app/web/out/"
 
     echo "    Frontend deployed (no restart needed — FastAPI serves static files)"
 }
