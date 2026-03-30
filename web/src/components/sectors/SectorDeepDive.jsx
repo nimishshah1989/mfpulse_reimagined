@@ -14,8 +14,8 @@
 import { forwardRef, useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import {
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, LineChart, Line, BarChart, Bar, Cell,
+  ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, BarChart, Bar, Cell,
 } from 'recharts';
 import { QUADRANT_COLORS } from '../../lib/sectors';
 import { formatPct, formatAUMRaw, formatCount, formatScore } from '../../lib/format';
@@ -256,7 +256,7 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
     return drillFunds.map((f) => ({
       x: Number(f.risk_score) || 50,
       y: Number(f.return_1y) || 0,
-      z: Math.max(8, Math.sqrt((f.aum || 0) / 1e9) * 3),
+      z: f.aum || 0,
       name: f.fund_name,
       category: f.category_name,
       mstar_id: f.mstar_id,
@@ -448,24 +448,39 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
           <div className="bg-slate-50 rounded-lg p-4 space-y-4">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Quadrant Intelligence</p>
 
-            {/* RS Trend with momentum overlay */}
+            {/* Quadrant Journey — horizontal step showing quadrant at each snapshot */}
             {trendData.length > 1 && (
               <div>
-                <p className="text-xs text-slate-400 mb-1">RS Score Trend</p>
-                <div style={{ height: 90 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                      <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} domain={['auto', 'auto']} />
-                      <Tooltip
-                        contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0' }}
-                        formatter={(v, name) => [`${Number(v).toFixed(1)}`, name === 'score' ? 'RS Score' : 'Momentum']}
-                      />
-                      <Line type="monotone" dataKey="score" stroke={colors.circle} strokeWidth={2.5}
-                        dot={{ r: 4, fill: colors.circle, stroke: '#fff', strokeWidth: 2 }} isAnimationActive={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                <p className="text-xs text-slate-400 mb-2">Quadrant Journey</p>
+                <div className="flex items-center gap-1">
+                  {trendData.map((d, i) => {
+                    const qd = d.score >= 50
+                      ? (d.momentum >= 0 ? 'Leading' : 'Weakening')
+                      : (d.momentum >= 0 ? 'Improving' : 'Lagging');
+                    const qColors = QUADRANT_COLORS[qd] || QUADRANT_COLORS.Lagging;
+                    const isNow = i === trendData.length - 1;
+                    return (
+                      <div key={i} className="flex items-center gap-1">
+                        <div className={`flex flex-col items-center ${isNow ? 'relative' : ''}`}>
+                          <span className="text-[10px] text-slate-400 mb-0.5">{d.label}</span>
+                          <div
+                            className={`rounded-md px-2 py-1.5 text-center ${isNow ? 'ring-2 ring-offset-1' : ''}`}
+                            style={{
+                              backgroundColor: `${qColors.circle}20`,
+                              color: qColors.circle,
+                              ...(isNow ? { ringColor: qColors.circle } : {}),
+                            }}
+                          >
+                            <span className="text-xs font-bold block">{Math.round(d.score)}</span>
+                            <span className="text-[9px] font-medium">{qd.slice(0, 3).toUpperCase()}</span>
+                          </div>
+                        </div>
+                        {i < trendData.length - 1 && (
+                          <span className="text-slate-300 text-xs mt-3">→</span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -539,12 +554,21 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
             {/* Broad Trend Metrics */}
             {broadTrend.length > 0 && (
               <div>
-                <p className="text-xs text-slate-400 mb-1.5">Market Breadth (% of 531 stocks)</p>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                <p className="text-xs text-slate-400 mb-2">Market Breadth — Nifty 500 stocks</p>
+                <div className="space-y-1.5">
                   {broadTrend.slice(0, 6).map((m) => (
-                    <div key={m.key} className="flex items-center justify-between">
-                      <span className="text-xs text-slate-500 truncate">{m.label?.replace(/\(.*\)/, '').trim()}</span>
-                      <span className={`text-xs font-bold tabular-nums ${m.pct >= 50 ? 'text-emerald-600' : m.pct >= 25 ? 'text-amber-600' : 'text-red-500'}`}>
+                    <div key={m.key} className="flex items-center gap-3">
+                      <span className="text-xs text-slate-500 w-36 flex-shrink-0">{m.label?.replace(/\(.*\)/, '').trim()}</span>
+                      <div className="flex-1 h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${Math.min(100, Math.max(2, m.pct || 0))}%`,
+                            backgroundColor: m.pct >= 50 ? '#059669' : m.pct >= 25 ? '#d97706' : '#dc2626',
+                          }}
+                        />
+                      </div>
+                      <span className={`text-xs font-bold tabular-nums w-10 text-right ${m.pct >= 50 ? 'text-emerald-600' : m.pct >= 25 ? 'text-amber-600' : 'text-red-500'}`}>
                         {m.pct?.toFixed(0)}%
                       </span>
                     </div>
@@ -557,12 +581,18 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
             {extremes.length > 0 && (
               <div className="flex gap-3">
                 {extremes.slice(0, 2).map((e) => (
-                  <div key={e.key} className="flex-1 bg-white rounded p-2">
-                    <p className="text-xs text-slate-400">{e.label?.replace(/\(.*\)/, '').trim()}</p>
-                    <p className="text-sm font-bold tabular-nums" style={{ color: e.key.includes('overbought') ? '#dc2626' : '#059669' }}>
-                      {e.count} <span className="text-xs text-slate-400">({e.pct?.toFixed(1)}%)</span>
-                    </p>
-                  </div>
+                  <Tooltip2 key={e.key} text={
+                    e.key.includes('overbought')
+                      ? `${e.count} of ${e.total} Nifty 500 stocks have very high momentum (potential pullback risk). Lower is safer.`
+                      : `${e.count} of ${e.total} Nifty 500 stocks have very low momentum (potential bounce candidates). Higher = more oversold.`
+                  }>
+                    <div className="flex-1 bg-white rounded p-2.5 cursor-help">
+                      <p className="text-xs text-slate-400 mb-1">{e.key.includes('overbought') ? 'Overbought Stocks' : 'Oversold Stocks'}</p>
+                      <p className="text-base font-bold tabular-nums" style={{ color: e.key.includes('overbought') ? '#dc2626' : '#059669' }}>
+                        {e.count} <span className="text-xs font-normal text-slate-400 ml-1">of {e.total} ({e.pct?.toFixed(1)}%)</span>
+                      </p>
+                    </div>
+                  </Tooltip2>
                 ))}
               </div>
             )}
@@ -570,25 +600,25 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
             {/* Breadth EMA21 */}
             {ema21.zone && (
               <Tooltip2 text={BREADTH_ZONE_MEANING[ema21.zone] || `${ema21.count} of ${ema21.total} stocks are above their 21-day EMA.`}>
-                <div className="flex items-center gap-2 p-2 bg-white rounded cursor-help">
+                <div className="flex items-center gap-3 p-2.5 bg-white rounded cursor-help">
                   <span className="text-xs text-slate-400">Breadth Zone:</span>
                   <span className={`text-sm font-bold ${
                     ema21.zone === 'Healthy' || ema21.zone === 'Recovery' ? 'text-emerald-600'
                     : ema21.zone === 'Deterioration' ? 'text-red-500' : 'text-amber-600'
                   }`}>
-                    {ema21.zone} ⓘ
+                    {ema21.zone}
                   </span>
-                  <span className="text-xs text-slate-400">
-                    ({ema21.count}/{ema21.total} above EMA21)
+                  <span className="text-xs text-slate-400 ml-1">
+                    {ema21.count} of {ema21.total} stocks above 21-day avg
                   </span>
                 </div>
               </Tooltip2>
             )}
 
             <InfoBulb title="Market Health" items={[
-              { icon: '🌡️', label: 'Sentiment Layers', text: 'Five independent measures: extremes (RSI), momentum (ROC), short-term (weekly), advance-decline, broad trend (monthly EMAs). Higher = more bullish.' },
-              { icon: '📶', label: 'Breadth', text: 'What % of stocks are above key moving averages. >50% = healthy market, <25% = weak/bearish breadth.' },
-              { icon: '⚠️', label: 'Extremes', text: 'Overbought (RSI>70) = potential pullback. Oversold (RSI<30) = potential bounce. Useful for timing sector entry/exit.' },
+              { icon: '🌡️', label: 'Sentiment Layers', text: 'Five independent measures of Nifty 500 health: extremes, momentum, short-term trend, advance/decline breadth, and broad trend. 0-100 each. Higher = more bullish.' },
+              { icon: '📶', label: 'Breadth', text: 'What % of Nifty 500 stocks are above key moving averages. >50% = healthy bull market, <25% = weak/bearish. This is overall market health, not sector-specific.' },
+              { icon: '⚠️', label: 'Overbought/Oversold', text: 'Counts of Nifty 500 stocks with extreme momentum. Many overbought = market may pull back. Many oversold = potential bounce. Useful for timing sector entry/exit.' },
             ]} />
           </div>
         </div>
@@ -710,13 +740,14 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
                   <ScatterChart margin={{ top: 20, right: 20, bottom: 30, left: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                     <XAxis type="number" dataKey="x" name="Risk Score"
-                      tick={{ fontSize: 10, fill: '#64748b' }}
-                      label={{ value: 'Risk Score (Higher = Lower Risk) →', position: 'bottom', style: { fontSize: 10, fontWeight: 600, fill: '#64748b' } }}
+                      tick={{ fontSize: 11, fill: '#64748b' }}
+                      label={{ value: 'Risk Score (Higher = Lower Risk) →', position: 'bottom', style: { fontSize: 11, fontWeight: 600, fill: '#64748b' } }}
                     />
                     <YAxis type="number" dataKey="y" name="1Y Return"
-                      tick={{ fontSize: 10, fill: '#64748b' }}
-                      label={{ value: '↑ 1Y Return %', angle: -90, position: 'insideLeft', style: { fontSize: 10, fontWeight: 600, fill: '#64748b' } }}
+                      tick={{ fontSize: 11, fill: '#64748b' }}
+                      label={{ value: '↑ 1Y Return %', angle: -90, position: 'insideLeft', style: { fontSize: 11, fontWeight: 600, fill: '#64748b' } }}
                     />
+                    <ZAxis type="number" dataKey="z" range={[40, 400]} name="AUM" />
                     <Tooltip content={<FundScatterTooltip />} />
                     <Scatter data={scatterData} cursor="pointer"
                       onClick={(d) => d?.mstar_id && router.push(`/fund360?fund=${d.mstar_id}`)}>
