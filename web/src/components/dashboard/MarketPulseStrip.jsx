@@ -113,7 +113,6 @@ function RegimeCard({ regime }) {
   const lower = label.toLowerCase();
   const isBear = lower.includes('bear');
   const isCorrection = lower.includes('correction');
-  const isCautious = isBear || isCorrection;
   const badgeBg = isBear ? 'bg-red-50' : isCorrection ? 'bg-amber-50' : 'bg-emerald-50';
   const badgeText = isBear ? 'text-red-700' : isCorrection ? 'text-amber-700' : 'text-emerald-700';
   const implication = isBear
@@ -122,20 +121,51 @@ function RegimeCard({ regime }) {
     ? 'Defensive tilt — favour quality, reduce speculative positions'
     : 'Broad participation — all-cap strategies viable';
 
+  const leadingSectors = (regime?.leading_sectors || []).slice(0, 3);
+  const topPick = (regime?.top_etfs || [])[0];
+
   return (
     <CardShell>
       <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">
         Market Regime
       </p>
-      <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-semibold ${badgeBg} ${badgeText}`}>
-        {label}
-      </span>
-      <p className="text-[10px] text-slate-400 mt-2">
-        Since {formatDate(regime?.regime_since)}
-      </p>
-      <div className="border-t border-slate-100 mt-3 pt-2">
-        <p className="text-[11px] text-slate-600 leading-snug">{implication}</p>
+      <div className="flex items-center gap-2">
+        <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-semibold ${badgeBg} ${badgeText}`}>
+          {label}
+        </span>
+        {(regime?.regime_since || regime?.generated_at) && (
+          <span className="text-[10px] text-slate-400">
+            {regime.regime_since ? `Since ${formatDate(regime.regime_since)}` : `As of ${formatDate(regime.generated_at)}`}
+          </span>
+        )}
       </div>
+      <p className="text-[11px] text-slate-600 leading-snug mt-2">{implication}</p>
+
+      {leadingSectors.length > 0 && (
+        <div className="border-t border-slate-100 mt-2.5 pt-2">
+          <p className="text-[9px] uppercase text-slate-400 font-semibold mb-1">Leading Sectors</p>
+          <div className="space-y-0.5">
+            {leadingSectors.map((s) => (
+              <div key={s.sector} className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-700">{s.sector.replace('NIFTY ', '')}</span>
+                <span className={`text-[10px] font-semibold tabular-nums ${s.rs_score >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  RS {s.rs_score?.toFixed(1)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {topPick && (
+        <div className="mt-2 bg-slate-50 rounded px-2 py-1.5">
+          <span className="text-[9px] text-slate-400 uppercase font-semibold">Top ETF: </span>
+          <span className="text-[11px] font-semibold text-teal-700">{topPick.ticker}</span>
+          <span className="text-[10px] text-slate-500 ml-1">
+            ({topPick.sector?.replace('NIFTY ', '')}, {topPick.action})
+          </span>
+        </div>
+      )}
     </CardShell>
   );
 }

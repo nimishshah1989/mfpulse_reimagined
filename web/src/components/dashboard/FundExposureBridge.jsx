@@ -167,12 +167,12 @@ export default function FundExposureBridge({ matrixData, sectors, universe, load
                   key={fund.mstar_id}
                   className="hover:bg-[#f8fafc] cursor-pointer border-t border-slate-100"
                 >
-                  <td className="py-1.5 pr-3">
-                    <div className="text-xs font-medium text-slate-700 truncate max-w-[140px]">
+                  <td className="py-1.5 pr-3" style={{ minWidth: 200 }}>
+                    <div className="text-xs font-medium text-slate-700">
                       {fund.fund_name}
                     </div>
-                    <div className="text-[9px] text-slate-400">
-                      {formatAUMRaw(fund.aum)}
+                    <div className="text-[10px] text-slate-500">
+                      {fund.category_name || ''}{fund.category_name && fund.aum ? ' · ' : ''}{formatAUMRaw(fund.aum)}
                     </div>
                   </td>
                   {topSectors.map((s) => {
@@ -196,13 +196,17 @@ export default function FundExposureBridge({ matrixData, sectors, universe, load
                     );
                   })}
                   <td className="text-right py-1.5 pl-3">
-                    <span
-                      className={`text-xs font-semibold tabular-nums ${
-                        isPositive ? 'text-emerald-600' : 'text-red-600'
-                      }`}
-                    >
-                      {formatPct(ret)}
-                    </span>
+                    {ret != null ? (
+                      <span
+                        className={`text-xs font-semibold tabular-nums ${
+                          isPositive ? 'text-emerald-600' : 'text-red-600'
+                        }`}
+                      >
+                        {formatPct(ret)}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400">N/A</span>
+                    )}
                   </td>
                 </tr>
               );

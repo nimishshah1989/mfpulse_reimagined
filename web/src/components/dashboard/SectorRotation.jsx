@@ -18,14 +18,30 @@ function getName(s) {
   return s.display_name || s.sector_name || s.name || '';
 }
 
-/* Alpha score → color gradient */
-function alphaColor(score) {
+/* Return score → color gradient (better coverage than alpha) */
+function returnScoreColor(score) {
   if (score == null) return '#94a3b8';
-  if (score >= 70) return '#059669';
-  if (score >= 55) return '#10b981';
-  if (score >= 40) return '#0ea5e9';
-  if (score >= 25) return '#f59e0b';
+  if (score >= 75) return '#059669';
+  if (score >= 60) return '#10b981';
+  if (score >= 45) return '#0ea5e9';
+  if (score >= 30) return '#f59e0b';
   return '#ef4444';
+}
+
+/* Exclude non-equity categories from bubble chart */
+const EXCLUDED_CAT_KEYWORDS = [
+  'liquid', 'overnight', 'money market', 'ultra short', 'low duration',
+  'short duration', 'medium duration', 'long duration', 'dynamic bond',
+  'corporate bond', 'credit risk', 'gilt', 'banking & psu', 'floater',
+  'index funds - fixed income', 'conservative', '10 year', 'fixed maturity',
+  'close ended', 'interval', 'capital protection', 'retirement',
+  'children', 'solution oriented',
+];
+
+function isEquityCategory(catName) {
+  if (!catName) return false;
+  const lower = catName.toLowerCase();
+  return !EXCLUDED_CAT_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
 /* ──────────────── Category Bubble Chart (SVG) ──────────────── */
@@ -38,12 +54,12 @@ function CategoryBubbleChart({ universe }) {
     const grouped = {};
     universe.forEach((f) => {
       const cat = f.category_name;
-      if (!cat) return;
-      if (!grouped[cat]) grouped[cat] = { returns: [], risks: [], alphas: [], count: 0 };
+      if (!cat || !isEquityCategory(cat)) return;
+      if (!grouped[cat]) grouped[cat] = { returns: [], risks: [], returnScores: [], count: 0 };
       grouped[cat].count += 1;
       if (f.return_1y != null) grouped[cat].returns.push(Number(f.return_1y));
       if (f.risk_score != null) grouped[cat].risks.push(Number(f.risk_score));
-      if (f.alpha_score != null) grouped[cat].alphas.push(Number(f.alpha_score));
+      if (f.return_score != null) grouped[cat].returnScores.push(Number(f.return_score));
     });
 
     const avg = (arr) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
@@ -55,10 +71,10 @@ function CategoryBubbleChart({ universe }) {
         count: d.count,
         avgReturn: avg(d.returns),
         avgRisk: avg(d.risks),
-        avgAlpha: avg(d.alphas),
+        avgReturnScore: avg(d.returnScores),
       }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 18);
+      .slice(0, 20);
   }, [universe]);
 
   if (categories.length === 0) return <div className="w-full h-[320px] bg-slate-50 rounded-lg" />;
@@ -109,7 +125,7 @@ function CategoryBubbleChart({ universe }) {
           const cx = scaleX(cat.avgRisk);
           const cy = scaleY(cat.avgReturn);
           const r = scaleR(cat.count);
-          const fill = alphaColor(cat.avgAlpha);
+          const fill = returnScoreColor(cat.avgReturnScore);
           const isHovered = hovered === cat.name;
           return (
             <g key={cat.name} onMouseEnter={() => setHovered(cat.name)} onMouseLeave={() => setHovered(null)}
@@ -141,7 +157,7 @@ function CategoryBubbleChart({ universe }) {
                 {cat.count} funds · Ret {cat.avgReturn?.toFixed(1)}%
               </text>
               <text x={tx + 8} y={ty + 30} fontSize="10" fill="#94a3b8">
-                Risk {cat.avgRisk?.toFixed(0)} · Alpha {cat.avgAlpha?.toFixed(0)}
+                Risk {cat.avgRisk?.toFixed(0)} · Score {cat.avgReturnScore?.toFixed(0)}
               </text>
             </g>
           );
@@ -150,12 +166,13 @@ function CategoryBubbleChart({ universe }) {
 
       {/* Legend */}
       <div className="flex items-center justify-center gap-4 mt-1">
-        <span className="text-[10px] text-slate-500 font-medium">Alpha Score:</span>
+        <span className="text-[10px] text-slate-500 font-medium">Return Score:</span>
         {[
-          { color: '#059669', label: 'High' },
-          { color: '#0ea5e9', label: 'Med' },
-          { color: '#f59e0b', label: 'Low' },
-          { color: '#ef4444', label: 'Weak' },
+          { color: '#059669', label: '75+' },
+          { color: '#10b981', label: '60+' },
+          { color: '#0ea5e9', label: '45+' },
+          { color: '#f59e0b', label: '30+' },
+          { color: '#ef4444', label: '<30' },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center gap-1">
             <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
@@ -304,16 +321,16 @@ export default function SectorRotation({ sectors, universe, loading }) {
         <SectorTable sectors={normalized} />
       </div>
 
+      {/* Playbook — immediately below the 2x2 */}
+      <PlaybookBar sectors={normalized} />
+
       {/* Fund Wt explanation */}
       <div className="mt-3 bg-slate-50 rounded-lg px-4 py-2.5">
         <p className="text-[11px] text-slate-600 leading-relaxed">
-          <span className="font-semibold text-slate-700">Fund Wt%</span> shows the average portfolio allocation that mutual funds hold in each sector.
-          Higher weight = more institutional capital concentrated in that sector. Sorted by weight to show where fund managers have the most conviction.
+          <span className="font-semibold text-slate-700">Fund Wt%</span> = average portfolio allocation that mutual funds hold in each Morningstar sector (computed from {normalized.length > 0 ? '~1,096' : ''} fund holdings).
+          Higher weight = more institutional capital concentrated. <span className="font-semibold text-slate-700">Bubble chart</span>: X = avg risk score, Y = avg 1Y return, size = fund count, color = return score (green = strong, red = weak). Equity categories only.
         </p>
       </div>
-
-      {/* Playbook */}
-      <PlaybookBar sectors={normalized} />
     </div>
   );
 }
