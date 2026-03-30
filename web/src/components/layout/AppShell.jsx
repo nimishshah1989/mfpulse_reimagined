@@ -67,7 +67,7 @@ export default function AppShell({ children, activeTab, onTabChange }) {
     <div className="min-h-screen" style={{ backgroundColor: '#f8f9fb' }}>
       {/* ===== TOP NAV BAR (matches mockups) ===== */}
       <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-xl border-b border-slate-200/50 px-6 py-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="w-full flex items-center justify-between">
           {/* Left: Logo + breadcrumb */}
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center">
@@ -185,7 +185,7 @@ export default function AppShell({ children, activeTab, onTabChange }) {
       </nav>
 
       {/* ===== CONTENT ===== */}
-      <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
+      <main className="w-full px-3 sm:px-4 lg:px-5 py-4">
         {children}
       </main>
     </div>
