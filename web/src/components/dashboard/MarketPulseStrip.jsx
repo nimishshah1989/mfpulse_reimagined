@@ -229,7 +229,7 @@ export default function MarketPulseStrip({ nifty, regime, sentiment, breadth, lo
       <h2 className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold mb-3">
         Market Pulse
       </h2>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <NiftyCard nifty={nifty} />
         <RegimeCard regime={regime} />
         <SentimentCard sentiment={sentiment} />

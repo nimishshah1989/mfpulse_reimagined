@@ -78,6 +78,8 @@ function buildInsight(top15) {
 export default function LensFingerprint({ universe: rawUniverse, archetypes: serverArchetypes, loading }) {
   const universe = rawUniverse || [];
   const [verdicts, setVerdicts] = useState({});
+  const [expanded, setExpanded] = useState(false);
+  const [sortBy, setSortBy] = useState('aum');
 
   const archetypeGrid = useMemo(() => {
     if (serverArchetypes?.length) return [...serverArchetypes].sort((a, b) => b.count - a.count);
@@ -92,31 +94,67 @@ export default function LensFingerprint({ universe: rawUniverse, archetypes: ser
     return Object.values(counts).map(a => ({ ...a, percentage: (a.count / total) * 100 })).sort((a, b) => b.count - a.count);
   }, [universe, serverArchetypes]);
 
-  const top15 = useMemo(() => {
+  const SORT_OPTIONS = [
+    { key: 'aum', label: 'By AUM' },
+    { key: 'return_1y', label: 'Top Returners' },
+    { key: 'alpha_score', label: 'Best Alpha' },
+    { key: 'risk_score', label: 'Lowest Risk' },
+  ];
+
+  const displayFunds = useMemo(() => {
     if (!universe.length) return [];
-    return [...universe].sort((a, b) => (b.aum || 0) - (a.aum || 0)).slice(0, 15);
-  }, [universe]);
+    const limit = expanded ? 30 : 10;
+    const sorted = [...universe];
+    if (sortBy === 'risk_score') {
+      sorted.sort((a, b) => (a[sortBy] || 100) - (b[sortBy] || 100));
+    } else {
+      sorted.sort((a, b) => (b[sortBy] || 0) - (a[sortBy] || 0));
+    }
+    return sorted.slice(0, limit);
+  }, [universe, expanded, sortBy]);
 
   useEffect(() => {
-    if (!top15.length) return;
-    top15.forEach(f => {
+    if (!displayFunds.length) return;
+    displayFunds.forEach(f => {
       cachedFetch(`verdict-${f.mstar_id}`, () => fetchFundVerdict(f.mstar_id).then(r => r.data?.verdict || r.verdict), 600)
         .then(v => { if (v) setVerdicts(prev => ({ ...prev, [f.mstar_id]: v })); })
         .catch(() => {});
     });
-  }, [top15]);
+  }, [displayFunds]);
 
-  const insight = useMemo(() => buildInsight(top15), [top15]);
+  const insight = useMemo(() => buildInsight(displayFunds), [displayFunds]);
 
   if (loading) {
     return <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Loading lens fingerprints…</div>;
   }
 
   return (
-    <div>
+    <div className="bg-white rounded-xl border border-slate-200 p-5">
+      {/* Section title */}
+      <p className="section-title mb-4">Fund Archetypes & Lens Fingerprints</p>
+
       {/* Archetype Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 mb-4">
         {archetypeGrid.map(a => <ArchetypeCard key={a.archetype_id} archetype={a} />)}
+      </div>
+
+      {/* Filter pills */}
+      <div className="flex flex-wrap items-center gap-1.5 mb-3">
+        <span className="text-[9px] uppercase text-slate-400 font-medium mr-1">Sort by:</span>
+        {SORT_OPTIONS.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setSortBy(key)}
+            className={`px-2.5 py-1 text-[10px] font-medium rounded-md border transition-colors ${
+              sortBy === key
+                ? 'bg-teal-50 text-teal-700 border-teal-200'
+                : 'bg-slate-50 text-slate-500 border-slate-200 hover:text-slate-700'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Fingerprint Heatmap Table */}
@@ -132,7 +170,7 @@ export default function LensFingerprint({ universe: rawUniverse, archetypes: ser
             </tr>
           </thead>
           <tbody>
-            {top15.map(f => {
+            {displayFunds.map(f => {
               const archId = classifyArchetype(f);
               const meta = ARCHETYPE_META[archId] || ARCHETYPE_META['mid-tier'];
               const verdict = verdicts[f.mstar_id] || TEMPLATE_VERDICTS[archId];
@@ -168,6 +206,19 @@ export default function LensFingerprint({ universe: rawUniverse, archetypes: ser
           </tbody>
         </table>
       </div>
+
+      {/* Expand/collapse toggle */}
+      {universe.length > 10 && (
+        <div className="flex justify-center mt-2">
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="text-[11px] text-teal-600 font-medium hover:text-teal-700 flex items-center gap-1"
+          >
+            {expanded ? '▴ Show fewer' : `▾ Show ${Math.min(30, universe.length)} funds`}
+          </button>
+        </div>
+      )}
 
       {/* Bottom insight bar */}
       <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 6,

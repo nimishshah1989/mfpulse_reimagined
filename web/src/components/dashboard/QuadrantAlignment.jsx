@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/router';
 import SkeletonLoader from '../shared/SkeletonLoader';
 
 const ZONE_COLORS = {
@@ -24,7 +25,7 @@ function headwindStyle(pct) {
 
 /* ──────── Stacked Bar ──────── */
 
-function StackedBar({ row }) {
+function StackedBar({ row, onSegmentClick }) {
   const [hovered, setHovered] = useState(false);
 
   const segments = ZONE_LABELS.map((zone) => ({
@@ -42,8 +43,9 @@ function StackedBar({ row }) {
       {segments.map((s) => (
         <div
           key={s.zone}
-          className="relative flex items-center justify-center transition-opacity duration-150"
+          className="relative flex items-center justify-center transition-opacity duration-150 cursor-pointer hover:brightness-110"
           style={{ width: `${s.pct}%`, backgroundColor: s.color }}
+          onClick={() => onSegmentClick && onSegmentClick(row.category_name, s.zone)}
         >
           {hovered && s.pct >= 8 && (
             <span className="text-[9px] font-bold text-white leading-none select-none">
@@ -101,9 +103,64 @@ function InsightBar({ data }) {
   );
 }
 
+/* ──────── Drill-Down Panel ──────── */
+
+function DrillDownPanel({ category, zone, universe, onFundClick, onClose }) {
+  const zoneColor = ZONE_COLORS[zone] || '#94a3b8';
+
+  const funds = useMemo(() => {
+    if (!universe || !universe.length) return [];
+    return universe
+      .filter(f => f.category_name === category)
+      .sort((a, b) => (b.aum || 0) - (a.aum || 0))
+      .slice(0, 10);
+  }, [universe, category]);
+
+  return (
+    <div className="mt-2 mb-2 bg-slate-50 border border-slate-200 rounded-lg p-3 animate-in">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: zoneColor }} />
+          <span className="text-xs font-semibold text-slate-700">{category}</span>
+          <span className="text-[10px] text-slate-400 capitalize">· {zone} zone</span>
+        </div>
+        <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xs">✕</button>
+      </div>
+      {funds.length === 0 ? (
+        <p className="text-[10px] text-slate-400 py-2">No fund data available for this category.</p>
+      ) : (
+        <div className="space-y-1">
+          {funds.map(f => (
+            <div
+              key={f.mstar_id}
+              className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-white cursor-pointer transition-colors"
+              onClick={() => onFundClick && onFundClick(f.mstar_id)}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium text-slate-700 truncate">{f.fund_name}</p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0 ml-3">
+                <span className={`text-[10px] font-semibold tabular-nums ${f.return_1y >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {f.return_1y != null ? `${f.return_1y >= 0 ? '+' : ''}${Number(f.return_1y).toFixed(1)}%` : '--'}
+                </span>
+                <span className="text-[10px] text-slate-400 tabular-nums" style={{ width: 50, textAlign: 'right' }}>
+                  {f.aum ? `${(Number(f.aum) / 1e7).toFixed(0)} Cr` : '--'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ──────── Main Component ──────── */
 
-export default function QuadrantAlignment({ alignmentData, loading }) {
+export default function QuadrantAlignment({ alignmentData, universe, onFundClick, loading }) {
+  const [drillDown, setDrillDown] = useState(null);
+  const router = useRouter();
+
   if (loading) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -170,7 +227,7 @@ export default function QuadrantAlignment({ alignmentData, loading }) {
 
               {/* Stacked bar */}
               <div className="px-2">
-                <StackedBar row={row} />
+                <StackedBar row={row} onSegmentClick={(cat, zone) => setDrillDown({ category: cat, zone })} />
               </div>
 
               {/* Tailwind % */}
@@ -192,6 +249,17 @@ export default function QuadrantAlignment({ alignmentData, loading }) {
           );
         })}
       </div>
+
+      {/* Drill-down panel */}
+      {drillDown && (
+        <DrillDownPanel
+          category={drillDown.category}
+          zone={drillDown.zone}
+          universe={universe}
+          onFundClick={onFundClick}
+          onClose={() => setDrillDown(null)}
+        />
+      )}
 
       {/* Legend */}
       <div className="flex gap-4 mt-3 pt-3 border-t border-slate-100">

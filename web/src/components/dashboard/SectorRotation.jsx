@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import SkeletonLoader from '../shared/SkeletonLoader';
 
@@ -176,6 +176,42 @@ function SectorTable({ sectors }) {
   );
 }
 
+/* ──────────────── Compass Explainer ──────────────── */
+
+function CompassExplainer() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="text-[10px] text-teal-600 font-medium hover:text-teal-700 flex items-center gap-1"
+      >
+        <span className="text-xs">{open ? '▾' : '▸'}</span>
+        How to read this
+      </button>
+      {open && (
+        <div className="mt-2 bg-slate-50 rounded-lg p-3 text-[10px] text-slate-600 leading-relaxed space-y-2">
+          <p>
+            <span className="font-semibold text-slate-700">Quadrant Definitions:</span>{' '}
+            The 2×2 compass plots each sector by its Relative Strength (RS) Score on the X-axis and 1-month Momentum on the Y-axis.
+          </p>
+          <div className="grid grid-cols-2 gap-2 text-[10px]">
+            <p><span className="font-semibold text-emerald-600">Leading</span> — RS &gt; 50 + positive momentum. Strong and getting stronger.</p>
+            <p><span className="font-semibold text-sky-600">Improving</span> — RS &lt; 50 + positive momentum. Weak but turning around.</p>
+            <p><span className="font-semibold text-amber-600">Weakening</span> — RS &gt; 50 + negative momentum. Strong but losing steam.</p>
+            <p><span className="font-semibold text-red-500">Lagging</span> — RS &lt; 50 + negative momentum. Weak and getting weaker.</p>
+          </div>
+          <p>
+            <span className="font-semibold text-slate-700">Fund Wt%:</span>{' '}
+            Average allocation weight that funds hold in each sector, computed by averaging sector exposure percentages across the top funds by AUM. Higher weight = more institutional capital concentrated in that sector.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ──────────────── Playbook Insight Bar ──────────────── */
 
 function PlaybookBar({ sectors }) {
@@ -262,6 +298,9 @@ export default function SectorRotation({ sectors, loading }) {
         <Compass sectors={normalized} />
         <SectorTable sectors={sorted} />
       </div>
+
+      {/* Quadrant explainer */}
+      <CompassExplainer />
 
       {/* Playbook */}
       <PlaybookBar sectors={normalized} />

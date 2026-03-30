@@ -77,7 +77,7 @@ export default function CategoryHeatmap({ universe, loading }) {
     if (!universe || universe.length === 0) return [];
 
     // Exclude low-signal categories
-    const EXCLUDED_CATEGORIES = ['Overnight Fund', 'Liquid Fund', 'Money Market Fund', 'Index Fund', 'Fund of Funds', 'Equity - Other'];
+    const EXCLUDED_CATEGORIES = ['Overnight Fund'];
 
     // Group by category_name
     const grouped = {};
@@ -123,7 +123,7 @@ export default function CategoryHeatmap({ universe, loading }) {
   const periodLabel = PERIOD_OPTIONS.find((p) => p.key === period)?.label || '1Y';
 
   // Take top 15 categories
-  const topCats = categories.slice(0, 15);
+  const topCats = categories.slice(0, 24);
   const largest = topCats[0];
 
   return (
@@ -150,7 +150,7 @@ export default function CategoryHeatmap({ universe, loading }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1.5">
         {topCats.map((cat, idx) => (
           <CategoryTile
             key={cat.name}

@@ -11,6 +11,7 @@ import {
   fetchFundArchetypes,
 } from '../lib/api';
 import { cachedFetch } from '../lib/cache';
+import DashboardSearchStrip from '../components/dashboard/DashboardSearchStrip';
 import MarketPulseStrip from '../components/dashboard/MarketPulseStrip';
 import SectorRotation from '../components/dashboard/SectorRotation';
 import FundExposureBridge from '../components/dashboard/FundExposureBridge';
@@ -53,17 +54,14 @@ export default function DashboardPage() {
       if (results[1].status === 'fulfilled') setRegime(results[1].value.data);
       if (results[2].status === 'fulfilled') {
         const raw = results[2].value.data;
-        // Transform for SentimentCard: layer_scores dict → array
         const ls = raw?.layer_scores || {};
         const layers = Object.entries(ls).map(([name, score]) => ({ name, score }));
         setSentiment({ composite_score: raw?.composite_score, zone: raw?.zone, layers });
-        // Transform for BreadthCard: metrics array → keyed object with extra fields
         const metrics = raw?.short_term_trend?.metrics || [];
         const broad = raw?.broad_trend?.metrics || [];
         const allMetrics = [...metrics, ...broad];
         const breadth = {};
         allMetrics.forEach((m) => { breadth[m.key] = m.pct; });
-        // Map to BreadthCard expected keys
         setBreadthData({
           above_10ema: breadth.above_10ema,
           above_21ema: breadth.above_21ema,
@@ -90,7 +88,10 @@ export default function DashboardPage() {
   }, [router]);
 
   return (
-    <div className="space-y-5 max-w-[1280px] mx-auto">
+    <div className="space-y-5 w-full">
+      {/* Search Strip */}
+      <DashboardSearchStrip universe={universe} />
+
       {/* Row 1: Market Pulse Strip */}
       <MarketPulseStrip nifty={nifty} regime={regime} sentiment={sentiment} breadth={breadthData} loading={loading} />
 
@@ -98,10 +99,10 @@ export default function DashboardPage() {
       <SectorRotation sectors={sectors} loading={loading} />
 
       {/* Row 3: Sector-Fund Bridge */}
-      <FundExposureBridge matrixData={matrixData} sectors={sectors} loading={loading} />
+      <FundExposureBridge matrixData={matrixData} sectors={sectors} universe={universe} loading={loading} />
 
       {/* Row 3b: Quadrant Alignment */}
-      <QuadrantAlignment alignmentData={alignmentData} loading={loading} />
+      <QuadrantAlignment alignmentData={alignmentData} universe={universe} onFundClick={handleFundClick} loading={loading} />
 
       {/* Row 4: Universe Snapshot Strip */}
       <UniverseSnapshotStrip universe={universe} loading={loading} />

@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import SectionTitle from '../shared/SectionTitle';
 import { formatAUMRaw, formatPct } from '../../lib/format';
@@ -66,7 +67,7 @@ function deriveTopSectors(funds) {
     .map(([name]) => name);
 }
 
-export default function FundExposureBridge({ matrixData, sectors, loading }) {
+export default function FundExposureBridge({ matrixData, sectors, universe, loading }) {
   if (loading) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -76,7 +77,33 @@ export default function FundExposureBridge({ matrixData, sectors, loading }) {
     );
   }
 
-  const funds = (matrixData || []).slice(0, 5);
+  const [sortBy, setSortBy] = useState('aum');
+
+  const SORT_OPTIONS = [
+    { key: 'aum', label: 'By AUM' },
+    { key: 'return_1y', label: 'By Return' },
+    { key: 'alpha_score', label: 'By Alpha' },
+    { key: 'risk_score', label: 'By Low Risk' },
+    { key: 'consistency_score', label: 'By Consistency' },
+  ];
+
+  const allFunds = matrixData || [];
+  const funds = useMemo(() => {
+    if (allFunds.length === 0) return [];
+    if (sortBy === 'aum') return allFunds.slice(0, 5);
+    // For lens-based sorting, cross-reference with universe data
+    if (!universe || universe.length === 0) return allFunds.slice(0, 5);
+    const universeMap = {};
+    universe.forEach(f => { universeMap[f.mstar_id] = f; });
+    return [...allFunds]
+      .sort((a, b) => {
+        const ua = universeMap[a.mstar_id] || {};
+        const ub = universeMap[b.mstar_id] || {};
+        if (sortBy === 'risk_score') return (ua[sortBy] || 0) - (ub[sortBy] || 0); // lower risk = better
+        return (ub[sortBy] || 0) - (ua[sortBy] || 0);
+      })
+      .slice(0, 5);
+  }, [allFunds, universe, sortBy]);
   if (funds.length === 0) return null;
 
   const topSectors = deriveTopSectors(funds);
@@ -90,6 +117,24 @@ export default function FundExposureBridge({ matrixData, sectors, loading }) {
         Top funds by AUM &times; sector allocation
       </p>
 
+      {/* Lens filter pills */}
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {SORT_OPTIONS.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setSortBy(key)}
+            className={`px-2.5 py-1 text-[10px] font-medium rounded-md border transition-colors ${
+              sortBy === key
+                ? 'bg-teal-50 text-teal-700 border-teal-200'
+                : 'bg-slate-50 text-slate-500 border-slate-200 hover:text-slate-700'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full" style={{ fontSize: 11, borderCollapse: 'collapse' }}>
           <thead>
@@ -101,7 +146,7 @@ export default function FundExposureBridge({ matrixData, sectors, loading }) {
                 <th key={s} className="text-center text-[9px] uppercase text-slate-400 font-medium tracking-wider pb-2 px-1">
                   <div className="flex flex-col items-center gap-0.5">
                     <span
-                      className="inline-block w-1.5 h-1.5 rounded-full"
+                      className="inline-block w-3 h-3 rounded-full"
                       style={{ backgroundColor: getQuadrantColor(s, sectors) }}
                     />
                     <span>{SECTOR_ABBREV[s] || s.slice(0, 5)}</span>
@@ -172,7 +217,7 @@ export default function FundExposureBridge({ matrixData, sectors, loading }) {
           {Object.entries(QUADRANT_COLORS).map(([label, color]) => (
             <div key={label} className="flex items-center gap-1">
               <span
-                className="inline-block w-1.5 h-1.5 rounded-full"
+                className="inline-block w-2.5 h-2.5 rounded-full"
                 style={{ backgroundColor: color }}
               />
               <span className="text-[9px] text-slate-400">{label}</span>
