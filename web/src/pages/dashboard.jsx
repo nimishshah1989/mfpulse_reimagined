@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import {
   fetchMarketRegime,
@@ -22,6 +22,74 @@ import TopFundsByLens from '../components/dashboard/TopFundsByLens';
 import CategoryHeatmap from '../components/dashboard/CategoryHeatmap';
 import LensFingerprint from '../components/dashboard/LensFingerprint';
 
+const EQUITY_BROADS = new Set(['Equity', 'Allocation']);
+const MIN_AUM_CR = 1000; // Crores
+const MIN_AUM_RAW = MIN_AUM_CR * 1e7; // Raw rupees
+
+function FilterBar({ filters, onChange, totalCount, filteredCount }) {
+  const toggles = [
+    { key: 'regularOnly', label: 'Regular Plans', desc: 'Exclude Direct' },
+    { key: 'equityOnly', label: 'Equity Only', desc: 'Exclude Debt/Liquid' },
+    { key: 'minAum', label: `AUM > ${MIN_AUM_CR} Cr`, desc: 'Large funds only' },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3">
+      <span className="text-xs font-semibold text-slate-700 mr-1">Filters:</span>
+      {toggles.map(({ key, label }) => {
+        const active = filters[key];
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange({ ...filters, [key]: !active })}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+              active
+                ? 'bg-teal-50 text-teal-700 border-teal-300 shadow-sm'
+                : 'bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-600'
+            }`}
+          >
+            {active ? '\u2713 ' : ''}{label}
+          </button>
+        );
+      })}
+      <span className="text-[11px] text-slate-400 ml-auto tabular-nums">
+        {filteredCount != null && totalCount != null
+          ? `${filteredCount.toLocaleString('en-IN')} of ${totalCount.toLocaleString('en-IN')} funds`
+          : ''}
+      </span>
+    </div>
+  );
+}
+
+function applyGlobalFilters(funds, filters) {
+  if (!funds || funds.length === 0) return [];
+  let result = funds;
+
+  if (filters.regularOnly) {
+    result = result.filter((f) => {
+      if (f.purchase_mode) return f.purchase_mode === 'Regular';
+      return !(f.fund_name || '').includes('Dir ');
+    });
+  }
+
+  if (filters.equityOnly) {
+    result = result.filter((f) => EQUITY_BROADS.has(f.broad_category));
+  }
+
+  if (filters.minAum) {
+    result = result.filter((f) => f.aum != null && Number(f.aum) >= MIN_AUM_RAW);
+  }
+
+  // Exclude IDCW payout plans — they're dividend variants with missing returns
+  result = result.filter((f) => !(f.fund_name || '').includes('IDCW'));
+
+  // Exclude segregated portfolios
+  result = result.filter((f) => !(f.fund_name || '').toLowerCase().includes('segregated'));
+
+  return result;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -36,6 +104,25 @@ export default function DashboardPage() {
   const [universe, setUniverse] = useState(null);
   const [archetypes, setArchetypes] = useState([]);
 
+  // Global filters — all ON by default
+  const [filters, setFilters] = useState({
+    regularOnly: true,
+    equityOnly: true,
+    minAum: true,
+  });
+
+  // Apply global filters to universe
+  const filteredUniverse = useMemo(() => {
+    if (!universe) return null;
+    return applyGlobalFilters(universe, filters);
+  }, [universe, filters]);
+
+  // Also filter the matrix data
+  const filteredMatrix = useMemo(() => {
+    if (!matrixData || matrixData.length === 0) return [];
+    return applyGlobalFilters(matrixData, filters);
+  }, [matrixData, filters]);
+
   useEffect(() => {
     async function loadAll() {
       setLoading(true);
@@ -44,7 +131,7 @@ export default function DashboardPage() {
         fetchMarketRegime(),                                 // 1: regime
         fetchSentiment(),                                    // 2: sentiment
         fetchMorningstarSectors(),                           // 3: sectors
-        fetchFundExposureMatrix(5),                          // 4: matrixData
+        fetchFundExposureMatrix(20),                         // 4: matrixData (fetch more, filter client-side)
         fetchCategoryAlignment(),                            // 5: alignmentData
         cachedFetch('universe', fetchUniverseData, 600),     // 6: universe
         fetchFundArchetypes(),                               // 7: archetypes
@@ -92,32 +179,40 @@ export default function DashboardPage() {
       {/* Search Strip */}
       <DashboardSearchStrip universe={universe} />
 
+      {/* Global Filters */}
+      <FilterBar
+        filters={filters}
+        onChange={setFilters}
+        totalCount={universe?.length}
+        filteredCount={filteredUniverse?.length}
+      />
+
       {/* Row 1: Market Pulse Strip */}
       <MarketPulseStrip nifty={nifty} regime={regime} sentiment={sentiment} breadth={breadthData} loading={loading} />
 
       {/* Row 2: Sector Rotation */}
-      <SectorRotation sectors={sectors} universe={universe} loading={loading} />
+      <SectorRotation sectors={sectors} universe={filteredUniverse} loading={loading} />
 
       {/* Row 3: Sector-Fund Bridge */}
-      <FundExposureBridge matrixData={matrixData} sectors={sectors} universe={universe} loading={loading} />
+      <FundExposureBridge matrixData={filteredMatrix} sectors={sectors} universe={filteredUniverse} loading={loading} />
 
       {/* Row 3b: Quadrant Alignment */}
-      <QuadrantAlignment alignmentData={alignmentData} universe={universe} onFundClick={handleFundClick} loading={loading} />
+      <QuadrantAlignment alignmentData={alignmentData} universe={filteredUniverse} onFundClick={handleFundClick} loading={loading} />
 
       {/* Row 4: Universe Snapshot Strip */}
-      <UniverseSnapshotStrip universe={universe} loading={loading} />
+      <UniverseSnapshotStrip universe={filteredUniverse} loading={loading} />
 
       {/* Row 5: Smart Buckets */}
-      <SmartBuckets />
+      <SmartBuckets universe={filteredUniverse} />
 
       {/* Row 6: Top Funds + Category Heatmap */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <TopFundsByLens universe={universe} onFundClick={handleFundClick} loading={!universe} />
-        <CategoryHeatmap universe={universe} loading={!universe} />
+        <TopFundsByLens universe={filteredUniverse} onFundClick={handleFundClick} loading={!filteredUniverse} />
+        <CategoryHeatmap universe={filteredUniverse} loading={!filteredUniverse} />
       </div>
 
       {/* Row 7: Lens Fingerprints */}
-      <LensFingerprint universe={universe} archetypes={archetypes} loading={!universe} />
+      <LensFingerprint universe={filteredUniverse} archetypes={archetypes} loading={!filteredUniverse} />
     </div>
   );
 }

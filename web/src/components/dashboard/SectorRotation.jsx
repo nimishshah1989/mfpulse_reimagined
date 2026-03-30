@@ -18,14 +18,15 @@ function getName(s) {
   return s.display_name || s.sector_name || s.name || '';
 }
 
-/* Return score → color gradient (better coverage than alpha) */
+/* Return score → vivid color gradient */
 function returnScoreColor(score) {
   if (score == null) return '#94a3b8';
-  if (score >= 75) return '#059669';
-  if (score >= 60) return '#10b981';
-  if (score >= 45) return '#0ea5e9';
-  if (score >= 30) return '#f59e0b';
-  return '#ef4444';
+  if (score >= 75) return '#059669'; // deep green
+  if (score >= 60) return '#10b981'; // green
+  if (score >= 50) return '#6366f1'; // indigo
+  if (score >= 40) return '#f59e0b'; // amber
+  if (score >= 25) return '#f97316'; // orange
+  return '#ef4444'; // red
 }
 
 /* Exclude non-equity categories from bubble chart */
@@ -65,7 +66,7 @@ function CategoryBubbleChart({ universe }) {
     const avg = (arr) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
 
     return Object.entries(grouped)
-      .filter(([, d]) => d.count >= 10 && d.returns.length > 0 && d.risks.length > 0)
+      .filter(([, d]) => d.count >= 3 && d.returns.length > 0 && d.risks.length > 0)
       .map(([name, d]) => ({
         name: name.replace(/ Fund$/, '').replace(/Equity - /, ''),
         count: d.count,
@@ -77,22 +78,29 @@ function CategoryBubbleChart({ universe }) {
       .slice(0, 20);
   }, [universe]);
 
-  if (categories.length === 0) return <div className="w-full h-[320px] bg-slate-50 rounded-lg" />;
+  if (categories.length === 0) return <div className="w-full h-[320px] bg-slate-50 rounded-lg flex items-center justify-center text-xs text-slate-400">No equity category data available</div>;
 
-  const W = 520, H = 320;
-  const pad = { top: 28, right: 20, bottom: 36, left: 48 };
+  const W = 520, H = 340;
+  const pad = { top: 28, right: 24, bottom: 40, left: 52 };
   const plotW = W - pad.left - pad.right;
   const plotH = H - pad.top - pad.bottom;
 
-  const returns = categories.map((c) => c.avgReturn).filter(Boolean);
-  const risks = categories.map((c) => c.avgRisk).filter(Boolean);
-  const minR = Math.min(...returns) - 2, maxR = Math.max(...returns) + 2;
-  const minRk = Math.min(...risks) - 5, maxRk = Math.max(...risks) + 5;
+  // Percentile-based axis ranges to handle outliers (clip at 5th/95th)
+  const returns = categories.map((c) => c.avgReturn).filter((v) => v != null);
+  const risks = categories.map((c) => c.avgRisk).filter((v) => v != null);
+  const percentile = (arr, p) => { const s = [...arr].sort((a, b) => a - b); return s[Math.floor(s.length * p)] ?? s[0]; };
+  const retP5 = percentile(returns, 0.05), retP95 = percentile(returns, 0.95);
+  const riskP5 = percentile(risks, 0.05), riskP95 = percentile(risks, 0.95);
+  const retRange = retP95 - retP5 || 10;
+  const riskRange = riskP95 - riskP5 || 20;
+  const minR = retP5 - retRange * 0.15, maxR = retP95 + retRange * 0.15;
+  const minRk = riskP5 - riskRange * 0.15, maxRk = riskP95 + riskRange * 0.15;
   const maxCount = Math.max(...categories.map((c) => c.count));
 
-  const scaleX = (rk) => pad.left + ((rk - minRk) / (maxRk - minRk)) * plotW;
-  const scaleY = (ret) => pad.top + plotH - ((ret - minR) / (maxR - minR)) * plotH;
-  const scaleR = (count) => 6 + (count / maxCount) * 24;
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const scaleX = (rk) => pad.left + clamp((rk - minRk) / (maxRk - minRk), 0, 1) * plotW;
+  const scaleY = (ret) => pad.top + plotH - clamp((ret - minR) / (maxR - minR), 0, 1) * plotH;
+  const scaleR = (count) => 8 + (count / maxCount) * 28;
 
   return (
     <div className="flex-1 min-w-0">
@@ -112,13 +120,31 @@ function CategoryBubbleChart({ universe }) {
         <line x1={pad.left} x2={pad.left} y1={pad.top} y2={H - pad.bottom} stroke="#cbd5e1" strokeWidth="1" />
 
         {/* Axis labels */}
-        <text x={W / 2} y={H - 6} textAnchor="middle" fontSize="11" fill="#64748b" fontWeight="500">
-          Risk Score →
+        <text x={W / 2} y={H - 4} textAnchor="middle" fontSize="11" fill="#64748b" fontWeight="500">
+          Avg Risk Score →
         </text>
-        <text x={14} y={H / 2} textAnchor="middle" fontSize="11" fill="#64748b" fontWeight="500"
-          transform={`rotate(-90, 14, ${H / 2})`}>
-          Return 1Y % →
+        <text x={12} y={H / 2} textAnchor="middle" fontSize="11" fill="#64748b" fontWeight="500"
+          transform={`rotate(-90, 12, ${H / 2})`}>
+          Avg 1Y Return % →
         </text>
+
+        {/* Tick labels on axes */}
+        {[0, 0.25, 0.5, 0.75, 1].map((t) => {
+          const riskVal = minRk + (maxRk - minRk) * t;
+          return (
+            <text key={`xt${t}`} x={pad.left + plotW * t} y={H - pad.bottom + 14} textAnchor="middle" fontSize="9" fill="#94a3b8">
+              {riskVal.toFixed(0)}
+            </text>
+          );
+        })}
+        {[0, 0.25, 0.5, 0.75, 1].map((t) => {
+          const retVal = minR + (maxR - minR) * t;
+          return (
+            <text key={`yt${t}`} x={pad.left - 6} y={pad.top + plotH - plotH * t + 3} textAnchor="end" fontSize="9" fill="#94a3b8">
+              {retVal.toFixed(0)}%
+            </text>
+          );
+        })}
 
         {/* Bubbles */}
         {categories.map((cat) => {
@@ -166,13 +192,13 @@ function CategoryBubbleChart({ universe }) {
 
       {/* Legend */}
       <div className="flex items-center justify-center gap-4 mt-1">
-        <span className="text-[10px] text-slate-500 font-medium">Return Score:</span>
+        <span className="text-[11px] text-slate-600 font-medium">Return Score:</span>
         {[
           { color: '#059669', label: '75+' },
           { color: '#10b981', label: '60+' },
-          { color: '#0ea5e9', label: '45+' },
-          { color: '#f59e0b', label: '30+' },
-          { color: '#ef4444', label: '<30' },
+          { color: '#6366f1', label: '50+' },
+          { color: '#f59e0b', label: '40+' },
+          { color: '#ef4444', label: '<25' },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center gap-1">
             <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />

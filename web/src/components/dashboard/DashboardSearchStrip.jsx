@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
+import { parseNLQuery, applyNLFilters } from '../../lib/nl-search';
 
 export default function DashboardSearchStrip({ universe }) {
   const router = useRouter();
@@ -9,13 +10,29 @@ export default function DashboardSearchStrip({ universe }) {
   const inputRef = useRef(null);
   const containerRef = useRef(null);
 
-  const results = useMemo(() => {
-    if (!universe || query.length < 2) return [];
+  // Try NL parse first, then fall back to name substring search
+  const { results, isNL, nlLabel } = useMemo(() => {
+    if (!universe || query.length < 2) return { results: [], isNL: false, nlLabel: null };
+
+    const nlFilters = parseNLQuery(query);
+    if (nlFilters) {
+      const filtered = applyNLFilters(universe, nlFilters);
+      const sorted = [...filtered].sort((a, b) => (b.aum || 0) - (a.aum || 0)).slice(0, 8);
+      const parts = [];
+      if (nlFilters.categories.length > 0) parts.push(nlFilters.categories.join(', '));
+      if (nlFilters.sectors.length > 0) parts.push(nlFilters.sectors.join(', '));
+      if (nlFilters.tierFilters.length > 0) parts.push(nlFilters.tierFilters.map((t) => t.value).join(', '));
+      const label = parts.length > 0 ? `NL: ${parts.join(' + ')} — ${filtered.length} matches` : `NL: ${filtered.length} matches`;
+      return { results: sorted, isNL: true, nlLabel: label };
+    }
+
+    // Exact substring match fallback
     const q = query.toLowerCase();
-    return universe
+    const matches = universe
       .filter((f) => f.fund_name?.toLowerCase().includes(q))
       .sort((a, b) => (b.aum || 0) - (a.aum || 0))
       .slice(0, 8);
+    return { results: matches, isNL: false, nlLabel: null };
   }, [universe, query]);
 
   useEffect(() => { setSelectedIdx(-1); }, [results]);
@@ -43,15 +60,22 @@ export default function DashboardSearchStrip({ universe }) {
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIdx((prev) => Math.max(prev - 1, -1));
-    } else if (e.key === 'Enter' && selectedIdx >= 0 && results[selectedIdx]) {
-      navigateToFund(results[selectedIdx].mstar_id);
+    } else if (e.key === 'Enter') {
+      if (selectedIdx >= 0 && results[selectedIdx]) {
+        navigateToFund(results[selectedIdx].mstar_id);
+      } else if (isNL && query.trim()) {
+        // NL query with no selection — navigate to universe with query
+        router.push(`/universe?q=${encodeURIComponent(query.trim())}`);
+        setQuery('');
+        setFocused(false);
+      }
     } else if (e.key === 'Escape') {
       setFocused(false);
       inputRef.current?.blur();
     }
   }
 
-  const showDropdown = focused && results.length > 0;
+  const showDropdown = focused && (results.length > 0 || isNL);
 
   return (
     <div ref={containerRef} className="relative mb-1">
@@ -69,7 +93,7 @@ export default function DashboardSearchStrip({ universe }) {
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setFocused(true)}
             onKeyDown={handleKeyDown}
-            placeholder="Search funds by name — e.g. HDFC Flexi Cap, Parag Parikh..."
+            placeholder="Search funds — try 'HDFC Flexi Cap' or 'high alpha large cap' or 'fortress funds'"
             className="flex-1 bg-transparent text-sm text-slate-700 placeholder-slate-400 outline-none"
           />
           {query && (
@@ -86,7 +110,14 @@ export default function DashboardSearchStrip({ universe }) {
 
       {showDropdown && (
         <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
-          {results.map((fund, idx) => (
+          {/* NL indicator */}
+          {isNL && nlLabel && (
+            <div className="px-4 py-2 bg-indigo-50 border-b border-indigo-100">
+              <p className="text-[10px] text-indigo-600 font-medium">{nlLabel}</p>
+            </div>
+          )}
+
+          {results.length > 0 ? results.map((fund, idx) => (
             <div
               key={fund.mstar_id}
               className={`flex items-center justify-between px-4 py-2.5 cursor-pointer transition-colors ${
@@ -97,7 +128,7 @@ export default function DashboardSearchStrip({ universe }) {
             >
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-slate-800 truncate">{fund.fund_name}</p>
-                <p className="text-[10px] text-slate-400">{fund.category_name}</p>
+                <p className="text-[10px] text-slate-500">{fund.category_name}</p>
               </div>
               <div className="flex items-center gap-3 shrink-0 ml-3">
                 {fund.return_1y != null && (
@@ -106,13 +137,17 @@ export default function DashboardSearchStrip({ universe }) {
                   </span>
                 )}
                 {fund.aum != null && (
-                  <span className="text-[10px] text-slate-400 tabular-nums">
+                  <span className="text-[10px] text-slate-500 tabular-nums">
                     {(Number(fund.aum) / 1e7).toFixed(0)} Cr
                   </span>
                 )}
               </div>
             </div>
-          ))}
+          )) : isNL ? (
+            <div className="px-4 py-3 text-xs text-slate-400">
+              No funds match this query. Press Enter to search in Universe.
+            </div>
+          ) : null}
         </div>
       )}
     </div>

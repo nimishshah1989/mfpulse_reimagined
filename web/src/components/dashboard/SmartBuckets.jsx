@@ -170,17 +170,21 @@ function BucketCard({ bucket, count, topFund, onClick }) {
   );
 }
 
-export default function SmartBuckets() {
+export default function SmartBuckets({ universe: externalUniverse }) {
   const router = useRouter();
-  const [universe, setUniverse] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [internalUniverse, setInternalUniverse] = useState(null);
+  const [loading, setLoading] = useState(!externalUniverse);
+
+  // Use external universe if provided (from global filters), else fetch own
+  const universe = externalUniverse || internalUniverse;
 
   useEffect(() => {
+    if (externalUniverse) { setLoading(false); return; }
     cachedFetch('universe', fetchUniverseData, 600)
-      .then((data) => setUniverse(data))
-      .catch(() => setUniverse([]))
+      .then((data) => setInternalUniverse(data))
+      .catch(() => setInternalUniverse([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [externalUniverse]);
 
   const bucketData = useMemo(() => {
     if (!universe || universe.length === 0) return {};
