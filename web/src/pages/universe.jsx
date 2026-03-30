@@ -48,11 +48,55 @@ const TIER_CLASS_MAP = {
   'Negative Alpha': 'NEGATIVE',
 };
 
+const EQUITY_BROADS = new Set(['Equity', 'Allocation']);
+const MIN_AUM_CR = 1000;
+const MIN_AUM_RAW = MIN_AUM_CR * 1e7;
+
+const GLOBAL_TOGGLES = [
+  { key: 'directOnly', label: 'Direct Plans' },
+  { key: 'equityOnly', label: 'Equity Only' },
+  { key: 'minAum', label: `AUM > ${MIN_AUM_CR} Cr` },
+];
+
+function applyGlobalFilters(funds, globalFilters) {
+  if (!funds || funds.length === 0) return [];
+  let result = funds;
+
+  if (globalFilters.directOnly) {
+    result = result.filter((f) => {
+      if (f.purchase_mode) return f.purchase_mode === 'Direct';
+      const name = (f.fund_name || '').toLowerCase();
+      return name.includes('direct') || name.includes('dir ') || name.includes('dir-');
+    });
+  }
+
+  if (globalFilters.equityOnly) {
+    result = result.filter((f) => EQUITY_BROADS.has(f.broad_category));
+  }
+
+  if (globalFilters.minAum) {
+    result = result.filter((f) => f.aum != null && Number(f.aum) >= MIN_AUM_RAW);
+  }
+
+  // Always exclude IDCW + segregated
+  result = result.filter((f) => !(f.fund_name || '').includes('IDCW'));
+  result = result.filter((f) => !(f.fund_name || '').toLowerCase().includes('segregated'));
+
+  return result;
+}
+
 export default function UniversePage() {
   const router = useRouter();
   const [allFunds, setAllFunds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Global filters — match dashboard defaults
+  const [globalFilters, setGlobalFilters] = useState({
+    directOnly: true,
+    equityOnly: true,
+    minAum: true,
+  });
 
   const [xAxis, setXAxis] = useState('risk_score');
   const [yAxis, setYAxis] = useState('return_1y');
@@ -141,19 +185,25 @@ export default function UniversePage() {
     }
   }, [activePreset]);
 
-  // Apply all filters (including preset)
+  // Pre-compute globally filtered funds (used by SmartPresets for accurate counts)
+  const globallyFiltered = useMemo(
+    () => applyGlobalFilters(allFunds, globalFilters),
+    [allFunds, globalFilters]
+  );
+
+  // Apply all filters (including global + preset)
   const filteredFunds = useMemo(() => {
-    // Pre-filter: exclude junk funds (AUM < 10Cr or age < 3 years)
+    // Step 1: Start from globally filtered set
+    let result = globallyFiltered;
+
+    // Step 2: Pre-filter — exclude very small/young funds
     const THREE_YEARS_MS = 3 * 365.25 * 24 * 60 * 60 * 1000;
     const now = Date.now();
-    let result = allFunds.filter((fund) => {
-      // Only show funds with AUM > 0 (active funds with holdings data)
+    result = result.filter((fund) => {
       const aumVal = Number(fund.aum) || 0;
       if (aumVal <= 0) return false;
       const aumCr = aumVal / 10000000;
       if (aumCr < 10) return false;
-      if (fund.fund_name?.toLowerCase().includes('segregated')) return false;
-      if (fund.fund_name?.toLowerCase().includes('idcw')) return false;
       if (fund.inception_date) {
         const age = now - new Date(fund.inception_date).getTime();
         if (age < THREE_YEARS_MS) return false;
@@ -210,7 +260,7 @@ export default function UniversePage() {
     }
 
     return result;
-  }, [allFunds, filters, activePreset, nlFilters, router.isReady, router.query]);
+  }, [globallyFiltered, filters, activePreset, nlFilters, router.isReady, router.query]);
 
   // Tag funds with tier display for selected tier highlighting
   const taggedFunds = useMemo(() => {
@@ -375,9 +425,34 @@ export default function UniversePage() {
         )}
       </div>
 
+      {/* Global Filters — matching dashboard */}
+      <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-2.5 animate-in">
+        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Filters</span>
+        {GLOBAL_TOGGLES.map(({ key, label }) => {
+          const active = globalFilters[key];
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setGlobalFilters((prev) => ({ ...prev, [key]: !prev[key] }))}
+              className={`px-2.5 py-1 text-[10px] font-medium rounded-lg border transition-all ${
+                active
+                  ? 'bg-teal-50 text-teal-700 border-teal-300 shadow-sm'
+                  : 'bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-600'
+              }`}
+            >
+              {active ? '\u2713 ' : ''}{label}
+            </button>
+          );
+        })}
+        <span className="text-[10px] text-slate-400 ml-auto tabular-nums">
+          {taggedFunds.length.toLocaleString('en-IN')} of {allFunds.length.toLocaleString('en-IN')} funds
+        </span>
+      </div>
+
       {/* Section 1: Smart Screener Presets */}
       <SmartPresets
-        allFunds={allFunds}
+        allFunds={globallyFiltered}
         activePreset={activePreset}
         onPresetClick={handlePresetClick}
         viewMode={viewMode}
@@ -388,7 +463,7 @@ export default function UniversePage() {
       <HorizontalFilterBar
         filters={filters}
         onFiltersChange={setFilters}
-        allFunds={allFunds}
+        allFunds={globallyFiltered}
         filteredCount={taggedFunds.length}
         totalCount={allFunds.length}
         xAxis={xAxis}
