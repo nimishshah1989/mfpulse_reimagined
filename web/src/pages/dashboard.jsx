@@ -227,10 +227,10 @@ export default function DashboardPage() {
       <SectorRotation sectors={sectors} universe={filteredUniverse} loading={loading} onFundClick={handleFundClick} />
 
       {/* Row 3: Sector-Fund Bridge */}
-      <FundExposureBridge matrixData={filteredMatrix} sectors={sectors} universe={filteredUniverse} loading={loading} />
+      <FundExposureBridge matrixData={filteredMatrix} sectors={sectors} universe={filteredUniverse} loading={loading} onFundClick={handleFundClick} />
 
       {/* Row 4: Fund Archetypes & Lens Fingerprints (moved UP) */}
-      <LensFingerprint universe={filteredUniverse} archetypes={effectiveArchetypes} loading={!filteredUniverse} />
+      <LensFingerprint universe={filteredUniverse} archetypes={effectiveArchetypes} loading={!filteredUniverse} onFundClick={handleFundClick} />
 
       {/* Row 5: Universe Snapshot Strip */}
       <UniverseSnapshotStrip universe={filteredUniverse} loading={loading} />

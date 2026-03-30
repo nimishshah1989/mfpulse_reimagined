@@ -103,18 +103,20 @@ function InsightBar({ data }) {
   );
 }
 
-/* ──────── Drill-Down Panel ──────── */
+/* ──────── Drill-Down Panel (expandable) ──────── */
 
 function DrillDownPanel({ category, zone, universe, onFundClick, onClose }) {
   const zoneColor = ZONE_COLORS[zone] || '#94a3b8';
+  const [showAll, setShowAll] = useState(false);
 
-  const funds = useMemo(() => {
+  const allFunds = useMemo(() => {
     if (!universe || !universe.length) return [];
     return universe
       .filter(f => f.category_name === category)
-      .sort((a, b) => (b.aum || 0) - (a.aum || 0))
-      .slice(0, 10);
+      .sort((a, b) => (b.aum || 0) - (a.aum || 0));
   }, [universe, category]);
+
+  const displayFunds = showAll ? allFunds : allFunds.slice(0, 10);
 
   return (
     <div className="mt-2 mb-2 bg-slate-50 border border-slate-200 rounded-lg p-3 animate-in">
@@ -122,22 +124,23 @@ function DrillDownPanel({ category, zone, universe, onFundClick, onClose }) {
         <div className="flex items-center gap-2">
           <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: zoneColor }} />
           <span className="text-xs font-semibold text-slate-700">{category}</span>
-          <span className="text-[10px] text-slate-400 capitalize">· {zone} zone</span>
+          <span className="text-[10px] text-slate-400 capitalize">\u00b7 {zone} zone</span>
+          <span className="text-[10px] text-slate-400">\u00b7 {allFunds.length} funds</span>
         </div>
-        <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xs">✕</button>
+        <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xs">\u2715</button>
       </div>
-      {funds.length === 0 ? (
+      {allFunds.length === 0 ? (
         <p className="text-[10px] text-slate-400 py-2">No fund data available for this category.</p>
       ) : (
         <div className="space-y-1">
-          {funds.map(f => (
+          {displayFunds.map(f => (
             <div
               key={f.mstar_id}
               className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-white cursor-pointer transition-colors"
               onClick={() => onFundClick && onFundClick(f.mstar_id)}
             >
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-medium text-slate-700 truncate">{f.fund_name}</p>
+                <p className="text-[11px] font-medium text-teal-700 truncate hover:underline">{f.fund_name}</p>
               </div>
               <div className="flex items-center gap-3 shrink-0 ml-3">
                 <span className={`text-[10px] font-semibold tabular-nums ${f.return_1y >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
@@ -151,6 +154,16 @@ function DrillDownPanel({ category, zone, universe, onFundClick, onClose }) {
           ))}
         </div>
       )}
+
+      {/* Expand/collapse toggle */}
+      {allFunds.length > 10 && (
+        <div className="flex justify-center mt-2">
+          <button type="button" onClick={() => setShowAll(!showAll)}
+            className="text-[11px] text-teal-600 font-medium hover:text-teal-700">
+            {showAll ? '\u25B4 Show fewer' : `\u25BE Show all ${allFunds.length} funds`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -159,6 +172,7 @@ function DrillDownPanel({ category, zone, universe, onFundClick, onClose }) {
 
 export default function QuadrantAlignment({ alignmentData, universe, onFundClick, loading }) {
   const [drillDown, setDrillDown] = useState(null);
+  const [showAllRows, setShowAllRows] = useState(false);
   const router = useRouter();
 
   if (loading) {
@@ -176,12 +190,14 @@ export default function QuadrantAlignment({ alignmentData, universe, onFundClick
 
   if (!alignmentData || alignmentData.length === 0) return null;
 
+  const displayRows = showAllRows ? alignmentData : alignmentData.slice(0, 15);
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5">
       {/* Header */}
       <p className="section-title">Quadrant Alignment</p>
       <p className="text-xs text-slate-500 -mt-1 mb-4">
-        How fund categories are distributed across sector rotation zones — <span className="font-medium text-emerald-600">Strength</span> = % in Leading + Improving, <span className="font-medium text-red-500">Pressure</span> = % in Weakening + Lagging.
+        How fund categories are distributed across sector rotation zones \u2014 <span className="font-medium text-emerald-600">Strength</span> = % in Leading + Improving, <span className="font-medium text-red-500">Pressure</span> = % in Weakening + Lagging.
       </p>
 
       {/* Column headers */}
@@ -203,9 +219,9 @@ export default function QuadrantAlignment({ alignmentData, universe, onFundClick
         </span>
       </div>
 
-      {/* Data rows — limited to 15 */}
+      {/* Data rows */}
       <div className="space-y-0.5">
-        {alignmentData.slice(0, 15).map((row) => {
+        {displayRows.map((row) => {
           const tw = row.tailwind_pct ?? 0;
           const hw = row.headwind_pct ?? 0;
 
@@ -215,9 +231,9 @@ export default function QuadrantAlignment({ alignmentData, universe, onFundClick
               className="grid items-center py-2 px-1 rounded-md hover:bg-slate-50 transition-colors"
               style={{ gridTemplateColumns: '160px 1fr 70px 70px' }}
             >
-              {/* Category name + fund count */}
-              <div className="min-w-0">
-                <p className="text-[13px] font-medium text-slate-700 truncate">
+              {/* Category name + fund count — clickable */}
+              <div className="min-w-0 cursor-pointer" onClick={() => router.push(`/universe?category=${encodeURIComponent(row.category_name)}`)}>
+                <p className="text-[13px] font-medium text-teal-700 truncate hover:underline">
                   {row.category_name}
                 </p>
                 <p className="text-[11px] text-slate-500 leading-tight">
@@ -250,7 +266,17 @@ export default function QuadrantAlignment({ alignmentData, universe, onFundClick
         })}
       </div>
 
-      {/* Drill-down panel */}
+      {/* Show all toggle */}
+      {alignmentData.length > 15 && (
+        <div className="flex justify-center mt-2">
+          <button type="button" onClick={() => setShowAllRows(!showAllRows)}
+            className="text-[11px] text-teal-600 font-medium hover:text-teal-700">
+            {showAllRows ? '\u25B4 Show fewer' : `\u25BE Show all ${alignmentData.length} categories`}
+          </button>
+        </div>
+      )}
+
+      {/* Drill-down panel — expandable */}
       {drillDown && (
         <DrillDownPanel
           category={drillDown.category}

@@ -18,7 +18,6 @@ function getName(s) {
   return s.display_name || s.sector_name || s.name || '';
 }
 
-/* Return score → red-to-green gradient (matching universe page) */
 function returnScoreColor(score) {
   if (score == null) return '#94a3b8';
   if (score >= 75) return 'rgba(5, 150, 105, 0.85)';
@@ -35,7 +34,6 @@ function returnScoreBorder(score) {
   return 'rgba(239,68,68,0.85)';
 }
 
-/* Exclude non-equity categories from bubble chart */
 const EXCLUDED_CAT_KEYWORDS = [
   'liquid', 'overnight', 'money market', 'ultra short', 'low duration',
   'short duration', 'medium duration', 'long duration', 'dynamic bond',
@@ -51,15 +49,15 @@ function isEquityCategory(catName) {
   return !EXCLUDED_CAT_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
-/* ──────────────── Category Bubble Chart (SVG) ──────────────── */
+/* ──────────────── Category Bubble Chart (SVG) with Quadrant Labels ──────────────── */
 
 function CategoryBubbleChart({ categories, onCategoryClick }) {
   const [hovered, setHovered] = useState(null);
 
-  if (categories.length === 0) return <div className="w-full h-[340px] bg-slate-50 rounded-lg flex items-center justify-center text-xs text-slate-400">No equity category data</div>;
+  if (categories.length === 0) return <div className="w-full h-[400px] bg-slate-50 rounded-lg flex items-center justify-center text-xs text-slate-400">No equity category data</div>;
 
-  const W = 480, H = 340;
-  const pad = { top: 18, right: 16, bottom: 34, left: 44 };
+  const W = 560, H = 400;
+  const pad = { top: 20, right: 12, bottom: 36, left: 40 };
   const plotW = W - pad.left - pad.right;
   const plotH = H - pad.top - pad.bottom;
 
@@ -79,19 +77,34 @@ function CategoryBubbleChart({ categories, onCategoryClick }) {
   const scaleY = (ret) => pad.top + plotH - clamp((ret - minR) / (maxR - minR), 0, 1) * plotH;
   const scaleR = (count) => 10 + (count / maxCount) * 28;
 
+  // Quadrant dividers at midpoint
+  const midX = pad.left + plotW / 2;
+  const midY = pad.top + plotH / 2;
+
   return (
     <div className="flex-1 min-w-0">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" style={{ maxHeight: 340 }}>
-        {[0.25, 0.5, 0.75].map((t) => (
-          <line key={`h${t}`} x1={pad.left} x2={W - pad.right} y1={pad.top + plotH * t} y2={pad.top + plotH * t} stroke="#f1f5f9" strokeWidth="1" />
-        ))}
-        {[0.25, 0.5, 0.75].map((t) => (
-          <line key={`v${t}`} y1={pad.top} y2={H - pad.bottom} x1={pad.left + plotW * t} x2={pad.left + plotW * t} stroke="#f1f5f9" strokeWidth="1" />
-        ))}
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" style={{ maxHeight: 400 }}>
+        {/* Quadrant backgrounds */}
+        <rect x={pad.left} y={pad.top} width={plotW / 2} height={plotH / 2} fill="#ecfdf5" opacity="0.3" />
+        <rect x={midX} y={pad.top} width={plotW / 2} height={plotH / 2} fill="#fef3c7" opacity="0.25" />
+        <rect x={pad.left} y={midY} width={plotW / 2} height={plotH / 2} fill="#f1f5f9" opacity="0.4" />
+        <rect x={midX} y={midY} width={plotW / 2} height={plotH / 2} fill="#fef2f2" opacity="0.25" />
+
+        {/* Quadrant labels */}
+        <text x={pad.left + 6} y={pad.top + 14} fontSize="9" fontWeight="600" fill="#059669" opacity="0.7">SWEET SPOT</text>
+        <text x={W - pad.right - 6} y={pad.top + 14} textAnchor="end" fontSize="9" fontWeight="600" fill="#d97706" opacity="0.7">HIGH RISK HIGH RETURN</text>
+        <text x={pad.left + 6} y={H - pad.bottom - 6} fontSize="9" fontWeight="600" fill="#64748b" opacity="0.6">CONSERVATIVE</text>
+        <text x={W - pad.right - 6} y={H - pad.bottom - 6} textAnchor="end" fontSize="9" fontWeight="600" fill="#ef4444" opacity="0.6">AVOID</text>
+
+        {/* Quadrant dividers */}
+        <line x1={midX} x2={midX} y1={pad.top} y2={H - pad.bottom} stroke="#cbd5e1" strokeWidth="1" strokeDasharray="4,3" />
+        <line x1={pad.left} x2={W - pad.right} y1={midY} y2={midY} stroke="#cbd5e1" strokeWidth="1" strokeDasharray="4,3" />
+
+        {/* Axes */}
         <line x1={pad.left} x2={W - pad.right} y1={H - pad.bottom} y2={H - pad.bottom} stroke="#cbd5e1" strokeWidth="1" />
         <line x1={pad.left} x2={pad.left} y1={pad.top} y2={H - pad.bottom} stroke="#cbd5e1" strokeWidth="1" />
-        <text x={W / 2} y={H - 2} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500">Risk Score →</text>
-        <text x={10} y={H / 2} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500" transform={`rotate(-90, 10, ${H / 2})`}>1Y Return % →</text>
+        <text x={W / 2} y={H - 2} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500">Risk Score \u2192</text>
+        <text x={10} y={H / 2} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500" transform={`rotate(-90, 10, ${H / 2})`}>1Y Return % \u2192</text>
 
         {[0, 0.5, 1].map((t) => (
           <text key={`xt${t}`} x={pad.left + plotW * t} y={H - pad.bottom + 13} textAnchor="middle" fontSize="9" fill="#94a3b8">
@@ -119,7 +132,7 @@ function CategoryBubbleChart({ categories, onCategoryClick }) {
               {(r >= 12 || isH) && (
                 <text x={cx} y={cy + 1} textAnchor="middle" fontSize={isH ? '10' : '8'} fontWeight="700"
                   fill="#fff" pointerEvents="none" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
-                  {cat.name.length > 10 ? cat.name.slice(0, 9) + '…' : cat.name}
+                  {cat.name.length > 10 ? cat.name.slice(0, 9) + '\u2026' : cat.name}
                 </text>
               )}
             </g>
@@ -135,8 +148,8 @@ function CategoryBubbleChart({ categories, onCategoryClick }) {
             <g>
               <rect x={tx} y={ty - 12} width={140} height={50} rx={6} fill="#0f172a" opacity={0.92} />
               <text x={tx + 7} y={ty + 3} fontSize="10" fontWeight="600" fill="#fff">{cat.name}</text>
-              <text x={tx + 7} y={ty + 16} fontSize="9" fill="#94a3b8">{cat.count} funds · Ret {cat.avgReturn?.toFixed(1)}%</text>
-              <text x={tx + 7} y={ty + 28} fontSize="9" fill="#94a3b8">Risk {cat.avgRisk?.toFixed(0)} · Score {cat.avgReturnScore?.toFixed(0)}</text>
+              <text x={tx + 7} y={ty + 16} fontSize="9" fill="#94a3b8">{cat.count} funds \u00b7 Ret {cat.avgReturn?.toFixed(1)}%</text>
+              <text x={tx + 7} y={ty + 28} fontSize="9" fill="#94a3b8">Risk {cat.avgRisk?.toFixed(0)} \u00b7 Score {cat.avgReturnScore?.toFixed(0)}</text>
               <text x={tx + 7} y={ty + 38} fontSize="8" fill="#67e8f9">Click to drill down</text>
             </g>
           );
@@ -164,7 +177,7 @@ function CategoryBubbleChart({ categories, onCategoryClick }) {
 
 function CategoryTable({ categories, onCategoryClick }) {
   return (
-    <div className="flex-1 min-w-0 overflow-y-auto" style={{ maxHeight: 370 }}>
+    <div className="flex-1 min-w-0 overflow-y-auto" style={{ maxHeight: 420 }}>
       <table className="w-full text-xs">
         <thead>
           <tr className="text-[10px] uppercase tracking-wider text-slate-500 border-b border-slate-200 sticky top-0 bg-white">
@@ -202,9 +215,9 @@ function CategoryTable({ categories, onCategoryClick }) {
   );
 }
 
-/* ──────────────── Sector Table (enriched) ──────────────── */
+/* ──────────────── Sector Table (enriched, clickable) ──────────────── */
 
-function SectorTable({ sectors }) {
+function SectorTable({ sectors, onSectorClick }) {
   const sorted = useMemo(() => {
     return [...sectors].sort((a, b) => (b.avg_weight_pct || 0) - (a.avg_weight_pct || 0));
   }, [sectors]);
@@ -237,8 +250,10 @@ function SectorTable({ sectors }) {
             const wtBarPct = (wt / maxWt) * 100;
 
             return (
-              <tr key={getName(s) || i} className="border-b border-slate-50 hover:bg-slate-50/80 transition-colors">
-                <td className="py-2 px-2 font-medium text-slate-800 text-[12px]">{getName(s)}</td>
+              <tr key={getName(s) || i}
+                className="border-b border-slate-50 hover:bg-teal-50/50 transition-colors cursor-pointer"
+                onClick={() => onSectorClick?.(getName(s))}>
+                <td className="py-2 px-2 font-medium text-teal-700 text-[12px] hover:underline">{getName(s)}</td>
                 <td className="py-2 px-2">
                   <span className={`inline-block text-[9px] font-semibold px-2 py-0.5 rounded ${config.badge}`}>{quadrant}</span>
                 </td>
@@ -303,33 +318,80 @@ function PlaybookBar({ sectors }) {
   );
 }
 
-/* ──────────────── Category Drill-Down Panel ──────────────── */
+/* ──────────────── Category Drill-Down with Fund Scatter + List ──────────────── */
 
 function CategoryDrillDown({ categoryName, universe, onFundClick, onClose }) {
-  const funds = useMemo(() => {
+  const [showAll, setShowAll] = useState(false);
+
+  const allFunds = useMemo(() => {
     if (!universe || !categoryName) return [];
     return universe
       .filter((f) => f.category_name === categoryName)
-      .sort((a, b) => (b.return_1y || 0) - (a.return_1y || 0))
-      .slice(0, 15);
+      .sort((a, b) => (b.return_1y || 0) - (a.return_1y || 0));
   }, [universe, categoryName]);
 
   if (!categoryName) return null;
+  const displayFunds = showAll ? allFunds : allFunds.slice(0, 15);
+
+  // Mini scatter for funds within this category
+  const W = 500, H = 220;
+  const pad = { top: 14, right: 14, bottom: 28, left: 38 };
+  const plotW = W - pad.left - pad.right;
+  const plotH = H - pad.top - pad.bottom;
+  const rets = allFunds.map(f => Number(f.return_1y)).filter(v => !isNaN(v));
+  const risks = allFunds.map(f => Number(f.risk_score)).filter(v => !isNaN(v));
+  const minRet = Math.min(...rets, 0), maxRet = Math.max(...rets, 10);
+  const minRisk = Math.min(...risks, 0), maxRisk = Math.max(...risks, 100);
+  const retSpan = maxRet - minRet || 10;
+  const riskSpan = maxRisk - minRisk || 50;
+  const sX = (rk) => pad.left + ((rk - minRisk) / riskSpan) * plotW;
+  const sY = (ret) => pad.top + plotH - ((ret - minRet) / retSpan) * plotH;
 
   return (
     <div className="mt-4 border border-teal-200 rounded-xl bg-teal-50/30 p-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-slate-800">{categoryName} — {funds.length} funds</p>
+        <p className="text-xs font-semibold text-slate-800">{categoryName} \u2014 {allFunds.length} funds</p>
         <button type="button" onClick={onClose}
           className="text-slate-400 hover:text-slate-600 text-xs font-medium px-2 py-0.5 rounded hover:bg-slate-100">Close</button>
       </div>
-      {funds.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-          {funds.map((f) => (
+
+      {/* Mini fund scatter */}
+      {allFunds.length > 2 && (
+        <div className="mb-3 bg-white rounded-lg border border-slate-100 p-2">
+          <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 220 }}>
+            <line x1={pad.left} x2={W - pad.right} y1={H - pad.bottom} y2={H - pad.bottom} stroke="#e2e8f0" />
+            <line x1={pad.left} x2={pad.left} y1={pad.top} y2={H - pad.bottom} stroke="#e2e8f0" />
+            <text x={W / 2} y={H - 4} textAnchor="middle" fontSize="9" fill="#94a3b8">Risk Score</text>
+            <text x={8} y={H / 2} textAnchor="middle" fontSize="9" fill="#94a3b8" transform={`rotate(-90, 8, ${H / 2})`}>1Y Return %</text>
+            {allFunds.map(f => {
+              const ret = Number(f.return_1y);
+              const risk = Number(f.risk_score);
+              if (isNaN(ret) || isNaN(risk)) return null;
+              const aum = Number(f.aum) || 0;
+              const r = 4 + Math.min(Math.sqrt(aum / 1e9), 10);
+              return (
+                <circle key={f.mstar_id} cx={sX(risk)} cy={sY(ret)} r={r}
+                  fill={returnScoreColor(f.return_score)} opacity={0.75} stroke="#fff" strokeWidth={0.5}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => onFundClick?.(f.mstar_id)}>
+                  <title>{f.fund_name}: {ret.toFixed(1)}% 1Y, Risk {risk.toFixed(0)}</title>
+                </circle>
+              );
+            })}
+          </svg>
+        </div>
+      )}
+
+      {/* Fund list */}
+      {displayFunds.length > 0 ? (
+        <div className="space-y-1">
+          {displayFunds.map((f) => (
             <div key={f.mstar_id} onClick={() => onFundClick?.(f.mstar_id)}
-              className="bg-white rounded-lg border border-slate-200 px-3 py-2 cursor-pointer hover:shadow-sm hover:border-teal-300 transition-all">
-              <p className="text-[11px] font-medium text-slate-800 truncate">{f.fund_name}</p>
-              <div className="flex items-center gap-3 mt-1">
+              className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-white border border-slate-100 cursor-pointer hover:border-teal-300 hover:shadow-sm transition-all">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium text-teal-700 truncate">{f.fund_name}</p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0 ml-3">
                 {f.return_1y != null && (
                   <span className={`text-[10px] font-semibold tabular-nums ${Number(f.return_1y) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                     {Number(f.return_1y) >= 0 ? '+' : ''}{Number(f.return_1y).toFixed(1)}% 1Y
@@ -347,6 +409,16 @@ function CategoryDrillDown({ categoryName, universe, onFundClick, onClose }) {
         </div>
       ) : (
         <p className="text-xs text-slate-400">No funds in this category</p>
+      )}
+
+      {/* Expand toggle */}
+      {allFunds.length > 15 && (
+        <div className="flex justify-center mt-2">
+          <button type="button" onClick={() => setShowAll(!showAll)}
+            className="text-[11px] text-teal-600 font-medium hover:text-teal-700">
+            {showAll ? '\u25B4 Show fewer' : `\u25BE Show all ${allFunds.length} funds`}
+          </button>
+        </div>
       )}
     </div>
   );
@@ -385,13 +457,17 @@ export default function SectorRotation({ sectors, universe, loading, onFundClick
       .slice(0, 20);
   }, [universe]);
 
+  const handleSectorClick = (sectorName) => {
+    router.push(`/sectors?sector=${encodeURIComponent(sectorName)}`);
+  };
+
   if (loading) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 p-5">
         <SkeletonLoader className="h-6 w-48 rounded mb-4" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <SkeletonLoader className="h-[340px] rounded-lg" />
-          <SkeletonLoader className="h-[340px] rounded-lg" />
+          <SkeletonLoader className="h-[400px] rounded-lg" />
+          <SkeletonLoader className="h-[400px] rounded-lg" />
         </div>
       </div>
     );
@@ -412,17 +488,17 @@ export default function SectorRotation({ sectors, universe, loading, onFundClick
         <p className="section-title">Sector & Category Landscape</p>
         <button type="button" onClick={() => router.push('/sectors')}
           className="text-[11px] text-teal-600 font-semibold hover:text-teal-700">
-          Explore Sectors →
+          Explore Sectors \u2192
         </button>
       </div>
 
-      {/* 2-column: Bubble Chart | Category Table — both clickable */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+      {/* 2-column: Bubble Chart | Category Table */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
         <CategoryBubbleChart categories={categories} onCategoryClick={setDrillCategory} />
         <CategoryTable categories={categories} onCategoryClick={setDrillCategory} />
       </div>
 
-      {/* Drill-down panel */}
+      {/* Drill-down panel with fund scatter + expandable list */}
       {drillCategory && (
         <CategoryDrillDown
           categoryName={drillCategory}
@@ -432,10 +508,10 @@ export default function SectorRotation({ sectors, universe, loading, onFundClick
         />
       )}
 
-      {/* Morningstar Sector Rotation — enriched table */}
+      {/* Morningstar Sector Rotation — clickable sector names */}
       <div className="mt-5">
         <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Morningstar Sector Rotation</p>
-        <SectorTable sectors={normalized} />
+        <SectorTable sectors={normalized} onSectorClick={handleSectorClick} />
       </div>
 
       <PlaybookBar sectors={normalized} />

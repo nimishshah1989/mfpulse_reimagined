@@ -15,7 +15,7 @@ const LENS_KEYS = ['return_class', 'risk_class', 'consistency_class', 'alpha_cla
 const LENS_SHORT = ['R', 'Rk', 'C', 'A', 'E', 'Rs'];
 
 function TierPill({ tierClass }) {
-  const label = TIER_LABELS[tierClass] || '—';
+  const label = TIER_LABELS[tierClass] || '\u2014';
   const bg = TIER_COLORS[tierClass] || '#94a3b8';
   return (
     <span style={{ display: 'inline-block', width: 48, height: 20, borderRadius: 4, backgroundColor: bg, color: '#fff',
@@ -25,17 +25,27 @@ function TierPill({ tierClass }) {
   );
 }
 
-function ArchetypeCard({ archetype }) {
+function ArchetypeCard({ archetype, isActive, onClick }) {
   const meta = ARCHETYPE_META[archetype.archetype_id] || ARCHETYPE_META['mid-tier'];
   const rawPattern = archetype.lens_pattern;
   const lensValues = Array.isArray(rawPattern)
     ? Object.fromEntries(LENS_KEYS.map((k, i) => [k, rawPattern[i]]))
     : (rawPattern || {});
   return (
-    <div style={{ border: '1px solid #e2e8f0', borderLeft: `3px solid ${meta.borderColor}`, borderRadius: 6, padding: '8px 10px',
-      cursor: 'default', transition: 'transform 0.15s, box-shadow 0.15s' }}
+    <div
+      onClick={onClick}
+      style={{
+        border: isActive ? `2px solid ${meta.borderColor}` : '1px solid #e2e8f0',
+        borderLeft: `3px solid ${meta.borderColor}`,
+        borderRadius: 6,
+        padding: '8px 10px',
+        cursor: 'pointer',
+        transition: 'transform 0.15s, box-shadow 0.15s',
+        backgroundColor: isActive ? `${meta.bg}` : 'transparent',
+      }}
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}>
+      onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <span style={{ fontSize: 11, fontWeight: 600 }}>{meta.icon} {archetype.name}</span>
         <span style={{ textAlign: 'right' }}>
@@ -64,7 +74,7 @@ function buildInsight(top15) {
   const parts = [];
   const allRounders = top15.filter(f => classifyArchetype(f) === 'all-rounder');
   if (allRounders.length > 0) {
-    parts.push(`${allRounders.map(f => f.fund_name?.split(' ').slice(0, 3).join(' ')).join(', ')} — all-rounder(s) in the top 15 by AUM.`);
+    parts.push(`${allRounders.map(f => f.fund_name?.split(' ').slice(0, 3).join(' ')).join(', ')} \u2014 all-rounder(s) in the top 15 by AUM.`);
   }
   const trouble = top15.filter(f => classifyArchetype(f) === 'trouble');
   if (trouble.length > 0) {
@@ -78,11 +88,12 @@ function buildInsight(top15) {
   return parts.join(' ') || 'Top 15 by AUM shown with lens fingerprints.';
 }
 
-export default function LensFingerprint({ universe: rawUniverse, archetypes: serverArchetypes, loading }) {
+export default function LensFingerprint({ universe: rawUniverse, archetypes: serverArchetypes, loading, onFundClick }) {
   const universe = rawUniverse || [];
   const [verdicts, setVerdicts] = useState({});
   const [expanded, setExpanded] = useState(false);
   const [sortBy, setSortBy] = useState('aum');
+  const [activeArchetype, setActiveArchetype] = useState(null);
 
   const archetypeGrid = useMemo(() => {
     if (serverArchetypes?.length) return [...serverArchetypes].sort((a, b) => b.count - a.count);
@@ -96,7 +107,6 @@ export default function LensFingerprint({ universe: rawUniverse, archetypes: ser
     });
     const total = universe.length || 1;
     return Object.values(groups).map(a => {
-      // Pick the dominant lens pattern from the archetype's funds (most common tier per lens)
       const pattern = {};
       LENS_KEYS.forEach(k => {
         const tierCounts = {};
@@ -120,15 +130,25 @@ export default function LensFingerprint({ universe: rawUniverse, archetypes: ser
 
   const displayFunds = useMemo(() => {
     if (!universe.length) return [];
-    const limit = expanded ? 30 : 10;
-    const sorted = [...universe];
+    let pool = universe;
+    // Filter by active archetype if selected
+    if (activeArchetype) {
+      pool = universe.filter(f => classifyArchetype(f) === activeArchetype);
+    }
+    const limit = expanded ? 50 : 10;
+    const sorted = [...pool];
     if (sortBy === 'risk_score') {
       sorted.sort((a, b) => (a[sortBy] || 100) - (b[sortBy] || 100));
     } else {
       sorted.sort((a, b) => (b[sortBy] || 0) - (a[sortBy] || 0));
     }
     return sorted.slice(0, limit);
-  }, [universe, expanded, sortBy]);
+  }, [universe, expanded, sortBy, activeArchetype]);
+
+  const totalMatchCount = useMemo(() => {
+    if (!activeArchetype) return universe.length;
+    return universe.filter(f => classifyArchetype(f) === activeArchetype).length;
+  }, [universe, activeArchetype]);
 
   useEffect(() => {
     if (!displayFunds.length) return;
@@ -142,7 +162,7 @@ export default function LensFingerprint({ universe: rawUniverse, archetypes: ser
   const insight = useMemo(() => buildInsight(displayFunds), [displayFunds]);
 
   if (loading) {
-    return <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Loading lens fingerprints…</div>;
+    return <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Loading lens fingerprints\u2026</div>;
   }
 
   return (
@@ -150,10 +170,31 @@ export default function LensFingerprint({ universe: rawUniverse, archetypes: ser
       {/* Section title */}
       <p className="section-title mb-4">Fund Archetypes & Lens Fingerprints</p>
 
-      {/* Archetype Grid */}
+      {/* Archetype Grid — clickable to filter */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 mb-4">
-        {archetypeGrid.map(a => <ArchetypeCard key={a.archetype_id} archetype={a} />)}
+        {archetypeGrid.map(a => (
+          <ArchetypeCard
+            key={a.archetype_id}
+            archetype={a}
+            isActive={activeArchetype === a.archetype_id}
+            onClick={() => {
+              setActiveArchetype(prev => prev === a.archetype_id ? null : a.archetype_id);
+              setExpanded(false);
+            }}
+          />
+        ))}
       </div>
+
+      {/* Active filter indicator */}
+      {activeArchetype && (
+        <div className="flex items-center gap-2 mb-3 px-2 py-1.5 bg-teal-50 rounded-lg border border-teal-200">
+          <span className="text-[11px] text-teal-700 font-medium">
+            Showing: {activeArchetype.replace(/-/g, ' ')} ({totalMatchCount} funds)
+          </span>
+          <button type="button" onClick={() => setActiveArchetype(null)}
+            className="text-[10px] text-teal-600 hover:text-teal-800 font-semibold ml-auto">Clear filter</button>
+        </div>
+      )}
 
       {/* Filter pills */}
       <div className="flex flex-wrap items-center gap-1.5 mb-3">
@@ -192,11 +233,12 @@ export default function LensFingerprint({ universe: rawUniverse, archetypes: ser
               const meta = ARCHETYPE_META[archId] || ARCHETYPE_META['mid-tier'];
               const verdict = verdicts[f.mstar_id] || TEMPLATE_VERDICTS[archId];
               return (
-                <tr key={f.mstar_id} style={{ borderBottom: '1px solid #f1f5f9' }}
-                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f8fafc'; }}
+                <tr key={f.mstar_id} style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
+                  onClick={() => onFundClick?.(f.mstar_id)}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f0fdfa'; }}
                   onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}>
                   <td style={{ padding: '6px 4px', textAlign: 'left', maxWidth: 200 }}>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: '#0d9488', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {f.fund_name}
                     </div>
                     <div style={{ fontSize: 10, color: '#64748b' }}>
@@ -225,14 +267,14 @@ export default function LensFingerprint({ universe: rawUniverse, archetypes: ser
       </div>
 
       {/* Expand/collapse toggle */}
-      {universe.length > 10 && (
+      {totalMatchCount > 10 && (
         <div className="flex justify-center mt-2">
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
             className="text-[11px] text-teal-600 font-medium hover:text-teal-700 flex items-center gap-1"
           >
-            {expanded ? '▴ Show fewer' : `▾ Show ${Math.min(30, universe.length)} funds`}
+            {expanded ? '\u25B4 Show fewer' : `\u25BE Show all ${totalMatchCount} funds`}
           </button>
         </div>
       )}

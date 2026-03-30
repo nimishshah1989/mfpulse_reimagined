@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/router';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import SectionTitle from '../shared/SectionTitle';
 import { formatAUMRaw, formatPct } from '../../lib/format';
@@ -67,7 +68,8 @@ function deriveTopSectors(funds) {
     .map(([name]) => name);
 }
 
-export default function FundExposureBridge({ matrixData, sectors, universe, loading }) {
+export default function FundExposureBridge({ matrixData, sectors, universe, loading, onFundClick }) {
+  const router = useRouter();
   if (loading) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -143,7 +145,8 @@ export default function FundExposureBridge({ matrixData, sectors, universe, load
                 Fund
               </th>
               {topSectors.map((s) => (
-                <th key={s} className="text-center text-[9px] uppercase text-slate-400 font-medium tracking-wider pb-2 px-1">
+                <th key={s} className="text-center text-[9px] uppercase text-slate-400 font-medium tracking-wider pb-2 px-1 cursor-pointer hover:text-teal-600"
+                  onClick={() => router.push(`/sectors?sector=${encodeURIComponent(s)}`)}>
                   <div className="flex flex-col items-center gap-0.5">
                     <span
                       className="inline-block w-3 h-3 rounded-full"
@@ -165,10 +168,11 @@ export default function FundExposureBridge({ matrixData, sectors, universe, load
               return (
                 <tr
                   key={fund.mstar_id}
-                  className="hover:bg-[#f8fafc] cursor-pointer border-t border-slate-100"
+                  className="hover:bg-[#f0fdfa] cursor-pointer border-t border-slate-100"
+                  onClick={() => onFundClick ? onFundClick(fund.mstar_id) : router.push(`/fund360?fund=${fund.mstar_id}`)}
                 >
                   <td className="py-1.5 pr-3" style={{ minWidth: 200 }}>
-                    <div className="text-xs font-medium text-slate-700">
+                    <div className="text-xs font-medium text-teal-700 hover:underline">
                       {fund.fund_name}
                     </div>
                     <div className="text-[10px] text-slate-500">

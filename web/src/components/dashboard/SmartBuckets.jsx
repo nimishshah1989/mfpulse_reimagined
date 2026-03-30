@@ -115,7 +115,7 @@ function findTopFund(universe, filterFn) {
   return sorted[0];
 }
 
-function BucketCard({ bucket, count, topFund, onClick }) {
+function BucketCard({ bucket, count, topFund, onClick, onFundClick }) {
   const borderClass = bucket.borderClass || 'border-slate-200';
 
   return (
@@ -144,7 +144,8 @@ function BucketCard({ bucket, count, topFund, onClick }) {
       <div className={`${bucket.highlightBg} rounded-lg px-2.5 py-1.5`}>
         {topFund ? (
           <>
-            <p className="text-[10px] text-slate-500 truncate">
+            <p className="text-[10px] text-teal-600 truncate cursor-pointer hover:underline"
+              onClick={(e) => { e.stopPropagation(); onFundClick?.(topFund.mstar_id); }}>
               Top: {topFund.fund_name}
             </p>
             <div className="flex items-center justify-between gap-1">
@@ -244,6 +245,7 @@ export default function SmartBuckets({ universe: externalUniverse }) {
               count={bucketData[bucket.id]?.count || 0}
               topFund={bucketData[bucket.id]?.topFund}
               onClick={() => handleBucketClick(bucket)}
+              onFundClick={(mstarId) => router.push(`/fund360?fund=${mstarId}`)}
             />
           ))}
         </div>
