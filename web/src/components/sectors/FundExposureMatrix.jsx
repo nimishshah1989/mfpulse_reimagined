@@ -9,16 +9,17 @@ const TEAL = { r: 13, g: 148, b: 136 };
 function heatStyle(pct) {
   if (pct == null || pct <= 0) {
     return {
-      backgroundColor: 'rgba(13,148,136,0.02)',
-      color: '#cbd5e1',
+      backgroundColor: 'rgba(13,148,136,0.04)',
+      color: '#94a3b8',
     };
   }
-  const opacity = Math.min(0.5, 0.03 + pct * 0.012);
+  const opacity = Math.min(0.6, 0.06 + pct * 0.018);
   const textColor =
-    pct >= 20 ? '#0d9488' : pct >= 8 ? '#64748b' : '#94a3b8';
+    pct >= 20 ? '#0f766e' : pct >= 8 ? '#334155' : '#64748b';
   return {
     backgroundColor: `rgba(${TEAL.r},${TEAL.g},${TEAL.b},${opacity})`,
     color: textColor,
+    fontWeight: pct >= 10 ? 700 : 600,
   };
 }
 
@@ -87,10 +88,10 @@ export default function FundExposureMatrix({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-[11px]">
+        <table className="w-full text-xs">
           <thead>
-            <tr className="text-[9px] text-slate-400 uppercase tracking-wider">
-              <th className="text-left pb-3 pr-4 font-medium">Fund</th>
+            <tr className="text-[10px] text-slate-500 uppercase tracking-wider">
+              <th className="text-left pb-3 pr-3 font-semibold">Fund</th>
               {sectorColumns.map((name) => (
                 <th key={name} className="text-center pb-3 font-medium px-1.5">
                   {shortSector(name)}
@@ -112,7 +113,7 @@ export default function FundExposureMatrix({
                     router.push(`/fund360?fund=${fund.mstar_id}`)
                   }
                 >
-                  <td className="py-2.5 pr-4 font-medium text-slate-700">
+                  <td className="py-2.5 pr-3 font-semibold text-slate-800 max-w-[180px] truncate">
                     {fund.fund_name}
                   </td>
                   {sectorColumns.map((sectorName) => {
@@ -121,10 +122,10 @@ export default function FundExposureMatrix({
                     return (
                       <td key={sectorName} className="py-2.5 text-center">
                         <span
-                          className="inline-block w-9 h-6 rounded text-[10px] font-bold leading-6"
+                          className="inline-block w-10 h-7 rounded text-[11px] leading-7 tabular-nums"
                           style={style}
                         >
-                          {pct != null ? `${Math.round(pct)}%` : '0%'}
+                          {pct != null ? `${Math.round(pct)}%` : '—'}
                         </span>
                       </td>
                     );

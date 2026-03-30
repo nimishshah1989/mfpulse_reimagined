@@ -35,7 +35,7 @@ import SectorRiskReturn from '../components/sectors/SectorRiskReturn';
 import MoneyFlowChart from '../components/sectors/MoneyFlowChart';
 import RotationHeatmap from '../components/sectors/RotationHeatmap';
 import FundExposureMatrix from '../components/sectors/FundExposureMatrix';
-import FundDrillDown from '../components/sectors/FundDrillDown';
+import SectorDeepDive from '../components/sectors/SectorDeepDive';
 
 function buildRotationNarrative(sectors) {
   if (!sectors || sectors.length === 0) return null;
@@ -77,23 +77,27 @@ export default function SectorsPage() {
   const [fundsLoading, setFundsLoading] = useState(true);
 
   const [selectedSector, setSelectedSector] = useState(null);
-  const [drillDownSort, setDrillDownSort] = useState('composite');
-  const [drillDownCategory, setDrillDownCategory] = useState('all');
-  const [drillDownPurchaseMode, setDrillDownPurchaseMode] = useState('Regular');
+  // drill-down state removed — SectorDeepDive manages its own state
 
-  const compassRef = useRef(null);
   const drillRef = useRef(null);
   const [compassWidth, setCompassWidth] = useState(0);
+  const observerRef = useRef(null);
 
-  useEffect(() => {
-    if (!compassRef.current) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setCompassWidth(Math.max(400, entry.contentRect.width));
-      }
-    });
-    observer.observe(compassRef.current);
-    return () => observer.disconnect();
+  // Callback ref — attaches ResizeObserver when element appears in DOM
+  const compassRef = useCallback((node) => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+      observerRef.current = null;
+    }
+    if (node) {
+      const obs = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          setCompassWidth(Math.max(400, entry.contentRect.width));
+        }
+      });
+      obs.observe(node);
+      observerRef.current = obs;
+    }
   }, []);
 
   const loadData = useCallback(async () => {
@@ -356,66 +360,37 @@ export default function SectorsPage() {
         </div>
       )}
 
-      {/* 5. Rotation Heatmap */}
-      <RotationHeatmap
-        sectorData={sectorData}
-        online={mpOnline}
-        onSectorClick={handleHeatmapSectorClick}
-      />
+      {/* 5. Rotation Heatmap + Fund Exposure Matrix — side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RotationHeatmap
+          sectorData={sectorData}
+          online={mpOnline}
+          onSectorClick={handleHeatmapSectorClick}
+        />
+        <FundExposureMatrix
+          funds={funds}
+          sectorData={sectorData}
+          sectorExposures={sectorExposures}
+          online={mpOnline}
+        />
+      </div>
 
-      {/* 6. Fund Exposure Matrix */}
-      <FundExposureMatrix
-        funds={funds}
-        sectorData={sectorData}
-        sectorExposures={sectorExposures}
-        online={mpOnline}
-      />
-
-      {/* 7. Fund Drill-Down — shown when a sector is selected */}
+      {/* 6. Sector Deep-Dive — shown when a sector is selected */}
       {selectedSector && (
-        <div ref={drillRef} className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={clearSelection}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
-              >
-                <span>&larr;</span> All Sectors
-              </button>
-              <div>
-                <p className="section-title">
-                  {selectedSector.sector_name} — Fund Explorer
-                </p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Risk vs Return · Bubble size = sector exposure % · Click any fund for 360 view
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-xs font-semibold text-emerald-700">
-                {selectedSector.sector_name}
-              </span>
-              <span className="text-[10px] text-emerald-600">
-                {selectedSector.quadrant}
-              </span>
-            </div>
-          </div>
-
-          <FundDrillDown
-            sector={selectedSector}
-            funds={funds}
-            sectorExposures={sectorExposures}
-            exposureAvailable={exposureAvailable}
-            loading={fundsLoading}
-            sort={drillDownSort}
-            onSortChange={setDrillDownSort}
-            categoryFilter={drillDownCategory}
-            onCategoryFilterChange={setDrillDownCategory}
-            purchaseMode={drillDownPurchaseMode}
-            onPurchaseModeChange={setDrillDownPurchaseMode}
-          />
-        </div>
+        <SectorDeepDive
+          ref={drillRef}
+          sector={selectedSector}
+          sectorData={sectorData}
+          funds={funds}
+          sectorExposures={sectorExposures}
+          exposureAvailable={exposureAvailable}
+          fundsLoading={fundsLoading}
+          breadthData={breadthData}
+          sentimentData={sentimentData}
+          regimeData={regimeData}
+          onClose={clearSelection}
+          onSectorClick={handleSectorClick}
+        />
       )}
     </div>
   );
