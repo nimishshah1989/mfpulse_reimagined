@@ -3,23 +3,45 @@ import { LENS_LABELS } from '../../lib/lens';
 import { formatPct, formatAUM, formatCount } from '../../lib/format';
 import InfoIcon from '../shared/InfoIcon';
 
-/**
- * Tier labels for the Alpha lens — these match the mockup exactly.
- * Other lenses use the generic lensLabel function.
- */
-const ALPHA_TIERS = [
-  { label: 'ALPHA_MACHINE', display: 'Alpha Machine', color: '#059669', barColor: 'bg-emerald-500', ringColor: 'ring-emerald-400' },
-  { label: 'POSITIVE', display: 'Positive Alpha', color: '#0d9488', barColor: 'bg-teal-400', ringColor: 'ring-teal-400' },
-  { label: 'NEUTRAL', display: 'Neutral', color: '#d97706', barColor: 'bg-amber-400', ringColor: 'ring-amber-400' },
-  { label: 'NEGATIVE', display: 'Negative Alpha', color: '#ef4444', barColor: 'bg-red-400', ringColor: 'ring-red-400' },
-];
-
-const GENERIC_TIERS = [
-  { scoreMin: 75, display: 'Leader', color: '#059669', barColor: 'bg-emerald-500', ringColor: 'ring-emerald-400' },
-  { scoreMin: 55, display: 'Strong', color: '#0d9488', barColor: 'bg-teal-400', ringColor: 'ring-teal-400' },
-  { scoreMin: 35, display: 'Average', color: '#d97706', barColor: 'bg-amber-400', ringColor: 'ring-amber-400' },
-  { scoreMin: 0, display: 'Weak', color: '#ef4444', barColor: 'bg-red-400', ringColor: 'ring-red-400' },
-];
+/** Lens-specific tier definitions — class-based for accurate filtering */
+const LENS_TIERS = {
+  alpha_score: [
+    { label: 'ALPHA_MACHINE', display: 'Alpha Machine', color: '#059669', barColor: 'bg-emerald-500', ringColor: 'ring-emerald-400' },
+    { label: 'POSITIVE', display: 'Positive Alpha', color: '#10b981', barColor: 'bg-teal-400', ringColor: 'ring-teal-400' },
+    { label: 'NEUTRAL', display: 'Neutral', color: '#d97706', barColor: 'bg-amber-400', ringColor: 'ring-amber-400' },
+    { label: 'NEGATIVE', display: 'Negative Alpha', color: '#ef4444', barColor: 'bg-red-400', ringColor: 'ring-red-400' },
+  ],
+  return_score: [
+    { label: 'LEADER', display: 'Leader', color: '#059669', barColor: 'bg-emerald-500', ringColor: 'ring-emerald-400' },
+    { label: 'STRONG', display: 'Strong', color: '#10b981', barColor: 'bg-teal-400', ringColor: 'ring-teal-400' },
+    { label: 'AVERAGE', display: 'Average', color: '#d97706', barColor: 'bg-amber-400', ringColor: 'ring-amber-400' },
+    { label: 'WEAK', display: 'Weak', color: '#ef4444', barColor: 'bg-red-400', ringColor: 'ring-red-400' },
+  ],
+  risk_score: [
+    { label: 'LOW_RISK', display: 'Low Risk', color: '#059669', barColor: 'bg-emerald-500', ringColor: 'ring-emerald-400' },
+    { label: 'MODERATE', display: 'Moderate', color: '#10b981', barColor: 'bg-teal-400', ringColor: 'ring-teal-400' },
+    { label: 'ELEVATED', display: 'Elevated', color: '#d97706', barColor: 'bg-amber-400', ringColor: 'ring-amber-400' },
+    { label: 'HIGH_RISK', display: 'High Risk', color: '#ef4444', barColor: 'bg-red-400', ringColor: 'ring-red-400' },
+  ],
+  consistency_score: [
+    { label: 'ROCK_SOLID', display: 'Rock Solid', color: '#059669', barColor: 'bg-emerald-500', ringColor: 'ring-emerald-400' },
+    { label: 'CONSISTENT', display: 'Consistent', color: '#10b981', barColor: 'bg-teal-400', ringColor: 'ring-teal-400' },
+    { label: 'MIXED', display: 'Mixed', color: '#d97706', barColor: 'bg-amber-400', ringColor: 'ring-amber-400' },
+    { label: 'ERRATIC', display: 'Erratic', color: '#ef4444', barColor: 'bg-red-400', ringColor: 'ring-red-400' },
+  ],
+  efficiency_score: [
+    { label: 'LEAN', display: 'Lean', color: '#059669', barColor: 'bg-emerald-500', ringColor: 'ring-emerald-400' },
+    { label: 'FAIR', display: 'Fair', color: '#10b981', barColor: 'bg-teal-400', ringColor: 'ring-teal-400' },
+    { label: 'EXPENSIVE', display: 'Expensive', color: '#d97706', barColor: 'bg-amber-400', ringColor: 'ring-amber-400' },
+    { label: 'BLOATED', display: 'Bloated', color: '#ef4444', barColor: 'bg-red-400', ringColor: 'ring-red-400' },
+  ],
+  resilience_score: [
+    { label: 'FORTRESS', display: 'Fortress', color: '#059669', barColor: 'bg-emerald-500', ringColor: 'ring-emerald-400' },
+    { label: 'STURDY', display: 'Sturdy', color: '#10b981', barColor: 'bg-teal-400', ringColor: 'ring-teal-400' },
+    { label: 'FRAGILE', display: 'Fragile', color: '#d97706', barColor: 'bg-amber-400', ringColor: 'ring-amber-400' },
+    { label: 'VULNERABLE', display: 'Vulnerable', color: '#ef4444', barColor: 'bg-red-400', ringColor: 'ring-red-400' },
+  ],
+};
 
 function getClassKey(scoreKey) {
   const map = {
@@ -44,26 +66,16 @@ export default function TierSummary({
   const lensKey = colorLens || 'alpha_score';
   const lensName = LENS_LABELS[lensKey] || 'Alpha';
   const classKey = getClassKey(lensKey);
-
-  // Use class-based tiers for alpha, score-based for others
-  const useClassTiers = lensKey === 'alpha_score' && classKey;
+  const tiers = LENS_TIERS[lensKey] || LENS_TIERS.alpha_score;
 
   const tierData = useMemo(() => {
-    if (useClassTiers) {
-      return ALPHA_TIERS.map((t) => {
-        const count = funds.filter((f) => f[classKey] === t.label).length;
-        return { ...t, count };
-      });
-    }
-    return GENERIC_TIERS.map((t, i) => {
-      const nextMin = i > 0 ? GENERIC_TIERS[i - 1].scoreMin : 101;
-      const count = funds.filter((f) => {
-        const s = Number(f[lensKey]) || 0;
-        return s >= t.scoreMin && s < nextMin;
-      }).length;
+    return tiers.map((t) => {
+      const count = classKey
+        ? funds.filter((f) => f[classKey] === t.label).length
+        : 0;
       return { ...t, count };
     });
-  }, [funds, lensKey, classKey, useClassTiers]);
+  }, [funds, classKey, tiers]);
 
   const total = funds.length;
   const maxCount = Math.max(...tierData.map((t) => t.count), 1);

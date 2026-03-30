@@ -11,6 +11,7 @@ import HorizontalFilterBar, { AUM_RANGES } from '../components/universe/Horizont
 import TierSummary from '../components/universe/TierSummary';
 import IntelligencePanel from '../components/universe/IntelligencePanel';
 import FundCard from '../components/universe/FundCard';
+import SmartBuckets from '../components/dashboard/SmartBuckets';
 import { parseNLQuery, applyNLFilters } from '../lib/nl-search';
 
 const BubbleScatter = dynamic(
@@ -115,6 +116,7 @@ export default function UniversePage() {
   const [nlFilters, setNLFilters] = useState(null);
 
   const chartContainerRef = useRef(null);
+  const filterBarRef = useRef(null);
   const [chartWidth, setChartWidth] = useState(800);
   const [chartHeight, setChartHeight] = useState(560);
   const [chartMeasured, setChartMeasured] = useState(false);
@@ -180,7 +182,8 @@ export default function UniversePage() {
     }
     setActivePreset(presetId);
     if (presetId === 'custom') {
-      // Just deselect preset, keep current filters
+      // Scroll filter bar into view and highlight it
+      filterBarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
   }, [activePreset]);
@@ -460,6 +463,7 @@ export default function UniversePage() {
       />
 
       {/* Section 2: Filter Bar */}
+      <div ref={filterBarRef} className={activePreset === 'custom' ? 'ring-2 ring-teal-400 rounded-xl transition-all' : 'transition-all'}>
       <HorizontalFilterBar
         filters={filters}
         onFiltersChange={setFilters}
@@ -473,6 +477,10 @@ export default function UniversePage() {
         onYAxisChange={setYAxis}
         onColorChange={setColorLens}
       />
+      </div>
+
+      {/* Fund Archetype Cards — Smart Buckets */}
+      <SmartBuckets universe={globallyFiltered} />
 
       {/* Section 3: Main 3-Column Layout (2:7:3) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 animate-in" style={{ animationDelay: '0.1s' }}>

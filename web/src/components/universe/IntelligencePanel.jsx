@@ -60,6 +60,20 @@ export default function IntelligencePanel({
       .catch(() => setRegime(null));
   }, []);
 
+  // Compute top categories from visible funds
+  const topCategories = useMemo(() => {
+    if (!funds || funds.length === 0) return [];
+    const catCounts = {};
+    funds.forEach((f) => {
+      const cat = f.category_name || f.broad_category;
+      if (cat) catCounts[cat] = (catCounts[cat] || 0) + 1;
+    });
+    return Object.entries(catCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([name, count]) => ({ name, count, pct: ((count / funds.length) * 100).toFixed(0) }));
+  }, [funds]);
+
   // Top 5 funds by the y-axis metric
   const top5 = useMemo(() => {
     if (!funds || funds.length === 0) return [];
@@ -163,12 +177,15 @@ export default function IntelligencePanel({
                   <span className="text-[11px] font-semibold text-slate-700">{regime.trend}</span>
                 </div>
               )}
-              {regime.leading_sectors && regime.leading_sectors.length > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-slate-600">Leading</span>
-                  <span className="text-[11px] font-semibold text-emerald-600">
-                    {regime.leading_sectors.slice(0, 3).map(s => typeof s === 'string' ? s : s.sector || s.sector_name || s.display_name || s.name || JSON.stringify(s)).filter(Boolean).join(', ')}
-                  </span>
+              {topCategories.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-slate-100">
+                  <p className="text-[10px] text-slate-500 font-medium mb-1.5">Top Categories (visible)</p>
+                  {topCategories.map((cat) => (
+                    <div key={cat.name} className="flex items-center justify-between py-0.5">
+                      <span className="text-[10px] text-slate-600 truncate flex-1">{cat.name}</span>
+                      <span className="text-[10px] font-semibold text-teal-600 tabular-nums ml-2">{cat.pct}%</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

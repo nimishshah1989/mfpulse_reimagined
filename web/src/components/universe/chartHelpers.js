@@ -11,20 +11,16 @@ export { AUM_CR_DIVISOR, MIN_RADIUS, MAX_RADIUS, MAX_AUM_DOMAIN };
 
 export function getBubbleColor(score) {
   const s = Number(score) || 0;
-  if (s >= 80) return 'rgba(5, 150, 105, 0.55)';   // #059669 deep green
-  if (s >= 60) return 'rgba(16, 185, 129, 0.50)';   // #10b981 green
-  if (s >= 40) return 'rgba(217, 119, 6, 0.45)';    // #d97706 amber
-  if (s >= 20) return 'rgba(239, 68, 68, 0.45)';    // #ef4444 light red
-  return 'rgba(220, 38, 38, 0.45)';                  // #dc2626 deep red
+  if (s >= 80) return 'rgba(5, 150, 105, 0.82)';    // #059669 deep green
+  if (s >= 60) return 'rgba(16, 185, 129, 0.72)';   // #10b981 green
+  if (s >= 40) return 'rgba(245, 158, 11, 0.68)';   // #f59e0b amber
+  if (s >= 20) return 'rgba(239, 68, 68, 0.70)';    // #ef4444 light red
+  return 'rgba(220, 38, 38, 0.72)';                  // #dc2626 deep red
 }
 
-export function getBubbleBorder(score) {
-  const s = Number(score) || 0;
-  if (s >= 80) return 'rgba(5,150,105,0.7)';
-  if (s >= 60) return 'rgba(16,185,129,0.6)';
-  if (s >= 40) return 'rgba(217,119,6,0.5)';
-  if (s >= 20) return 'rgba(239,68,68,0.5)';
-  return 'rgba(220,38,38,0.5)';
+/** White semi-transparent border matching mockup */
+export function getBubbleBorder() {
+  return 'rgba(255, 255, 255, 0.7)';
 }
 
 export function getRadius(aumRaw, aumScale, fund) {
@@ -122,9 +118,6 @@ export function drawChart(ctx, params) {
   ctx.setLineDash([]);
 
   // Bubbles
-  const visibleCount = pts.length;
-  const baseOpacity = visibleCount > 2000 ? 0.45 : visibleCount > 1000 ? 0.6 : 0.75;
-
   for (const pt of pts) {
     const r = pt.r / currentTransform.k;
     const dimmed = selectedTier && pt.fund._tierDisplay !== selectedTier;
@@ -141,12 +134,10 @@ export function drawChart(ctx, params) {
       ctx.lineWidth = 0.3 / currentTransform.k;
       ctx.stroke();
     } else {
-      ctx.globalAlpha = baseOpacity;
       ctx.fillStyle = getBubbleColor(pt.colorScore);
       ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.strokeStyle = getBubbleBorder(pt.colorScore);
-      ctx.lineWidth = 1 / currentTransform.k;
+      ctx.strokeStyle = getBubbleBorder();
+      ctx.lineWidth = 1.5 / currentTransform.k;
       ctx.stroke();
     }
   }
