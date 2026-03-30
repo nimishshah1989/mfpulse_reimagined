@@ -250,8 +250,7 @@ def parse_nl_query(req: NLQueryRequest) -> dict:
 def get_weekly_intelligence(db: Session = Depends(get_db)) -> dict:
     """AI-generated weekly intelligence: 10 actionable insights combining
     market sentiment, sector rotation, and fund universe data."""
-    from app.repositories.fund_repo import FundRepository
-    from decimal import Decimal
+    from app.services.fund_service import FundService
 
     settings = get_settings()
     mp = MarketPulseClient(
@@ -278,21 +277,19 @@ def get_weekly_intelligence(db: Session = Depends(get_db)) -> dict:
             elif quad in ("LAGGING", "WEAKENING"):
                 lagging.append(entry)
 
-    # Fund universe summary — compute category-level aggregates
-    fund_repo = FundRepository(db)
-    all_funds = fund_repo.get_all_funds(
-        min_aum=Decimal("100000000"),  # 10 Cr in raw rupees
-    )
+    # Fund universe — use universe data (already has returns + lens scores)
+    fund_service = FundService(db)
+    all_funds = fund_service.get_universe_data()
 
     cat_stats: dict = {}
     for f in all_funds:
-        cat = getattr(f, "category_name", None) or getattr(f, "broad_category", None)
+        cat = f.get("category_name") or f.get("broad_category")
         if not cat:
             continue
         if cat not in cat_stats:
             cat_stats[cat] = {"returns": [], "count": 0}
         cat_stats[cat]["count"] += 1
-        r1y = getattr(f, "return_1y", None)
+        r1y = f.get("return_1y")
         if r1y is not None:
             try:
                 cat_stats[cat]["returns"].append(float(r1y))
@@ -329,24 +326,21 @@ def get_weekly_intelligence(db: Session = Depends(get_db)) -> dict:
     points = generate_weekly_intelligence(context)
 
     # Enrich each point with matching fund recommendations from the universe
-    # This happens server-side so Claude doesn't need to know fund names
     for point in points:
         fund_type = (point.get("fund_type") or "").lower()
         matching = []
         for f in all_funds:
-            cat = (getattr(f, "category_name", "") or "").lower()
+            cat = (f.get("category_name") or "").lower()
             if fund_type and fund_type in cat:
-                r1y = getattr(f, "return_1y", None)
-                alpha = getattr(f, "alpha_score", None)
                 matching.append({
-                    "mstar_id": getattr(f, "mstar_id", ""),
-                    "fund_name": getattr(f, "fund_name", "") or getattr(f, "legal_name", ""),
-                    "return_1y": float(r1y) if r1y is not None else None,
-                    "alpha_score": float(alpha) if alpha is not None else None,
-                    "aum": float(getattr(f, "aum", 0) or 0),
+                    "mstar_id": f.get("mstar_id", ""),
+                    "fund_name": f.get("fund_name") or f.get("legal_name", ""),
+                    "return_1y": f.get("return_1y"),
+                    "alpha_score": f.get("alpha_score"),
+                    "aum": f.get("aum", 0),
                 })
         # Sort by alpha_score desc, take top 3
-        matching.sort(key=lambda x: x.get("alpha_score") or 0, reverse=True)
+        matching.sort(key=lambda x: float(x.get("alpha_score") or 0), reverse=True)
         point["recommended_funds"] = matching[:3]
 
     return {
