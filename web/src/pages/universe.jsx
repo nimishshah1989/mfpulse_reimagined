@@ -11,9 +11,16 @@ import HorizontalFilterBar, { AUM_RANGES } from '../components/universe/Horizont
 import TierSummary from '../components/universe/TierSummary';
 import IntelligencePanel from '../components/universe/IntelligencePanel';
 import FundCard from '../components/universe/FundCard';
-import SmartBuckets from '../components/dashboard/SmartBuckets';
 import UniverseInsights from '../components/universe/UniverseInsights';
+import FilterBreadcrumbs from '../components/universe/FilterBreadcrumbs';
+import ScreenerTable from '../components/universe/ScreenerTable';
+import AnalyticsPanel from '../components/universe/AnalyticsPanel';
 import { parseNLQuery, applyNLFilters } from '../lib/nl-search';
+
+const ComparePanel = dynamic(
+  () => import('../components/universe/ComparePanel'),
+  { ssr: false, loading: () => <SkeletonLoader variant="chart" className="w-full h-64" /> }
+);
 
 const BubbleScatter = dynamic(
   () => import('../components/universe/BubbleScatter'),
@@ -60,6 +67,14 @@ const GLOBAL_TOGGLES = [
   { key: 'minAum', label: `AUM > ${MIN_AUM_CR} Cr` },
 ];
 
+/** Section tabs — no "tab" word, colored accent bands */
+const SECTIONS = [
+  { key: 'explorer', label: 'Explorer', band: '#0f766e', bg: '#e6f5f3' },
+  { key: 'screener', label: 'Screener', band: '#1e40af', bg: '#eff6ff' },
+  { key: 'analytics', label: 'Analytics', band: '#0369a1', bg: '#f0f9ff' },
+  { key: 'compare', label: 'Compare', band: '#475569', bg: '#f8fafc' },
+];
+
 function applyGlobalFilters(funds, globalFilters) {
   if (!funds || funds.length === 0) return [];
   let result = funds;
@@ -93,6 +108,9 @@ export default function UniversePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Active section
+  const [activeSection, setActiveSection] = useState('explorer');
+
   // Global filters — match dashboard defaults
   const [globalFilters, setGlobalFilters] = useState({
     directOnly: true,
@@ -115,6 +133,9 @@ export default function UniversePage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [nlFilters, setNLFilters] = useState(null);
+
+  // Compare: selected fund IDs
+  const [compareFunds, setCompareFunds] = useState([]);
 
   const chartContainerRef = useRef(null);
   const filterBarRef = useRef(null);
@@ -150,7 +171,7 @@ export default function UniversePage() {
     });
     observer.observe(chartContainerRef.current);
     return () => observer.disconnect();
-  }, [loading]);
+  }, [loading, activeSection]);
 
   const handleSearch = useCallback((query) => {
     setSearchQuery(query);
@@ -161,7 +182,7 @@ export default function UniversePage() {
   // Comprehensive URL param parsing for cross-page linking
   useEffect(() => {
     if (!router.isReady) return;
-    const { q, return_class, category, alpha_class, consistency_class, view } = router.query;
+    const { q, return_class, category, alpha_class, consistency_class, view, section } = router.query;
 
     if (q && typeof q === 'string') {
       handleSearch(q);
@@ -173,7 +194,10 @@ export default function UniversePage() {
     if (category && typeof category === 'string') {
       setFilters((prev) => ({ ...prev, categories: [category] }));
     }
-  }, [router.isReady, router.query.q, router.query.view, router.query.category, handleSearch]);
+    if (section && SECTIONS.some((s) => s.key === section)) {
+      setActiveSection(section);
+    }
+  }, [router.isReady, router.query.q, router.query.view, router.query.category, router.query.section, handleSearch]);
 
   // Apply preset filters
   const handlePresetClick = useCallback((presetId) => {
@@ -183,24 +207,22 @@ export default function UniversePage() {
     }
     setActivePreset(presetId);
     if (presetId === 'custom') {
-      // Scroll filter bar into view and highlight it
       filterBarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
   }, [activePreset]);
 
-  // Pre-compute globally filtered funds (used by SmartPresets for accurate counts)
+  // Pre-compute globally filtered funds
   const globallyFiltered = useMemo(
     () => applyGlobalFilters(allFunds, globalFilters),
     [allFunds, globalFilters]
   );
 
-  // Apply all filters (including global + preset)
+  // Apply all filters
   const filteredFunds = useMemo(() => {
-    // Step 1: Start from globally filtered set
     let result = globallyFiltered;
 
-    // Step 2: Pre-filter — exclude very small/young funds
+    // Pre-filter — exclude very small/young funds
     const THREE_YEARS_MS = 3 * 365.25 * 24 * 60 * 60 * 1000;
     const now = Date.now();
     result = result.filter((fund) => {
@@ -244,7 +266,7 @@ export default function UniversePage() {
       result = applyNLFilters(result, nlFilters);
     }
 
-    // URL-based tier class filters (e.g., ?return_class=LEADER&alpha_class=ALPHA_MACHINE,POSITIVE)
+    // URL-based tier class filters
     if (router.isReady) {
       const { return_class, alpha_class, consistency_class, risk_class, efficiency_class, resilience_class } = router.query;
       const tierParams = [
@@ -362,6 +384,28 @@ export default function UniversePage() {
     setFilters({ ...DEFAULT_FILTERS });
     setSelectedTier(null);
     setActivePreset(null);
+    setSearchQuery('');
+    setNLFilters(null);
+  }, []);
+
+  // Compare handlers
+  const handleToggleCompare = useCallback((mstarId) => {
+    setCompareFunds((prev) => {
+      if (prev.includes(mstarId)) return prev.filter((id) => id !== mstarId);
+      if (prev.length >= 5) return prev;
+      return [...prev, mstarId];
+    });
+  }, []);
+
+  const handleRemoveCompare = useCallback((mstarId) => {
+    setCompareFunds((prev) => prev.filter((id) => id !== mstarId));
+  }, []);
+
+  const handleAddCompare = useCallback((mstarId) => {
+    setCompareFunds((prev) => {
+      if (prev.includes(mstarId) || prev.length >= 5) return prev;
+      return [...prev, mstarId];
+    });
   }, []);
 
   useEffect(() => {
@@ -371,6 +415,13 @@ export default function UniversePage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Auto-switch to compare when 2+ funds selected from screener
+  useEffect(() => {
+    if (compareFunds.length >= 2 && activeSection === 'screener') {
+      // Don't auto-switch, just show the hint in screener
+    }
+  }, [compareFunds.length, activeSection]);
 
   if (loading) return (
     <div className="max-w-[1440px] mx-auto space-y-5">
@@ -389,6 +440,8 @@ export default function UniversePage() {
       <EmptyState message={`Failed to load fund data: ${error}`} action="Retry" onAction={() => window.location.reload()} />
     </div>
   );
+
+  const currentSection = SECTIONS.find((s) => s.key === activeSection) || SECTIONS[0];
 
   return (
     <div className="max-w-[1440px] mx-auto space-y-5">
@@ -454,149 +507,247 @@ export default function UniversePage() {
         </span>
       </div>
 
-      {/* Smart Screener Presets */}
-      <SmartPresets
-        allFunds={globallyFiltered}
-        activePreset={activePreset}
-        onPresetClick={handlePresetClick}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-      />
-
-      {/* Filter Bar */}
-      <div ref={filterBarRef} className={activePreset === 'custom' ? 'ring-2 ring-teal-400 rounded-2xl transition-all' : 'transition-all'}>
-      <HorizontalFilterBar
+      {/* Filter Breadcrumbs */}
+      <FilterBreadcrumbs
         filters={filters}
-        onFiltersChange={setFilters}
-        allFunds={globallyFiltered}
-        filteredCount={taggedFunds.length}
-        totalCount={allFunds.length}
-        xAxis={xAxis}
-        yAxis={yAxis}
-        colorLens={colorLens}
-        onXAxisChange={setXAxis}
-        onYAxisChange={setYAxis}
-        onColorChange={setColorLens}
+        globalFilters={globalFilters}
+        activePreset={activePreset}
+        selectedTier={selectedTier}
+        searchQuery={searchQuery}
+        onRemoveCategory={(cat) =>
+          setFilters((prev) => ({
+            ...prev,
+            categories: prev.categories.filter((c) => c !== cat),
+          }))
+        }
+        onRemoveAmc={(amc) =>
+          setFilters((prev) => ({
+            ...prev,
+            amcs: prev.amcs.filter((a) => a !== amc),
+          }))
+        }
+        onRemovePreset={() => setActivePreset(null)}
+        onRemoveTier={() => setSelectedTier(null)}
+        onRemoveSearch={() => { setSearchQuery(''); setNLFilters(null); }}
+        onClearAll={handleResetFilters}
       />
-      </div>
 
-      {/* Fund Archetype Cards */}
-      <SmartBuckets universe={globallyFiltered} />
-
-      {/* Main 3-Column Layout (3:6:3) — symmetrical */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 animate-in" style={{ animationDelay: '0.1s' }}>
-        {/* LEFT: Stats sidebar */}
-        <TierSummary
-          funds={taggedFunds}
-          colorLens={colorLens}
-          onTierClick={handleTierClick}
-          selectedTier={selectedTier}
-          stats={stats}
-          period="1Y"
-        />
-
-        {/* CENTER: Visualization */}
-        <div className="col-span-12 lg:col-span-6">
-          <div className="flex items-center justify-between mb-3">
-            <p className="section-title">
-              Fund Universe{viewMode !== 'scatter' ? ` \u2014 ${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} View` : ''}
-            </p>
-            <span className="text-sm font-bold text-teal-600 tabular-nums">
-              {taggedFunds.length.toLocaleString('en-IN')} funds
-            </span>
-          </div>
-          <div
-            ref={chartContainerRef}
-            className="glass-card overflow-hidden relative"
-            style={{
-              height: viewMode === 'heatmap' ? 'auto' : Math.min(560, typeof window !== 'undefined' ? window.innerHeight - 240 : 560),
-              minHeight: viewMode === 'heatmap' ? 400 : undefined,
-            }}
+      {/* Section Navigation */}
+      <div className="flex gap-0 border-b-2 border-slate-200 animate-in">
+        {SECTIONS.map((s) => (
+          <button
+            key={s.key}
+            type="button"
+            onClick={() => setActiveSection(s.key)}
+            className={`px-7 py-3.5 text-[13px] font-semibold tracking-wide transition-all border-b-[2.5px] -mb-[2px] ${
+              activeSection === s.key
+                ? 'border-current'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+            style={activeSection === s.key ? { color: s.band } : undefined}
           >
-            {taggedFunds.length === 0 ? (
-              <div className="flex items-center justify-center h-full" style={{ minHeight: 300 }}>
-                <EmptyState
-                  icon={<svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>}
-                  message="No funds match your current filters"
-                  action="Reset Filters"
-                  onAction={handleResetFilters}
-                />
-              </div>
-            ) : viewMode === 'scatter' ? (
-              !chartMeasured ? (
-                <SkeletonLoader variant="chart" className="w-full h-full" />
-              ) : (
-                <BubbleScatter
-                  data={taggedFunds}
-                  xAxis={xAxis}
-                  yAxis={yAxis}
-                  colorLens={colorLens}
-                  onFundClick={handleFundClick}
-                  onFundDoubleClick={handleFundDoubleClick}
-                  onHover={handleHover}
-                  width={chartWidth}
-                  height={chartHeight}
-                  selectedTier={selectedTier}
-                />
-              )
-            ) : viewMode === 'heatmap' ? (
-              <div className="p-4 overflow-auto" style={{ maxHeight: 600 }}>
-                <Heatmap
-                  data={taggedFunds}
-                  colorLens={colorLens}
-                  onCellClick={(category) => {
-                    setFilters((prev) => ({ ...prev, categories: [category] }));
-                    setViewMode('scatter');
-                  }}
-                />
-              </div>
-            ) : viewMode === 'treemap' ? (
-              <Treemap
-                data={taggedFunds}
-                colorLens={colorLens}
-                onFundClick={(fund) => handleFundClick(fund, window.innerWidth / 2 - 144, window.innerHeight / 2 - 100)}
-                onFundDoubleClick={handleFundDoubleClick}
-                width={chartWidth || 800}
-                height={Math.min(560, typeof window !== 'undefined' ? window.innerHeight - 240 : 560)}
-              />
-            ) : null}
-          </div>
-          {/* Chart Guide — scatter only */}
-          {viewMode === 'scatter' && (
-            <details className="mt-3 glass-card px-4 py-2.5 text-xs text-slate-400">
-              <summary className="cursor-pointer hover:text-slate-600 font-medium">Chart Guide</summary>
-              <ul className="mt-1.5 space-y-1 pl-4 list-disc text-[11px]">
-                <li>Click a bubble to see fund details</li>
-                <li>Double-click to open Fund 360 view</li>
-                <li>Scroll to zoom in/out</li>
-                <li>Drag to pan across the chart</li>
-                <li>Click tier labels (left) to spotlight a group</li>
-              </ul>
-            </details>
-          )}
-        </div>
-
-        {/* RIGHT: Intelligence Panel */}
-        <IntelligencePanel
-          funds={taggedFunds}
-          allFundsCount={allFunds.length}
-          colorLens={colorLens}
-          yAxis={yAxis}
-          onFundClick={(fund) => {
-            setSelectedFund(fund);
-            setFundCardPos({ x: window.innerWidth / 2 - 144, y: window.innerHeight / 2 - 100 });
-          }}
-        />
+            {s.label}
+          </button>
+        ))}
       </div>
 
-      {/* Below-scatter: Universe Insights */}
-      <UniverseInsights
-        funds={taggedFunds}
-        onCategoryClick={(cat) => {
-          setFilters((prev) => ({ ...prev, categories: [cat] }));
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+      {/* Section Band Header */}
+      <div
+        className="px-5 py-3.5 rounded-r-xl flex items-center justify-between animate-in"
+        style={{
+          borderLeft: `4px solid ${currentSection.band}`,
+          background: currentSection.bg,
         }}
-      />
+      >
+        <h2 className="text-[15px] font-extrabold text-slate-900 tracking-tight">
+          {currentSection.label}
+        </h2>
+        <p className="text-xs text-slate-500">
+          {activeSection === 'explorer' && 'Visual discovery — scatter, heatmap, treemap'}
+          {activeSection === 'screener' && 'Sortable table with risk metrics, quartile ranks, lens scores'}
+          {activeSection === 'analytics' && 'Aggregated views across filtered universe'}
+          {activeSection === 'compare' && 'Head-to-head fund analysis — select from screener'}
+        </p>
+      </div>
+
+      {/* ═══════════════════════════════════════
+           EXPLORER SECTION
+           ═══════════════════════════════════════ */}
+      {activeSection === 'explorer' && (
+        <>
+          {/* Smart Screener Presets */}
+          <SmartPresets
+            allFunds={globallyFiltered}
+            activePreset={activePreset}
+            onPresetClick={handlePresetClick}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+          />
+
+          {/* Filter Bar */}
+          <div ref={filterBarRef} className={activePreset === 'custom' ? 'ring-2 ring-teal-400 rounded-2xl transition-all' : 'transition-all'}>
+            <HorizontalFilterBar
+              filters={filters}
+              onFiltersChange={setFilters}
+              allFunds={globallyFiltered}
+              filteredCount={taggedFunds.length}
+              totalCount={allFunds.length}
+              xAxis={xAxis}
+              yAxis={yAxis}
+              colorLens={colorLens}
+              onXAxisChange={setXAxis}
+              onYAxisChange={setYAxis}
+              onColorChange={setColorLens}
+            />
+          </div>
+
+          {/* Main 3-Column Layout (3:6:3) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 animate-in" style={{ animationDelay: '0.1s' }}>
+            {/* LEFT: Stats sidebar */}
+            <TierSummary
+              funds={taggedFunds}
+              colorLens={colorLens}
+              onTierClick={handleTierClick}
+              selectedTier={selectedTier}
+              stats={stats}
+              period="1Y"
+            />
+
+            {/* CENTER: Visualization */}
+            <div className="col-span-12 lg:col-span-6">
+              <div className="flex items-center justify-between mb-3">
+                <p className="section-title">
+                  Fund Universe{viewMode !== 'scatter' ? ` \u2014 ${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} View` : ''}
+                </p>
+                <span className="text-sm font-bold text-teal-600 tabular-nums">
+                  {taggedFunds.length.toLocaleString('en-IN')} funds
+                </span>
+              </div>
+              <div
+                ref={chartContainerRef}
+                className="glass-card overflow-hidden relative"
+                style={{
+                  height: viewMode === 'heatmap' ? 'auto' : Math.min(560, typeof window !== 'undefined' ? window.innerHeight - 240 : 560),
+                  minHeight: viewMode === 'heatmap' ? 400 : undefined,
+                }}
+              >
+                {taggedFunds.length === 0 ? (
+                  <div className="flex items-center justify-center h-full" style={{ minHeight: 300 }}>
+                    <EmptyState
+                      icon={<svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>}
+                      message="No funds match your current filters"
+                      action="Reset Filters"
+                      onAction={handleResetFilters}
+                    />
+                  </div>
+                ) : viewMode === 'scatter' ? (
+                  !chartMeasured ? (
+                    <SkeletonLoader variant="chart" className="w-full h-full" />
+                  ) : (
+                    <BubbleScatter
+                      data={taggedFunds}
+                      xAxis={xAxis}
+                      yAxis={yAxis}
+                      colorLens={colorLens}
+                      onFundClick={handleFundClick}
+                      onFundDoubleClick={handleFundDoubleClick}
+                      onHover={handleHover}
+                      width={chartWidth}
+                      height={chartHeight}
+                      selectedTier={selectedTier}
+                    />
+                  )
+                ) : viewMode === 'heatmap' ? (
+                  <div className="p-4 overflow-auto" style={{ maxHeight: 600 }}>
+                    <Heatmap
+                      data={taggedFunds}
+                      colorLens={colorLens}
+                      onCellClick={(category) => {
+                        setFilters((prev) => ({ ...prev, categories: [category] }));
+                        setViewMode('scatter');
+                      }}
+                    />
+                  </div>
+                ) : viewMode === 'treemap' ? (
+                  <Treemap
+                    data={taggedFunds}
+                    colorLens={colorLens}
+                    onFundClick={(fund) => handleFundClick(fund, window.innerWidth / 2 - 144, window.innerHeight / 2 - 100)}
+                    onFundDoubleClick={handleFundDoubleClick}
+                    width={chartWidth || 800}
+                    height={Math.min(560, typeof window !== 'undefined' ? window.innerHeight - 240 : 560)}
+                  />
+                ) : null}
+              </div>
+              {viewMode === 'scatter' && (
+                <details className="mt-3 glass-card px-4 py-2.5 text-xs text-slate-400">
+                  <summary className="cursor-pointer hover:text-slate-600 font-medium">Chart Guide</summary>
+                  <ul className="mt-1.5 space-y-1 pl-4 list-disc text-[11px]">
+                    <li>Click a bubble to see fund details</li>
+                    <li>Double-click to open Fund 360 view</li>
+                    <li>Scroll to zoom in/out</li>
+                    <li>Drag to pan across the chart</li>
+                    <li>Click tier labels (left) to spotlight a group</li>
+                  </ul>
+                </details>
+              )}
+            </div>
+
+            {/* RIGHT: Intelligence Panel */}
+            <IntelligencePanel
+              funds={taggedFunds}
+              allFundsCount={allFunds.length}
+              colorLens={colorLens}
+              yAxis={yAxis}
+              onFundClick={(fund) => {
+                setSelectedFund(fund);
+                setFundCardPos({ x: window.innerWidth / 2 - 144, y: window.innerHeight / 2 - 100 });
+              }}
+            />
+          </div>
+
+          {/* Below-scatter: Universe Insights */}
+          <UniverseInsights
+            funds={taggedFunds}
+            onCategoryClick={(cat) => {
+              setFilters((prev) => ({ ...prev, categories: [cat] }));
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        </>
+      )}
+
+      {/* ═══════════════════════════════════════
+           SCREENER SECTION
+           ═══════════════════════════════════════ */}
+      {activeSection === 'screener' && (
+        <ScreenerTable
+          funds={taggedFunds}
+          selectedFunds={compareFunds}
+          onToggleFund={handleToggleCompare}
+          onFundClick={handleFundClick}
+        />
+      )}
+
+      {/* ═══════════════════════════════════════
+           ANALYTICS SECTION
+           ═══════════════════════════════════════ */}
+      {activeSection === 'analytics' && (
+        <AnalyticsPanel funds={taggedFunds} />
+      )}
+
+      {/* ═══════════════════════════════════════
+           COMPARE SECTION
+           ═══════════════════════════════════════ */}
+      {activeSection === 'compare' && (
+        <ComparePanel
+          funds={taggedFunds}
+          selectedFundIds={compareFunds}
+          onRemoveFund={handleRemoveCompare}
+          onAddFund={handleAddCompare}
+          allFunds={taggedFunds}
+        />
+      )}
 
       {/* FundCard popup */}
       {selectedFund && (

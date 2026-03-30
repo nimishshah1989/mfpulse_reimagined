@@ -1,0 +1,888 @@
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: #ffffff; color: #1e293b; -webkit-font-smoothing: antialiased; }
+  .page { max-width: 1440px; margin: 0 auto; padding: 32px; background: #ffffff; }
+
+  /* ══════════════════════════════════════
+     DESIGN SYSTEM v3 — Refined palette
+     ══════════════════════════════════════ */
+
+  /* Primary accent: deep teal-slate blend */
+  :root {
+    --accent: #0f766e;       /* deep teal — primary actions, active states */
+    --accent-light: #e6f5f3; /* very subtle teal wash — active pill bg, highlights */
+    --accent-mid: #99d5cf;   /* medium teal — borders on active elements */
+    --ink: #0f172a;          /* near-black — headings */
+    --body: #334155;         /* dark slate — body text */
+    --muted: #64748b;        /* medium slate — secondary text */
+    --faint: #94a3b8;        /* light slate — tertiary */
+    --border: #e2e8f0;       /* card borders */
+    --divider: #f1f5f9;      /* table row borders, separators */
+    --surface: #ffffff;      /* everything */
+
+    /* Data spectrum — 4 stops only */
+    --d-top: #047857;        /* dark emerald — best quartile, score 80+ */
+    --d-good: #0d9488;       /* teal — Q2, score 60-79 */
+    --d-mid: #d97706;        /* amber — Q3, caution */
+    --d-low: #be123c;        /* rose-red — Q4, worst, negative */
+
+    /* Section accent bands — subtle colored left borders */
+    --band-explorer: #0f766e;
+    --band-screener: #1e40af;
+    --band-analytics: #0369a1;
+    --band-compare: #475569;
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    padding: 20px;
+  }
+
+  /* Section title */
+  .stitle {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+  }
+
+  /* Pill */
+  .pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 6px 14px; font-size: 12px; font-weight: 600;
+    border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted); cursor: pointer;
+    white-space: nowrap; transition: all 0.15s;
+  }
+  .pill:hover { border-color: #cbd5e1; color: var(--body); }
+  .pill.on { background: var(--accent-light); border-color: var(--accent-mid); color: var(--accent); }
+
+  /* Navigation tabs — no word "tab" anywhere */
+  .nav-bar {
+    display: flex; gap: 0; margin-bottom: 32px;
+    border-bottom: 2px solid var(--border);
+  }
+  .nav-item {
+    padding: 14px 28px; font-size: 13px; font-weight: 600;
+    color: var(--faint); cursor: pointer;
+    border-bottom: 2.5px solid transparent; margin-bottom: -2px;
+    transition: all 0.15s; letter-spacing: 0.01em;
+  }
+  .nav-item:hover { color: var(--body); }
+  .nav-item.on { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Section separator with colored accent band */
+  .section-sep {
+    margin: 48px 0 32px;
+    padding: 14px 20px;
+    border-left: 4px solid var(--accent);
+    background: var(--accent-light);
+    border-radius: 0 10px 10px 0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .section-sep h2 {
+    font-size: 15px; font-weight: 800; color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .section-sep p { font-size: 12px; color: var(--muted); }
+
+  /* Table */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tbl th {
+    text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--border);
+    font-weight: 700; color: var(--muted); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.04em; white-space: nowrap; cursor: pointer;
+  }
+  .tbl th:hover { color: var(--accent); }
+  .tbl td { padding: 10px 12px; border-bottom: 1px solid var(--divider); color: var(--body); }
+  .tbl tr:hover td { background: #f8fafc; }
+  .tbl .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .tbl .win { background: var(--accent-light); }
+
+  /* Data colors */
+  .c-top { color: var(--d-top); } .c-good { color: var(--d-good); }
+  .c-mid { color: var(--d-mid); } .c-low { color: var(--d-low); }
+  .bld { font-weight: 700; }
+
+  /* Quartile dot */
+  .qd {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 5px;
+    font-size: 10px; font-weight: 800; color: #fff;
+  }
+  .q1 { background: var(--d-top); } .q2 { background: var(--d-good); }
+  .q3 { background: var(--d-mid); } .q4 { background: var(--d-low); }
+
+  /* Lens mini bars */
+  .lens6 { display: flex; gap: 2px; align-items: end; height: 18px; }
+  .lens6 .bar { width: 4px; border-radius: 1px; }
+  .bg-1 { background: var(--d-top); } .bg-2 { background: var(--d-good); }
+  .bg-3 { background: var(--d-mid); } .bg-4 { background: var(--d-low); }
+
+  /* Breadcrumbs */
+  .crumbs {
+    display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+    border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 20px; font-size: 12px;
+  }
+  .crumb-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border: 1px solid var(--border); border-radius: 6px;
+    font-weight: 600; color: var(--ink); font-size: 11px;
+  }
+  .crumb-x { color: var(--faint); cursor: pointer; font-size: 13px; }
+  .crumb-x:hover { color: var(--d-low); }
+
+  /* Grids — strict alignment */
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .g12 { display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px; }
+
+  /* Horizontal bar */
+  .hbar { height: 7px; border-radius: 4px; background: var(--divider); overflow: hidden; }
+  .hbar-fill { height: 100%; border-radius: 4px; }
+
+  /* Stacked bar */
+  .sbar { display: flex; height: 26px; border-radius: 6px; overflow: hidden; }
+  .sbar > div {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; color: #fff;
+  }
+
+  /* Checkbox */
+  .chk {
+    width: 16px; height: 16px; border: 2px solid #cbd5e1; border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 10px; transition: all 0.15s;
+  }
+  .chk.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* Info note */
+  .note {
+    font-size: 11px; color: var(--accent); font-weight: 600;
+    padding: 10px 16px; background: var(--accent-light);
+    border-radius: 8px; border: 1px solid var(--accent-mid);
+  }
+
+  /* Sector heatmap cell */
+  .shcell {
+    text-align: center; padding: 8px 4px; border-radius: 4px;
+    font-size: 11px; font-weight: 600;
+  }
+
+  /* Calendar year cell */
+  .cycell {
+    text-align: center; border-radius: 5px; padding: 7px 4px;
+    font-weight: 700; font-size: 11px;
+  }
+  .cy-pos { background: #d1fae5; color: var(--d-top); }
+  .cy-flat { background: #fef9c3; color: #92400e; }
+  .cy-neg { background: #ffe4e6; color: var(--d-low); }
+
+  /* Chart placeholder */
+  .chartbox {
+    border: 1px solid var(--border); border-radius: 14px; background: #ffffff;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--faint); font-size: 13px; font-weight: 600;
+    position: relative;
+  }
+
+  /* Design system swatch row */
+  .swatch { display: inline-block; width: 20px; height: 20px; border-radius: 4px; vertical-align: middle; margin-right: 6px; }
+</style>
+
+<div class="page">
+
+  <!-- ═══════════════════════════════
+       DESIGN LANGUAGE — Locked
+       ═══════════════════════════════ -->
+  <div style="margin-bottom: 40px;">
+    <h1 style="font-size: 22px; font-weight: 800; color: var(--ink); margin-bottom: 4px;">Universe Explorer — Design v3</h1>
+    <p style="font-size: 13px; color: var(--muted);">Refined palette. Symmetrical blocks. No icons. Buildable 1:1.</p>
+  </div>
+
+  <div class="card" style="margin-bottom: 40px; padding: 24px;">
+    <p class="stitle" style="margin-bottom: 14px;">Colour Palette — Locked</p>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; font-size: 12px;">
+      <div>
+        <p style="font-weight: 700; margin-bottom: 8px; color: var(--ink);">Interface</p>
+        <p><span class="swatch" style="background: var(--accent);"></span><code style="font-size: 11px;">#0f766e</code> — accent</p>
+        <p style="margin-top: 4px;"><span class="swatch" style="background: var(--accent-light); border: 1px solid var(--accent-mid);"></span><code style="font-size: 11px;">#e6f5f3</code> — highlight</p>
+        <p style="margin-top: 4px;"><span class="swatch" style="background: #ffffff; border: 1px solid var(--border);"></span><code style="font-size: 11px;">#ffffff</code> — surface</p>
+        <p style="margin-top: 4px;"><span class="swatch" style="background: var(--border);"></span><code style="font-size: 11px;">#e2e8f0</code> — borders</p>
+      </div>
+      <div>
+        <p style="font-weight: 700; margin-bottom: 8px; color: var(--ink);">Typography</p>
+        <p><span class="swatch" style="background: var(--ink);"></span><code style="font-size: 11px;">#0f172a</code> — headings</p>
+        <p style="margin-top: 4px;"><span class="swatch" style="background: var(--body);"></span><code style="font-size: 11px;">#334155</code> — body</p>
+        <p style="margin-top: 4px;"><span class="swatch" style="background: var(--muted);"></span><code style="font-size: 11px;">#64748b</code> — secondary</p>
+        <p style="margin-top: 4px;"><span class="swatch" style="background: var(--faint);"></span><code style="font-size: 11px;">#94a3b8</code> — tertiary</p>
+      </div>
+      <div>
+        <p style="font-weight: 700; margin-bottom: 8px; color: var(--ink);">Data Spectrum</p>
+        <p><span class="swatch" style="background: var(--d-top);"></span><code style="font-size: 11px;">#047857</code> — best / Q1</p>
+        <p style="margin-top: 4px;"><span class="swatch" style="background: var(--d-good);"></span><code style="font-size: 11px;">#0d9488</code> — good / Q2</p>
+        <p style="margin-top: 4px;"><span class="swatch" style="background: var(--d-mid);"></span><code style="font-size: 11px;">#d97706</code> — caution / Q3</p>
+        <p style="margin-top: 4px;"><span class="swatch" style="background: var(--d-low);"></span><code style="font-size: 11px;">#be123c</code> — worst / Q4</p>
+      </div>
+      <div>
+        <p style="font-weight: 700; margin-bottom: 8px; color: var(--ink);">Section Bands</p>
+        <p><span class="swatch" style="background: #0f766e;"></span>Explorer</p>
+        <p style="margin-top: 4px;"><span class="swatch" style="background: #1e40af;"></span>Screener</p>
+        <p style="margin-top: 4px;"><span class="swatch" style="background: #0369a1;"></span>Analytics</p>
+        <p style="margin-top: 4px;"><span class="swatch" style="background: #475569;"></span>Compare</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════
+       TOP BAR: Search + Filters
+       ═══════════════════════════════ -->
+
+  <div style="margin-bottom: 16px;">
+    <input type="text" placeholder='Search funds by name, category, sector, or metrics...'
+      style="width: 100%; padding: 13px 20px; font-size: 14px; border: 1px solid var(--border); border-radius: 12px; outline: none; background: #fff; font-family: Inter, sans-serif; color: var(--ink);" />
+  </div>
+
+  <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
+    <span class="pill on">Direct Plans</span>
+    <span class="pill on">Equity Only</span>
+    <span class="pill on">AUM above 1000 Cr</span>
+    <span style="margin-left: auto; font-size: 13px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums;">247 funds</span>
+    <span style="font-size: 12px; color: var(--faint);">of 6,563</span>
+  </div>
+
+  <!-- Breadcrumbs -->
+  <div class="crumbs">
+    <span style="color: var(--muted); font-weight: 600; font-size: 11px;">FILTERED BY</span>
+    <span class="crumb-tag">Mid Cap <span class="crumb-x">×</span></span>
+    <span class="crumb-tag">Alpha Machine <span class="crumb-x">×</span></span>
+    <span style="margin-left: auto; color: var(--d-low); font-weight: 600; cursor: pointer; font-size: 11px;">Clear All</span>
+  </div>
+
+  <!-- Navigation -->
+  <div class="nav-bar">
+    <div class="nav-item on">Explorer</div>
+    <div class="nav-item">Screener</div>
+    <div class="nav-item">Analytics</div>
+    <div class="nav-item">Compare</div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       EXPLORER
+       ═══════════════════════════════════════ -->
+  <div class="section-sep" style="border-left-color: var(--band-explorer); background: var(--accent-light); margin-top: 0;">
+    <h2>Explorer</h2>
+    <p>Visual discovery — scatter, heatmap, treemap</p>
+  </div>
+
+  <!-- Presets -->
+  <div style="display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto;">
+    <span class="pill on">Alpha Generators (42)</span>
+    <span class="pill">Sleep Well (38)</span>
+    <span class="pill">Cost Killers (56)</span>
+    <span class="pill">Small Cap Stars (24)</span>
+    <span class="pill">Turnaround (17)</span>
+    <span class="pill">Avoid Zone (31)</span>
+  </div>
+
+  <!-- Axis controls -->
+  <div class="card" style="padding: 12px 16px; margin-bottom: 20px;">
+    <div style="display: flex; gap: 16px; align-items: center; font-size: 12px; flex-wrap: wrap;">
+      <span style="font-weight: 700; color: var(--muted);">X</span>
+      <select style="padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; font-family: Inter; color: var(--body);">
+        <option>Risk Score</option><option>Std Dev 3Y</option><option>Max Drawdown</option><option>Beta 3Y</option><option>Expense Ratio</option>
+      </select>
+      <span style="font-weight: 700; color: var(--muted);">Y</span>
+      <select style="padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; font-family: Inter; color: var(--body);">
+        <option>1Y Return</option><option>3Y CAGR</option><option>5Y CAGR</option><option>Sharpe 3Y</option><option>Alpha 3Y</option><option>Sortino 3Y</option>
+      </select>
+      <span style="font-weight: 700; color: var(--muted);">Colour</span>
+      <select style="padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; font-family: Inter; color: var(--body);">
+        <option>Alpha</option><option>Return</option><option>Consistency</option><option>Efficiency</option><option>Resilience</option>
+      </select>
+      <div style="margin-left: auto; display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+        <div style="padding: 6px 16px; font-size: 11px; font-weight: 700; background: var(--accent-light); color: var(--accent);">Scatter</div>
+        <div style="padding: 6px 16px; font-size: 11px; font-weight: 600; color: var(--faint); border-left: 1px solid var(--border);">Heatmap</div>
+        <div style="padding: 6px 16px; font-size: 11px; font-weight: 600; color: var(--faint); border-left: 1px solid var(--border);">Treemap</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3:6:3 -->
+  <div class="g12" style="margin-bottom: 20px; align-items: start;">
+    <!-- Left -->
+    <div style="grid-column: span 3; display: flex; flex-direction: column; gap: 16px;">
+      <div class="card">
+        <p class="stitle">Summary</p>
+        <div style="margin-bottom: 14px;">
+          <p style="font-size: 11px; color: var(--muted); margin-bottom: 2px;">Avg 1Y Return</p>
+          <p style="font-size: 24px; font-weight: 800; color: var(--d-top); font-variant-numeric: tabular-nums;">+18.4%</p>
+          <p style="font-size: 11px; color: var(--faint);">vs Nifty 50: +14.2%</p>
+        </div>
+        <div style="margin-bottom: 14px;">
+          <p style="font-size: 11px; color: var(--muted); margin-bottom: 2px;">Median Risk Score</p>
+          <p style="font-size: 24px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums;">52</p>
+        </div>
+        <div>
+          <p style="font-size: 11px; color: var(--muted); margin-bottom: 2px;">Top Performer</p>
+          <p style="font-size: 13px; font-weight: 700; color: var(--ink);">Quant Small Cap Fund</p>
+          <p style="font-size: 12px; font-weight: 700; color: var(--d-top);">+42.3% 1Y</p>
+        </div>
+      </div>
+      <div class="card">
+        <p class="stitle">Tier Distribution</p>
+        <div style="margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+            <span style="color: var(--body);">Alpha Machine</span><span style="color: var(--d-top); font-weight: 700;">42</span>
+          </div>
+          <div class="hbar"><div class="hbar-fill" style="width: 70%; background: var(--d-top);"></div></div>
+        </div>
+        <div style="margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+            <span style="color: var(--body);">Positive</span><span style="color: var(--d-good); font-weight: 700;">86</span>
+          </div>
+          <div class="hbar"><div class="hbar-fill" style="width: 55%; background: var(--d-good);"></div></div>
+        </div>
+        <div style="margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+            <span style="color: var(--body);">Neutral</span><span style="color: var(--d-mid); font-weight: 700;">73</span>
+          </div>
+          <div class="hbar"><div class="hbar-fill" style="width: 40%; background: var(--d-mid);"></div></div>
+        </div>
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+            <span style="color: var(--body);">Negative</span><span style="color: var(--d-low); font-weight: 700;">46</span>
+          </div>
+          <div class="hbar"><div class="hbar-fill" style="width: 25%; background: var(--d-low);"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center -->
+    <div style="grid-column: span 6;">
+      <div class="chartbox" style="height: 460px;">
+        <div style="position: absolute; top: 16px; left: 16px; font-size: 11px; font-weight: 700; color: rgba(4,120,87,0.3);">SWEET SPOT</div>
+        <div style="position: absolute; top: 16px; right: 16px; font-size: 11px; font-weight: 700; color: rgba(217,119,6,0.3);">HIGH RISK</div>
+        <div style="position: absolute; bottom: 32px; left: 16px; font-size: 11px; font-weight: 700; color: rgba(13,148,136,0.3);">CONSERVATIVE</div>
+        <div style="position: absolute; bottom: 32px; right: 16px; font-size: 11px; font-weight: 700; color: rgba(190,18,60,0.3);">AVOID</div>
+        <div style="position: absolute; top: 0; bottom: 24px; left: 50%; border-left: 1px dashed var(--border);"></div>
+        <div style="position: absolute; left: 0; right: 0; top: 48%; border-top: 1px dashed var(--border);"></div>
+        <div style="position: absolute; top: 22%; left: 28%; width: 32px; height: 32px; border-radius: 50%; background: rgba(4,120,87,0.65); border: 2px solid #fff;"></div>
+        <div style="position: absolute; top: 18%; left: 36%; width: 44px; height: 44px; border-radius: 50%; background: rgba(13,148,136,0.55); border: 2px solid #fff;"></div>
+        <div style="position: absolute; top: 32%; left: 22%; width: 22px; height: 22px; border-radius: 50%; background: rgba(4,120,87,0.7); border: 2px solid #fff;"></div>
+        <div style="position: absolute; top: 14%; left: 58%; width: 28px; height: 28px; border-radius: 50%; background: rgba(217,119,6,0.55); border: 2px solid #fff;"></div>
+        <div style="position: absolute; top: 60%; left: 28%; width: 18px; height: 18px; border-radius: 50%; background: rgba(13,148,136,0.45); border: 2px solid #fff;"></div>
+        <div style="position: absolute; top: 65%; left: 62%; width: 16px; height: 16px; border-radius: 50%; background: rgba(190,18,60,0.5); border: 2px solid #fff;"></div>
+        <div style="position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 600; color: var(--body);">Risk Score — Lower is Better</div>
+      </div>
+    </div>
+
+    <!-- Right -->
+    <div style="grid-column: span 3; display: flex; flex-direction: column; gap: 16px;">
+      <div class="card">
+        <p class="stitle">Top 5 Funds</p>
+        <div style="font-size: 12px;">
+          <div style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--divider);"><span><span style="color: var(--faint); font-weight: 700; margin-right: 8px; font-variant-numeric: tabular-nums;">1</span>Quant Small Cap</span><span class="c-top bld">+42.3%</span></div>
+          <div style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--divider);"><span><span style="color: var(--faint); font-weight: 700; margin-right: 8px;">2</span>Motilal Midcap</span><span class="c-top bld">+38.7%</span></div>
+          <div style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--divider);"><span><span style="color: var(--faint); font-weight: 700; margin-right: 8px;">3</span>PPFAS Flexicap</span><span class="c-top bld">+31.2%</span></div>
+          <div style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--divider);"><span><span style="color: var(--faint); font-weight: 700; margin-right: 8px;">4</span>Axis Midcap</span><span class="c-top bld">+28.4%</span></div>
+          <div style="display: flex; justify-content: space-between; padding: 7px 0;"><span><span style="color: var(--faint); font-weight: 700; margin-right: 8px;">5</span>SBI Small Cap</span><span class="c-top bld">+26.9%</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <p class="stitle">Insights</p>
+        <div style="font-size: 12px; line-height: 1.7; color: var(--body);">
+          <p style="margin-bottom: 6px;"><strong>Small caps dominate</strong> — 7 of top 10 returns are small/mid cap</p>
+          <p style="margin-bottom: 6px;"><strong>62% beat</strong> the visible average return of 18.4%</p>
+          <p><strong>31 funds</strong> in the avoid zone — high cost, negative alpha</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom 3 -->
+  <div class="g3">
+    <div class="card">
+      <p class="stitle">Category Performance</p>
+      <div style="font-size: 12px;">
+        <div style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--divider);"><span style="color: var(--body);">Small Cap</span><span class="c-top bld">+32.4%</span></div>
+        <div style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--divider);"><span style="color: var(--body);">Mid Cap</span><span class="c-top bld">+28.1%</span></div>
+        <div style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--divider);"><span style="color: var(--body);">Flexi Cap</span><span class="c-good bld">+22.6%</span></div>
+        <div style="display: flex; justify-content: space-between; padding: 7px 0;"><span style="color: var(--body);">Large Cap</span><span class="c-good bld">+14.2%</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <p class="stitle">Return Distribution</p>
+      <div style="font-size: 11px;">
+        <div style="margin-bottom: 8px;"><div style="display: flex; justify-content: space-between;"><span style="color: var(--body);">20–30%</span><span class="c-good bld">58 (23%)</span></div><div class="hbar" style="margin-top: 3px;"><div class="hbar-fill" style="width: 90%; background: var(--d-good);"></div></div></div>
+        <div style="margin-bottom: 8px;"><div style="display: flex; justify-content: space-between;"><span style="color: var(--body);">10–20%</span><span class="c-mid bld">72 (29%)</span></div><div class="hbar" style="margin-top: 3px;"><div class="hbar-fill" style="width: 100%; background: var(--d-mid);"></div></div></div>
+        <div style="margin-bottom: 8px;"><div style="display: flex; justify-content: space-between;"><span style="color: var(--body);">30–50%</span><span class="c-top bld">34 (14%)</span></div><div class="hbar" style="margin-top: 3px;"><div class="hbar-fill" style="width: 55%; background: var(--d-top);"></div></div></div>
+        <div><div style="display: flex; justify-content: space-between;"><span style="color: var(--body);">Below 0%</span><span class="c-low bld">18 (7%)</span></div><div class="hbar" style="margin-top: 3px;"><div class="hbar-fill" style="width: 25%; background: var(--d-low);"></div></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <p class="stitle">AMC Landscape</p>
+      <div style="font-size: 12px;">
+        <div style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--divider);"><span style="color: var(--body);">SBI MF</span><span class="bld" style="color: var(--ink);">42 funds</span></div>
+        <div style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--divider);"><span style="color: var(--body);">ICICI Prudential</span><span class="bld" style="color: var(--ink);">38 funds</span></div>
+        <div style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--divider);"><span style="color: var(--body);">HDFC MF</span><span class="bld" style="color: var(--ink);">35 funds</span></div>
+        <div style="display: flex; justify-content: space-between; padding: 7px 0;"><span style="color: var(--body);">Axis MF</span><span class="bld" style="color: var(--ink);">28 funds</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREENER
+       ═══════════════════════════════════════ -->
+  <div class="section-sep" style="border-left-color: var(--band-screener); background: #eff6ff;">
+    <h2>Screener</h2>
+    <p>Sortable table with risk metrics, quartile ranks, lens scores</p>
+  </div>
+
+  <div style="display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; align-items: center;">
+    <span style="font-size: 11px; font-weight: 700; color: var(--muted);">COLUMNS</span>
+    <span class="pill on" style="font-size: 10px; padding: 4px 10px;">Returns</span>
+    <span class="pill on" style="font-size: 10px; padding: 4px 10px;">Risk Metrics</span>
+    <span class="pill on" style="font-size: 10px; padding: 4px 10px;">Lens Scores</span>
+    <span class="pill" style="font-size: 10px; padding: 4px 10px;">Quartile Ranks</span>
+    <span class="pill" style="font-size: 10px; padding: 4px 10px;">Valuations</span>
+  </div>
+
+  <div class="card" style="padding: 0; overflow: hidden;">
+    <div style="overflow-x: auto;">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th style="width: 36px; padding-left: 16px;"><div class="chk"></div></th>
+            <th style="min-width: 220px;">Fund Name</th>
+            <th>Category</th>
+            <th style="text-align: right;">AUM</th>
+            <th style="text-align: right; color: var(--accent);">1Y ▼</th>
+            <th style="text-align: right;">3Y</th>
+            <th style="text-align: right;">5Y</th>
+            <th style="text-align: right;">Sharpe</th>
+            <th style="text-align: right;">Alpha</th>
+            <th style="text-align: right;">Max DD</th>
+            <th style="text-align: right;">Beta</th>
+            <th style="text-align: right;">Expense</th>
+            <th style="text-align: center;">Q1Y</th>
+            <th style="text-align: center;">Q3Y</th>
+            <th>Lens</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding-left: 16px;"><div class="chk on">✓</div></td>
+            <td style="font-weight: 700; color: var(--ink);">Quant Small Cap - Direct</td>
+            <td style="color: var(--muted);">Small Cap</td>
+            <td class="num">4,218 Cr</td>
+            <td class="num c-top bld">+42.3%</td>
+            <td class="num c-top bld">+31.8%</td>
+            <td class="num c-top bld">+28.4%</td>
+            <td class="num">1.82</td>
+            <td class="num c-top">+8.4</td>
+            <td class="num c-low">-18.3%</td>
+            <td class="num">0.92</td>
+            <td class="num">0.62%</td>
+            <td style="text-align: center;"><span class="qd q1">1</span></td>
+            <td style="text-align: center;"><span class="qd q1">1</span></td>
+            <td><div class="lens6"><div class="bar bg-1" style="height: 92%;"></div><div class="bar bg-3" style="height: 45%;"></div><div class="bar bg-2" style="height: 78%;"></div><div class="bar bg-1" style="height: 88%;"></div><div class="bar bg-2" style="height: 72%;"></div><div class="bar bg-3" style="height: 48%;"></div></div></td>
+          </tr>
+          <tr>
+            <td style="padding-left: 16px;"><div class="chk"></div></td>
+            <td style="font-weight: 700; color: var(--ink);">Motilal Midcap - Direct</td>
+            <td style="color: var(--muted);">Mid Cap</td>
+            <td class="num">11,247 Cr</td>
+            <td class="num c-top bld">+38.7%</td>
+            <td class="num c-top bld">+27.4%</td>
+            <td class="num c-top bld">+24.1%</td>
+            <td class="num">1.64</td>
+            <td class="num c-top">+6.2</td>
+            <td class="num c-low">-15.7%</td>
+            <td class="num">0.88</td>
+            <td class="num">0.58%</td>
+            <td style="text-align: center;"><span class="qd q1">1</span></td>
+            <td style="text-align: center;"><span class="qd q1">1</span></td>
+            <td><div class="lens6"><div class="bar bg-1" style="height: 86%;"></div><div class="bar bg-2" style="height: 62%;"></div><div class="bar bg-1" style="height: 82%;"></div><div class="bar bg-1" style="height: 80%;"></div><div class="bar bg-2" style="height: 68%;"></div><div class="bar bg-2" style="height: 65%;"></div></div></td>
+          </tr>
+          <tr>
+            <td style="padding-left: 16px;"><div class="chk on">✓</div></td>
+            <td style="font-weight: 700; color: var(--ink);">PPFAS Flexi Cap - Direct</td>
+            <td style="color: var(--muted);">Flexi Cap</td>
+            <td class="num">58,432 Cr</td>
+            <td class="num c-top bld">+31.2%</td>
+            <td class="num c-top bld">+22.6%</td>
+            <td class="num c-top bld">+21.8%</td>
+            <td class="num">1.48</td>
+            <td class="num c-top">+5.8</td>
+            <td class="num c-mid">-12.1%</td>
+            <td class="num">0.74</td>
+            <td class="num">0.41%</td>
+            <td style="text-align: center;"><span class="qd q1">1</span></td>
+            <td style="text-align: center;"><span class="qd q1">1</span></td>
+            <td><div class="lens6"><div class="bar bg-1" style="height: 84%;"></div><div class="bar bg-1" style="height: 82%;"></div><div class="bar bg-1" style="height: 90%;"></div><div class="bar bg-1" style="height: 80%;"></div><div class="bar bg-1" style="height: 85%;"></div><div class="bar bg-1" style="height: 88%;"></div></div></td>
+          </tr>
+          <tr>
+            <td style="padding-left: 16px;"><div class="chk"></div></td>
+            <td style="font-weight: 700; color: var(--ink);">HDFC Large Cap - Direct</td>
+            <td style="color: var(--muted);">Large Cap</td>
+            <td class="num">32,891 Cr</td>
+            <td class="num c-good bld">+14.8%</td>
+            <td class="num c-good bld">+16.2%</td>
+            <td class="num c-good bld">+14.9%</td>
+            <td class="num">0.92</td>
+            <td class="num c-mid">+1.2</td>
+            <td class="num c-mid">-14.8%</td>
+            <td class="num">0.96</td>
+            <td class="num">0.98%</td>
+            <td style="text-align: center;"><span class="qd q2">2</span></td>
+            <td style="text-align: center;"><span class="qd q2">2</span></td>
+            <td><div class="lens6"><div class="bar bg-3" style="height: 52%;"></div><div class="bar bg-2" style="height: 65%;"></div><div class="bar bg-2" style="height: 60%;"></div><div class="bar bg-3" style="height: 48%;"></div><div class="bar bg-4" style="height: 30%;"></div><div class="bar bg-2" style="height: 62%;"></div></div></td>
+          </tr>
+          <tr>
+            <td style="padding-left: 16px;"><div class="chk"></div></td>
+            <td style="font-weight: 700; color: var(--d-low);">Aditya BSL Tax Relief - Reg</td>
+            <td style="color: var(--muted);">ELSS</td>
+            <td class="num">1,234 Cr</td>
+            <td class="num c-low bld">-2.4%</td>
+            <td class="num c-good">+8.1%</td>
+            <td class="num c-good">+9.2%</td>
+            <td class="num">0.31</td>
+            <td class="num c-low">-4.8</td>
+            <td class="num c-low">-28.4%</td>
+            <td class="num">1.14</td>
+            <td class="num c-low">1.82%</td>
+            <td style="text-align: center;"><span class="qd q4">4</span></td>
+            <td style="text-align: center;"><span class="qd q4">4</span></td>
+            <td><div class="lens6"><div class="bar bg-4" style="height: 18%;"></div><div class="bar bg-4" style="height: 22%;"></div><div class="bar bg-4" style="height: 15%;"></div><div class="bar bg-4" style="height: 12%;"></div><div class="bar bg-4" style="height: 20%;"></div><div class="bar bg-3" style="height: 35%;"></div></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-top: 1px solid var(--border);">
+      <span style="font-size: 12px; color: var(--muted);">1–50 of 247</span>
+      <div style="display: flex; gap: 4px;">
+        <span class="pill" style="padding: 4px 10px; font-size: 11px;">Prev</span>
+        <span class="pill on" style="padding: 4px 10px; font-size: 11px;">1</span>
+        <span class="pill" style="padding: 4px 10px; font-size: 11px;">2</span>
+        <span class="pill" style="padding: 4px 10px; font-size: 11px;">3</span>
+        <span class="pill" style="padding: 4px 10px; font-size: 11px;">Next</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top: 14px;">2 funds selected — switch to Compare view for head-to-head analysis</div>
+
+  <!-- ═══════════════════════════════════════
+       ANALYTICS
+       ═══════════════════════════════════════ -->
+  <div class="section-sep" style="border-left-color: var(--band-analytics); background: #f0f9ff;">
+    <h2>Analytics</h2>
+    <p>Aggregated views across filtered universe</p>
+  </div>
+
+  <div class="g2" style="margin-bottom: 20px;">
+    <div class="card">
+      <p class="stitle">Style Box Distribution</p>
+      <p style="font-size: 11px; color: var(--faint); margin-bottom: 12px;">Fund count and avg 1Y return per style</p>
+      <table style="width: 100%; border-collapse: separate; border-spacing: 4px; font-size: 11px;">
+        <thead>
+          <tr><th style="width: 50px;"></th><th style="text-align: center; padding: 6px; font-weight: 700; color: var(--muted); font-size: 10px;">VALUE</th><th style="text-align: center; padding: 6px; font-weight: 700; color: var(--muted); font-size: 10px;">BLEND</th><th style="text-align: center; padding: 6px; font-weight: 700; color: var(--muted); font-size: 10px;">GROWTH</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight: 700; color: var(--muted); padding: 4px; font-size: 10px;">LARGE</td>
+            <td style="text-align: center; padding: 10px 6px; background: #fef9c3; border-radius: 6px;"><strong style="color: var(--ink);">28</strong><br/><span class="c-good" style="font-size: 10px;">+14%</span></td>
+            <td style="text-align: center; padding: 10px 6px; background: #d1fae5; border-radius: 6px;"><strong style="color: var(--ink);">52</strong><br/><span class="c-top" style="font-size: 10px;">+19%</span></td>
+            <td style="text-align: center; padding: 10px 6px; background: #d1fae5; border-radius: 6px;"><strong style="color: var(--ink);">31</strong><br/><span class="c-top" style="font-size: 10px;">+22%</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700; color: var(--muted); padding: 4px; font-size: 10px;">MID</td>
+            <td style="text-align: center; padding: 10px 6px; background: #fef9c3; border-radius: 6px;"><strong style="color: var(--ink);">12</strong><br/><span class="c-good" style="font-size: 10px;">+17%</span></td>
+            <td style="text-align: center; padding: 10px 6px; background: #d1fae5; border-radius: 6px;"><strong style="color: var(--ink);">38</strong><br/><span class="c-top" style="font-size: 10px;">+24%</span></td>
+            <td style="text-align: center; padding: 10px 6px; background: #d1fae5; border-radius: 6px;"><strong style="color: var(--ink);">24</strong><br/><span class="c-top" style="font-size: 10px;">+29%</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700; color: var(--muted); padding: 4px; font-size: 10px;">SMALL</td>
+            <td style="text-align: center; padding: 10px 6px; background: #ffe4e6; border-radius: 6px;"><strong style="color: var(--ink);">8</strong><br/><span class="c-good" style="font-size: 10px;">+12%</span></td>
+            <td style="text-align: center; padding: 10px 6px; background: #d1fae5; border-radius: 6px;"><strong style="color: var(--ink);">34</strong><br/><span class="c-top" style="font-size: 10px;">+32%</span></td>
+            <td style="text-align: center; padding: 10px 6px; background: #d1fae5; border-radius: 6px;"><strong style="color: var(--ink);">20</strong><br/><span class="c-top" style="font-size: 10px;">+39%</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size: 11px; color: var(--muted); margin-top: 10px;">Growth outperforms Value across all cap sizes. Small Growth is the hot zone at +39%.</p>
+    </div>
+
+    <div class="card">
+      <p class="stitle">Quartile Consistency</p>
+      <p style="font-size: 11px; color: var(--faint); margin-bottom: 12px;">Rank stability across time periods for top funds</p>
+      <table class="tbl">
+        <thead><tr><th style="min-width: 130px;">Fund</th><th style="text-align: center;">1M</th><th style="text-align: center;">3M</th><th style="text-align: center;">1Y</th><th style="text-align: center;">3Y</th><th style="text-align: center;">5Y</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight: 600;">PPFAS Flexi Cap</td><td style="text-align: center;"><span class="qd q1">1</span></td><td style="text-align: center;"><span class="qd q1">1</span></td><td style="text-align: center;"><span class="qd q1">1</span></td><td style="text-align: center;"><span class="qd q1">1</span></td><td style="text-align: center;"><span class="qd q1">1</span></td></tr>
+          <tr><td style="font-weight: 600;">Quant Small Cap</td><td style="text-align: center;"><span class="qd q2">2</span></td><td style="text-align: center;"><span class="qd q1">1</span></td><td style="text-align: center;"><span class="qd q1">1</span></td><td style="text-align: center;"><span class="qd q1">1</span></td><td style="text-align: center;"><span class="qd q1">1</span></td></tr>
+          <tr><td style="font-weight: 600;">Motilal Midcap</td><td style="text-align: center;"><span class="qd q1">1</span></td><td style="text-align: center;"><span class="qd q1">1</span></td><td style="text-align: center;"><span class="qd q1">1</span></td><td style="text-align: center;"><span class="qd q1">1</span></td><td style="text-align: center;"><span class="qd q2">2</span></td></tr>
+          <tr><td style="font-weight: 600;">HDFC Large Cap</td><td style="text-align: center;"><span class="qd q3">3</span></td><td style="text-align: center;"><span class="qd q2">2</span></td><td style="text-align: center;"><span class="qd q2">2</span></td><td style="text-align: center;"><span class="qd q3">3</span></td><td style="text-align: center;"><span class="qd q2">2</span></td></tr>
+          <tr><td style="font-weight: 600;">Axis Bluechip</td><td style="text-align: center;"><span class="qd q4">4</span></td><td style="text-align: center;"><span class="qd q3">3</span></td><td style="text-align: center;"><span class="qd q4">4</span></td><td style="text-align: center;"><span class="qd q2">2</span></td><td style="text-align: center;"><span class="qd q2">2</span></td></tr>
+        </tbody>
+      </table>
+      <p style="font-size: 11px; color: var(--muted); margin-top: 10px;">All-green row = truly consistent. Recent red = deteriorating fund.</p>
+    </div>
+  </div>
+
+  <div class="g2" style="margin-bottom: 20px;">
+    <div class="card">
+      <p class="stitle">Sector Exposure by Category</p>
+      <p style="font-size: 11px; color: var(--faint); margin-bottom: 12px;">Average allocation weight — darker = heavier</p>
+      <table style="width: 100%; border-collapse: separate; border-spacing: 3px; font-size: 10px;">
+        <thead><tr><th style="text-align: left; padding: 4px 6px; font-weight: 700; color: var(--muted); font-size: 9px;"></th><th style="text-align: center; font-weight: 700; color: var(--muted); font-size: 9px;">Fin</th><th style="text-align: center; font-weight: 700; color: var(--muted); font-size: 9px;">Tech</th><th style="text-align: center; font-weight: 700; color: var(--muted); font-size: 9px;">Health</th><th style="text-align: center; font-weight: 700; color: var(--muted); font-size: 9px;">Cons</th><th style="text-align: center; font-weight: 700; color: var(--muted); font-size: 9px;">Indus</th><th style="text-align: center; font-weight: 700; color: var(--muted); font-size: 9px;">Energy</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight: 700; padding: 4px 6px; color: var(--body);">Large Cap</td><td class="shcell" style="background: rgba(15,118,110,0.35); color: #064e3b;">32%</td><td class="shcell" style="background: rgba(15,118,110,0.18);">18%</td><td class="shcell" style="background: rgba(15,118,110,0.08);">8%</td><td class="shcell" style="background: rgba(15,118,110,0.12);">12%</td><td class="shcell" style="background: rgba(15,118,110,0.08);">9%</td><td class="shcell" style="background: rgba(15,118,110,0.05);">6%</td></tr>
+          <tr><td style="font-weight: 700; padding: 4px 6px; color: var(--body);">Mid Cap</td><td class="shcell" style="background: rgba(15,118,110,0.22);">24%</td><td class="shcell" style="background: rgba(15,118,110,0.22);">22%</td><td class="shcell" style="background: rgba(15,118,110,0.14);">14%</td><td class="shcell" style="background: rgba(15,118,110,0.10);">10%</td><td class="shcell" style="background: rgba(15,118,110,0.12);">12%</td><td class="shcell" style="background: rgba(15,118,110,0.05);">5%</td></tr>
+          <tr><td style="font-weight: 700; padding: 4px 6px; color: var(--body);">Small Cap</td><td class="shcell" style="background: rgba(15,118,110,0.14);">14%</td><td class="shcell" style="background: rgba(15,118,110,0.16);">16%</td><td class="shcell" style="background: rgba(15,118,110,0.12);">12%</td><td class="shcell" style="background: rgba(15,118,110,0.08);">8%</td><td class="shcell" style="background: rgba(15,118,110,0.30); color: #064e3b;">24%</td><td class="shcell" style="background: rgba(15,118,110,0.05);">6%</td></tr>
+          <tr><td style="font-weight: 700; padding: 4px 6px; color: var(--body);">Flexi Cap</td><td class="shcell" style="background: rgba(15,118,110,0.28); color: #064e3b;">28%</td><td class="shcell" style="background: rgba(15,118,110,0.20);">20%</td><td class="shcell" style="background: rgba(15,118,110,0.08);">9%</td><td class="shcell" style="background: rgba(15,118,110,0.14);">14%</td><td class="shcell" style="background: rgba(15,118,110,0.08);">8%</td><td class="shcell" style="background: rgba(15,118,110,0.05);">5%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <p class="stitle">Risk-Return by Category</p>
+      <p style="font-size: 11px; color: var(--faint); margin-bottom: 12px;">Category averages from 3Y risk stats</p>
+      <table class="tbl">
+        <thead><tr><th>Category</th><th style="text-align: right;">Avg 3Y</th><th style="text-align: right;">Std Dev</th><th style="text-align: right;">Sharpe</th><th style="text-align: right;">Max DD</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight: 600;">Small Cap</td><td class="num c-top">+28.4%</td><td class="num">18.2</td><td class="num">1.42</td><td class="num c-low">-22.1%</td></tr>
+          <tr><td style="font-weight: 600;">Mid Cap</td><td class="num c-top">+24.1%</td><td class="num">15.6</td><td class="num">1.38</td><td class="num c-low">-18.4%</td></tr>
+          <tr><td style="font-weight: 600;">Flexi Cap</td><td class="num c-good">+18.7%</td><td class="num">13.2</td><td class="num">1.24</td><td class="num c-mid">-14.6%</td></tr>
+          <tr><td style="font-weight: 600;">Large Cap</td><td class="num c-good">+14.2%</td><td class="num">12.8</td><td class="num">0.98</td><td class="num c-mid">-13.2%</td></tr>
+          <tr><td style="font-weight: 600;">ELSS</td><td class="num c-good">+16.8%</td><td class="num">14.4</td><td class="num">1.08</td><td class="num c-mid">-15.8%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <p class="stitle">Cap Allocation by Category</p>
+      <div style="font-size: 12px;">
+        <div style="margin-bottom: 14px;"><p style="font-weight: 700; margin-bottom: 5px; color: var(--ink);">Large Cap funds</p><div class="sbar"><div style="width: 82%; background: var(--d-top);">82% Large</div><div style="width: 12%; background: var(--d-good);">12%</div><div style="width: 6%; background: var(--d-mid);"></div></div></div>
+        <div style="margin-bottom: 14px;"><p style="font-weight: 700; margin-bottom: 5px; color: var(--ink);">Mid Cap funds</p><div class="sbar"><div style="width: 24%; background: var(--d-top);">24%</div><div style="width: 62%; background: var(--d-good);">62% Mid</div><div style="width: 14%; background: var(--d-mid);">14%</div></div></div>
+        <div style="margin-bottom: 14px;"><p style="font-weight: 700; margin-bottom: 5px; color: var(--ink);">Flexi Cap funds</p><div class="sbar"><div style="width: 55%; background: var(--d-top);">55% Large</div><div style="width: 28%; background: var(--d-good);">28%</div><div style="width: 17%; background: var(--d-mid);">17%</div></div></div>
+        <div><p style="font-weight: 700; margin-bottom: 5px; color: var(--ink);">Small Cap funds</p><div class="sbar"><div style="width: 8%; background: var(--d-top);"></div><div style="width: 18%; background: var(--d-good);">18%</div><div style="width: 74%; background: var(--d-mid);">74% Small</div></div></div>
+      </div>
+      <div style="display: flex; gap: 16px; margin-top: 12px; font-size: 11px; color: var(--muted);">
+        <span><span class="swatch" style="background: var(--d-top); width: 10px; height: 10px;"></span>Large</span>
+        <span><span class="swatch" style="background: var(--d-good); width: 10px; height: 10px;"></span>Mid</span>
+        <span><span class="swatch" style="background: var(--d-mid); width: 10px; height: 10px;"></span>Small</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="stitle">Valuation Snapshot</p>
+      <p style="font-size: 11px; color: var(--faint); margin-bottom: 12px;">Portfolio-level valuations from holdings data</p>
+      <table class="tbl">
+        <thead><tr><th>Category</th><th style="text-align: right;">P/E</th><th style="text-align: right;">P/B</th><th style="text-align: right;">Div Yield</th><th style="text-align: right;">Turnover</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight: 600;">Large Cap</td><td class="num">24.2</td><td class="num">3.8</td><td class="num">1.4%</td><td class="num">32%</td></tr>
+          <tr><td style="font-weight: 600;">Mid Cap</td><td class="num">32.1</td><td class="num">4.6</td><td class="num">0.8%</td><td class="num">48%</td></tr>
+          <tr><td style="font-weight: 600;">Small Cap</td><td class="num c-mid">42.4</td><td class="num c-mid">5.2</td><td class="num">0.4%</td><td class="num">62%</td></tr>
+          <tr><td style="font-weight: 600;">Flexi Cap</td><td class="num">28.6</td><td class="num">4.1</td><td class="num">1.1%</td><td class="num">38%</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size: 11px; color: var(--muted); margin-top: 10px;">Small caps at 42x P/E — 75% premium over large caps.</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       COMPARE
+       ═══════════════════════════════════════ -->
+  <div class="section-sep" style="border-left-color: var(--band-compare); background: #f8fafc;">
+    <h2>Compare</h2>
+    <p>Head-to-head fund analysis — select from screener</p>
+  </div>
+
+  <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 24px; flex-wrap: wrap;">
+    <span style="font-size: 11px; font-weight: 700; color: var(--muted);">COMPARING</span>
+    <span class="pill on">Quant Small Cap ×</span>
+    <span class="pill" style="background: #eff6ff; border-color: #93c5fd; color: #1e40af;">PPFAS Flexi Cap ×</span>
+    <span class="pill" style="background: #f0f9ff; border-color: #7dd3fc; color: #0369a1;">Motilal Midcap ×</span>
+    <input style="padding: 6px 12px; border: 1px dashed var(--border); border-radius: 8px; font-size: 12px; width: 160px; font-family: Inter; color: var(--body);" placeholder="Add fund..." />
+  </div>
+
+  <!-- Line Charts — Returns Curve & Rolling Risk -->
+  <div class="g2" style="margin-bottom: 20px;">
+    <div class="card">
+      <p class="stitle">Historical Returns Curve (3Y)</p>
+      <p style="font-size: 11px; color: var(--faint); margin-bottom: 12px;">Cumulative growth of 1L invested — funds vs Nifty 50 benchmark</p>
+      <svg viewBox="0 0 480 220" style="width: 100%; height: 220px;">
+        <!-- Grid lines -->
+        <line x1="40" y1="20" x2="40" y2="190" stroke="#e2e8f0" stroke-width="1"/>
+        <line x1="40" y1="190" x2="460" y2="190" stroke="#e2e8f0" stroke-width="1"/>
+        <line x1="40" y1="60" x2="460" y2="60" stroke="#f1f5f9" stroke-width="0.5"/>
+        <line x1="40" y1="100" x2="460" y2="100" stroke="#f1f5f9" stroke-width="0.5"/>
+        <line x1="40" y1="140" x2="460" y2="140" stroke="#f1f5f9" stroke-width="0.5"/>
+        <!-- Y-axis labels -->
+        <text x="36" y="24" font-size="9" fill="#94a3b8" text-anchor="end" font-family="Inter">2.0L</text>
+        <text x="36" y="64" font-size="9" fill="#94a3b8" text-anchor="end" font-family="Inter">1.7L</text>
+        <text x="36" y="104" font-size="9" fill="#94a3b8" text-anchor="end" font-family="Inter">1.4L</text>
+        <text x="36" y="144" font-size="9" fill="#94a3b8" text-anchor="end" font-family="Inter">1.1L</text>
+        <text x="36" y="194" font-size="9" fill="#94a3b8" text-anchor="end" font-family="Inter">1.0L</text>
+        <!-- X-axis labels -->
+        <text x="40" y="206" font-size="9" fill="#94a3b8" font-family="Inter">Mar 23</text>
+        <text x="180" y="206" font-size="9" fill="#94a3b8" font-family="Inter">Sep 23</text>
+        <text x="320" y="206" font-size="9" fill="#94a3b8" font-family="Inter">Mar 25</text>
+        <text x="440" y="206" font-size="9" fill="#94a3b8" text-anchor="end" font-family="Inter">Mar 26</text>
+        <!-- Benchmark (Nifty 50) — dashed gray -->
+        <polyline points="40,185 100,170 160,165 220,155 280,142 340,130 400,122 460,115" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <!-- Quant Small Cap — teal accent -->
+        <polyline points="40,185 100,160 160,140 220,105 280,80 340,55 400,38 460,22" fill="none" stroke="#0f766e" stroke-width="2"/>
+        <!-- PPFAS Flexi Cap — blue -->
+        <polyline points="40,185 100,172 160,158 220,142 280,125 340,108 400,92 460,78" fill="none" stroke="#1e40af" stroke-width="2"/>
+        <!-- Motilal Midcap — sky blue -->
+        <polyline points="40,185 100,165 160,148 220,122 280,98 340,72 400,52 460,38" fill="none" stroke="#0369a1" stroke-width="2"/>
+        <!-- Legend -->
+        <line x1="50" y1="215" x2="66" y2="215" stroke="#0f766e" stroke-width="2"/>
+        <text x="70" y="218" font-size="9" fill="#334155" font-family="Inter">Quant SC</text>
+        <line x1="130" y1="215" x2="146" y2="215" stroke="#1e40af" stroke-width="2"/>
+        <text x="150" y="218" font-size="9" fill="#334155" font-family="Inter">PPFAS FC</text>
+        <line x1="210" y1="215" x2="226" y2="215" stroke="#0369a1" stroke-width="2"/>
+        <text x="230" y="218" font-size="9" fill="#334155" font-family="Inter">Motilal MC</text>
+        <line x1="310" y1="215" x2="326" y2="215" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <text x="330" y="218" font-size="9" fill="#94a3b8" font-family="Inter">Nifty 50</text>
+      </svg>
+      <p style="font-size: 11px; color: var(--muted); margin-top: 6px;">Quant SC doubled in 3Y. PPFAS delivered steadiest climb with least volatility.</p>
+    </div>
+    <div class="card">
+      <p class="stitle">Rolling 1Y Risk (Std Dev)</p>
+      <p style="font-size: 11px; color: var(--faint); margin-bottom: 12px;">12-month rolling standard deviation — lower is smoother</p>
+      <svg viewBox="0 0 480 220" style="width: 100%; height: 220px;">
+        <!-- Grid -->
+        <line x1="40" y1="20" x2="40" y2="190" stroke="#e2e8f0" stroke-width="1"/>
+        <line x1="40" y1="190" x2="460" y2="190" stroke="#e2e8f0" stroke-width="1"/>
+        <line x1="40" y1="60" x2="460" y2="60" stroke="#f1f5f9" stroke-width="0.5"/>
+        <line x1="40" y1="100" x2="460" y2="100" stroke="#f1f5f9" stroke-width="0.5"/>
+        <line x1="40" y1="140" x2="460" y2="140" stroke="#f1f5f9" stroke-width="0.5"/>
+        <!-- Y-axis -->
+        <text x="36" y="24" font-size="9" fill="#94a3b8" text-anchor="end" font-family="Inter">24%</text>
+        <text x="36" y="64" font-size="9" fill="#94a3b8" text-anchor="end" font-family="Inter">18%</text>
+        <text x="36" y="104" font-size="9" fill="#94a3b8" text-anchor="end" font-family="Inter">12%</text>
+        <text x="36" y="144" font-size="9" fill="#94a3b8" text-anchor="end" font-family="Inter">6%</text>
+        <text x="36" y="194" font-size="9" fill="#94a3b8" text-anchor="end" font-family="Inter">0%</text>
+        <!-- X-axis -->
+        <text x="40" y="206" font-size="9" fill="#94a3b8" font-family="Inter">Mar 23</text>
+        <text x="180" y="206" font-size="9" fill="#94a3b8" font-family="Inter">Sep 23</text>
+        <text x="320" y="206" font-size="9" fill="#94a3b8" font-family="Inter">Mar 25</text>
+        <text x="440" y="206" font-size="9" fill="#94a3b8" text-anchor="end" font-family="Inter">Mar 26</text>
+        <!-- Benchmark -->
+        <polyline points="40,120 100,110 160,115 220,125 280,118 340,108 400,112 460,105" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <!-- Quant SC — highest vol -->
+        <polyline points="40,80 100,55 160,68 220,42 280,58 340,75 400,62 460,70" fill="none" stroke="#0f766e" stroke-width="2"/>
+        <!-- PPFAS — lowest vol -->
+        <polyline points="40,145 100,138 160,142 220,148 280,140 340,135 400,140 460,138" fill="none" stroke="#1e40af" stroke-width="2"/>
+        <!-- Motilal MC -->
+        <polyline points="40,100 100,82 160,90 220,72 280,85 340,95 400,88 460,92" fill="none" stroke="#0369a1" stroke-width="2"/>
+        <!-- Legend -->
+        <line x1="50" y1="215" x2="66" y2="215" stroke="#0f766e" stroke-width="2"/>
+        <text x="70" y="218" font-size="9" fill="#334155" font-family="Inter">Quant SC</text>
+        <line x1="130" y1="215" x2="146" y2="215" stroke="#1e40af" stroke-width="2"/>
+        <text x="150" y="218" font-size="9" fill="#334155" font-family="Inter">PPFAS FC</text>
+        <line x1="210" y1="215" x2="226" y2="215" stroke="#0369a1" stroke-width="2"/>
+        <text x="230" y="218" font-size="9" fill="#334155" font-family="Inter">Motilal MC</text>
+        <line x1="310" y1="215" x2="326" y2="215" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <text x="330" y="218" font-size="9" fill="#94a3b8" font-family="Inter">Nifty 50</text>
+      </svg>
+      <p style="font-size: 11px; color: var(--muted); margin-top: 6px;">PPFAS stays in the 6-8% band. Quant swings 14-22% — high return, high turbulence.</p>
+    </div>
+  </div>
+
+  <div class="g2" style="margin-bottom: 20px;">
+    <div class="card">
+      <p class="stitle">Returns</p>
+      <table class="tbl">
+        <thead><tr><th>Period</th><th style="text-align: right; color: var(--accent);">Quant SC</th><th style="text-align: right; color: #1e40af;">PPFAS FC</th><th style="text-align: right; color: #0369a1;">Motilal MC</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight: 600;">1M</td><td class="num c-top">+4.2%</td><td class="num c-top">+3.1%</td><td class="num c-top bld win">+5.8%</td></tr>
+          <tr><td style="font-weight: 600;">3M</td><td class="num c-top bld win">+12.4%</td><td class="num c-top">+8.7%</td><td class="num c-top">+11.2%</td></tr>
+          <tr><td style="font-weight: 600;">1Y</td><td class="num c-top bld win">+42.3%</td><td class="num c-top">+31.2%</td><td class="num c-top">+38.7%</td></tr>
+          <tr><td style="font-weight: 600;">3Y</td><td class="num c-top bld win">+31.8%</td><td class="num c-top">+22.6%</td><td class="num c-top">+27.4%</td></tr>
+          <tr><td style="font-weight: 600;">5Y</td><td class="num c-top bld win">+28.4%</td><td class="num c-top">+21.8%</td><td class="num c-top">+24.1%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <p class="stitle">Risk Metrics (3Y)</p>
+      <table class="tbl">
+        <thead><tr><th>Metric</th><th style="text-align: right; color: var(--accent);">Quant SC</th><th style="text-align: right; color: #1e40af;">PPFAS FC</th><th style="text-align: right; color: #0369a1;">Motilal MC</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight: 600;">Sharpe</td><td class="num bld win">1.82</td><td class="num">1.48</td><td class="num">1.64</td></tr>
+          <tr><td style="font-weight: 600;">Alpha</td><td class="num c-top bld win">+8.4</td><td class="num c-top">+5.8</td><td class="num c-top">+6.2</td></tr>
+          <tr><td style="font-weight: 600;">Beta</td><td class="num">0.92</td><td class="num win">0.74</td><td class="num">0.88</td></tr>
+          <tr><td style="font-weight: 600;">Max DD</td><td class="num c-low">-18.3%</td><td class="num c-top win">-12.1%</td><td class="num c-mid">-15.7%</td></tr>
+          <tr><td style="font-weight: 600;">Sortino</td><td class="num bld win">2.14</td><td class="num">1.78</td><td class="num">1.92</td></tr>
+          <tr><td style="font-weight: 600;">Capture Up</td><td class="num bld win">118%</td><td class="num">102%</td><td class="num">112%</td></tr>
+          <tr><td style="font-weight: 600;">Capture Down</td><td class="num">92%</td><td class="num c-top win">72%</td><td class="num">84%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="g2" style="margin-bottom: 20px;">
+    <div class="card">
+      <p class="stitle">6-Lens Scores</p>
+      <table class="tbl">
+        <thead><tr><th>Lens</th><th style="text-align: right; color: var(--accent);">Quant SC</th><th style="text-align: right; color: #1e40af;">PPFAS FC</th><th style="text-align: right; color: #0369a1;">Motilal MC</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight: 600;">Return</td><td class="num c-top bld win">92</td><td class="num c-top">84</td><td class="num c-top">86</td></tr>
+          <tr><td style="font-weight: 600;">Risk</td><td class="num c-mid">45</td><td class="num c-top bld win">82</td><td class="num c-good">62</td></tr>
+          <tr><td style="font-weight: 600;">Consistency</td><td class="num c-good">78</td><td class="num c-top bld win">90</td><td class="num c-top">82</td></tr>
+          <tr><td style="font-weight: 600;">Alpha</td><td class="num c-top bld win">88</td><td class="num c-top">80</td><td class="num c-top">80</td></tr>
+          <tr><td style="font-weight: 600;">Efficiency</td><td class="num c-good">72</td><td class="num c-top bld win">85</td><td class="num c-good">68</td></tr>
+          <tr><td style="font-weight: 600;">Resilience</td><td class="num c-mid">48</td><td class="num c-top bld win">88</td><td class="num c-good">65</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size: 11px; color: var(--muted); margin-top: 10px;">PPFAS wins 4 of 6 lenses. Quant leads on return and alpha but weaker on resilience.</p>
+    </div>
+
+    <div class="card">
+      <p class="stitle">Calendar Year Returns</p>
+      <table style="width: 100%; border-collapse: separate; border-spacing: 4px; font-size: 11px;">
+        <thead><tr><th style="text-align: left; padding: 4px; font-weight: 700; color: var(--muted); font-size: 10px;"></th><th style="text-align: center; font-weight: 700; color: var(--muted); font-size: 10px;">2025</th><th style="text-align: center; font-weight: 700; color: var(--muted); font-size: 10px;">2024</th><th style="text-align: center; font-weight: 700; color: var(--muted); font-size: 10px;">2023</th><th style="text-align: center; font-weight: 700; color: var(--muted); font-size: 10px;">2022</th><th style="text-align: center; font-weight: 700; color: var(--muted); font-size: 10px;">2021</th></tr></thead>
+        <tbody>
+          <tr>
+            <td style="font-weight: 700; color: var(--accent); padding: 4px;">Quant SC</td>
+            <td class="cycell cy-pos">+28%</td><td class="cycell cy-pos">+42%</td><td class="cycell cy-pos">+38%</td><td class="cycell cy-neg">-8%</td><td class="cycell cy-pos">+68%</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700; color: #1e40af; padding: 4px;">PPFAS FC</td>
+            <td class="cycell cy-pos">+22%</td><td class="cycell cy-pos">+31%</td><td class="cycell cy-pos">+28%</td><td class="cycell cy-flat">+2%</td><td class="cycell cy-pos">+42%</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700; color: #0369a1; padding: 4px;">Motilal MC</td>
+            <td class="cycell cy-pos">+26%</td><td class="cycell cy-pos">+38%</td><td class="cycell cy-pos">+34%</td><td class="cycell cy-neg">-6%</td><td class="cycell cy-pos">+52%</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size: 11px; color: var(--muted); margin-top: 10px;">PPFAS stayed positive in 2022 bear market. Quant bounced hardest in 2021 recovery.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="stitle">Sector Exposure</p>
+    <table class="tbl">
+      <thead><tr><th>Sector</th><th style="text-align: right; color: var(--accent);">Quant SC</th><th style="text-align: right; color: #1e40af;">PPFAS FC</th><th style="text-align: right; color: #0369a1;">Motilal MC</th><th style="text-align: right; color: var(--muted);">Spread</th></tr></thead>
+      <tbody>
+        <tr><td style="font-weight: 600;">Financials</td><td class="num">18%</td><td class="num bld">32%</td><td class="num">22%</td><td class="num" style="color: var(--faint);">14pp</td></tr>
+        <tr><td style="font-weight: 600;">Technology</td><td class="num bld">24%</td><td class="num">18%</td><td class="num">20%</td><td class="num" style="color: var(--faint);">6pp</td></tr>
+        <tr><td style="font-weight: 600;">Healthcare</td><td class="num">14%</td><td class="num">8%</td><td class="num bld">16%</td><td class="num" style="color: var(--faint);">8pp</td></tr>
+        <tr><td style="font-weight: 600;">Industrials</td><td class="num bld">22%</td><td class="num">6%</td><td class="num">14%</td><td class="num c-mid">16pp</td></tr>
+        <tr><td style="font-weight: 600;">Consumer</td><td class="num">8%</td><td class="num bld">14%</td><td class="num">10%</td><td class="num" style="color: var(--faint);">6pp</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size: 11px; color: var(--muted); margin-top: 10px;">16pp spread in Industrials — Quant 4x more exposed than PPFAS. Good diversification if combining funds.</p>
+  </div>
+
+</div>
