@@ -595,10 +595,7 @@ class SectorRotationService:
             )
             .order_by(
                 func.abs(
-                    func.extract(
-                        "epoch",
-                        SectorRotationHistory.snapshot_date - ideal_date,
-                    )
+                    SectorRotationHistory.snapshot_date - ideal_date
                 )
             )
             .limit(1)
