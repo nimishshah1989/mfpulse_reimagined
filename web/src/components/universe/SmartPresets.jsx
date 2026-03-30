@@ -85,47 +85,12 @@ export default function SmartPresets({ allFunds, activePreset, onPresetClick, vi
 
   return (
     <section className="animate-in">
-      <div className="flex items-center gap-2 mb-2">
-        <p className="section-title">Quick Screener Presets</p>
-        <InfoIcon tip="One-click filters that combine multiple lenses to find specific fund profiles. Each preset applies lens + return + risk filters automatically." />
-      </div>
-      <div className="flex items-center gap-3">
-        <div className="scroll-x flex-1 min-w-0">
-          <div className="flex gap-2 pb-1" style={{ minWidth: 'max-content' }}>
-            {PRESETS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => onPresetClick(activePreset === p.id ? null : p.id)}
-                className={`preset-card glass-card px-3.5 py-2.5 flex items-center gap-2 ${
-                  activePreset === p.id ? 'ring-2 ring-teal-400 border-teal-300' : ''
-                }`}
-              >
-                <span className={`${p.iconColor} text-base`}>{p.icon}</span>
-                <div>
-                  <p className="text-[13px] font-semibold text-slate-700">{p.label}</p>
-                  <p className="text-[11px] text-slate-400">{p.desc}</p>
-                </div>
-                <span className={`text-xs font-bold ${p.countColor} tabular-nums ml-1`}>
-                  {counts[p.id]}
-                </span>
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => onPresetClick('custom')}
-              className={`px-3.5 py-2.5 rounded-2xl border border-dashed text-[13px] transition-colors ${
-                activePreset === 'custom'
-                  ? 'border-teal-400 text-teal-600 bg-teal-50'
-                  : 'border-slate-300 text-slate-400 hover:border-teal-300 hover:text-teal-600'
-              }`}
-            >
-              + Custom Filter
-            </button>
-          </div>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <p className="section-title">Quick Screener Presets</p>
+          <InfoIcon tip="One-click filters that combine multiple lenses to find specific fund profiles. Each preset applies lens + return + risk filters automatically." />
         </div>
-
-        {/* View mode toggle — fixed right side */}
+        {/* View mode toggle */}
         {onViewModeChange && (
           <div className="flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5 flex-shrink-0">
             {[
@@ -137,7 +102,7 @@ export default function SmartPresets({ allFunds, activePreset, onPresetClick, vi
                 key={mode.id}
                 type="button"
                 onClick={() => onViewModeChange(mode.id)}
-                className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                   viewMode === mode.id
                     ? 'bg-white shadow-sm text-teal-700 font-semibold'
                     : 'text-slate-500 hover:text-slate-700'
@@ -148,6 +113,38 @@ export default function SmartPresets({ allFunds, activePreset, onPresetClick, vi
             ))}
           </div>
         )}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        {PRESETS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onPresetClick(activePreset === p.id ? null : p.id)}
+            className={`preset-card glass-card px-3.5 py-3 flex items-center gap-2.5 text-left ${
+              activePreset === p.id ? 'ring-2 ring-teal-400 border-teal-300' : ''
+            }`}
+          >
+            <span className={`${p.iconColor} text-base flex-shrink-0`}>{p.icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold text-slate-700 truncate">{p.label}</p>
+              <p className="text-[11px] text-slate-400 truncate">{p.desc}</p>
+            </div>
+            <span className={`text-xs font-bold ${p.countColor} tabular-nums flex-shrink-0`}>
+              {counts[p.id]}
+            </span>
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => onPresetClick('custom')}
+          className={`px-3.5 py-3 rounded-2xl border border-dashed text-[13px] font-medium transition-colors ${
+            activePreset === 'custom'
+              ? 'border-teal-400 text-teal-600 bg-teal-50'
+              : 'border-slate-300 text-slate-400 hover:border-teal-300 hover:text-teal-600'
+          }`}
+        >
+          + Custom Filter
+        </button>
       </div>
     </section>
   );

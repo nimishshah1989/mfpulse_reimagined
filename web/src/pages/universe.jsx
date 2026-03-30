@@ -373,25 +373,25 @@ export default function UniversePage() {
   }, []);
 
   if (loading) return (
-    <div className="max-w-[1400px] mx-auto px-1 space-y-4">
+    <div className="max-w-[1440px] mx-auto px-4 space-y-5">
       <SkeletonLoader variant="row" className="w-full h-12" />
       <SkeletonLoader variant="row" className="w-full h-10" />
-      <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-2 space-y-3">{[1, 2, 3].map((i) => <SkeletonLoader key={i} className="h-32 rounded-xl" />)}</div>
-        <SkeletonLoader variant="chart" className="col-span-7 h-[560px] rounded-xl" />
-        <div className="col-span-3 space-y-3">{[1, 2, 3].map((i) => <SkeletonLoader key={i} className="h-40 rounded-xl" />)}</div>
+      <div className="grid grid-cols-12 gap-5">
+        <div className="col-span-3 space-y-4">{[1, 2, 3].map((i) => <SkeletonLoader key={i} className="h-32 rounded-xl" />)}</div>
+        <SkeletonLoader variant="chart" className="col-span-6 h-[560px] rounded-xl" />
+        <div className="col-span-3 space-y-4">{[1, 2, 3].map((i) => <SkeletonLoader key={i} className="h-40 rounded-xl" />)}</div>
       </div>
     </div>
   );
 
   if (error) return (
-    <div className="max-w-[1400px] mx-auto px-1">
+    <div className="max-w-[1440px] mx-auto px-4">
       <EmptyState message={`Failed to load fund data: ${error}`} action="Retry" onAction={() => window.location.reload()} />
     </div>
   );
 
   return (
-    <div className="max-w-[1440px] mx-auto px-2 space-y-5" style={{ backgroundColor: '#ffffff' }}>
+    <div className="max-w-[1440px] mx-auto px-4 space-y-5" style={{ backgroundColor: '#ffffff' }}>
       {/* NL Search Bar */}
       <div className="animate-in">
         <div className="relative">
@@ -483,7 +483,7 @@ export default function UniversePage() {
       {/* Fund Archetype Cards */}
       <SmartBuckets universe={globallyFiltered} />
 
-      {/* Main 3-Column Layout (2:7:3) */}
+      {/* Main 3-Column Layout (3:6:3) — symmetrical */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 animate-in" style={{ animationDelay: '0.1s' }}>
         {/* LEFT: Stats sidebar */}
         <TierSummary
@@ -496,9 +496,9 @@ export default function UniversePage() {
         />
 
         {/* CENTER: Visualization */}
-        <div className="col-span-12 lg:col-span-7">
-          <div className="flex items-center justify-between mb-2.5 px-1">
-            <p className="text-[13px] font-bold text-slate-500 uppercase tracking-wider">
+        <div className="col-span-12 lg:col-span-6">
+          <div className="flex items-center justify-between mb-3">
+            <p className="section-title">
               Fund Universe{viewMode !== 'scatter' ? ` \u2014 ${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} View` : ''}
             </p>
             <span className="text-sm font-bold text-teal-600 tabular-nums">
@@ -563,7 +563,7 @@ export default function UniversePage() {
           </div>
           {/* Chart Guide — scatter only */}
           {viewMode === 'scatter' && (
-            <details className="mt-2.5 text-xs text-slate-400">
+            <details className="mt-3 glass-card px-4 py-2.5 text-xs text-slate-400">
               <summary className="cursor-pointer hover:text-slate-600 font-medium">Chart Guide</summary>
               <ul className="mt-1.5 space-y-1 pl-4 list-disc text-[11px]">
                 <li>Click a bubble to see fund details</li>
