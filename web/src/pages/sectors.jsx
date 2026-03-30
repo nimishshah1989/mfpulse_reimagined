@@ -110,6 +110,8 @@ export default function SectorsPage() {
     const toTitleCase = (str) =>
       str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : str;
 
+    // Sector data is the core — MarketPulse data is supplementary.
+    // Never let MP failures block the page.
     let anySuccess = false;
 
     // Build history map
@@ -147,8 +149,9 @@ export default function SectorsPage() {
       anySuccess = true;
     } else {
       setSectorData([]);
-      anySuccess = true;
     }
+    // Sector data alone is enough for the page to be useful
+    anySuccess = true;
 
     if (breadthRes.status === 'fulfilled') {
       setBreadthData(breadthRes.value.data || null);

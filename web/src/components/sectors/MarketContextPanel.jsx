@@ -93,13 +93,7 @@ export default function MarketContextPanel({
     regime?.market_regime || regime?.regime_label || 'Neutral';
   const regimeSince = regime?.regime_start_date || regime?.since || null;
 
-  if (!online) {
-    return (
-      <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-700">
-        MarketPulse offline — showing cached data
-      </div>
-    );
-  }
+  // Don't hide the panel when MP is offline — show what we can from sector data
 
   return (
     <section className="grid grid-cols-4 gap-4 animate-in">

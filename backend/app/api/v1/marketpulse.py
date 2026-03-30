@@ -1,82 +1,86 @@
-"""API endpoints that proxy MarketPulse data."""
+"""API endpoints for MarketPulse data — reads from persistent DB cache.
+
+Data flow:
+1. Scheduled job (daily 9:45 PM) fetches from MarketPulse → writes to kv_cache
+2. These endpoints read from kv_cache (instant, no external dependency)
+3. If cache is stale (>26h), attempts live fetch as fallback
+4. If all fails, serves last-known-good data — never returns empty
+"""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.database import get_db
 from app.models.schemas.responses import APIResponse, ErrorDetail
 from app.services.marketpulse_client import MarketPulseClient
 
 router = APIRouter(prefix="/market", tags=["market"])
 
 
-def _get_client() -> MarketPulseClient:
+def _get_client(db: Session) -> MarketPulseClient:
     settings = get_settings()
     return MarketPulseClient(
         base_url=settings.marketpulse_base_url,
-        timeout=settings.marketpulse_timeout_seconds,
+        timeout=min(settings.marketpulse_timeout_seconds, 10),
+        db=db,
     )
 
 
 @router.get("/breadth")
-def get_breadth(lookback: str = Query(default="1y")) -> APIResponse:
-    """Get breadth indicators from MarketPulse."""
-    client = _get_client()
+def get_breadth(lookback: str = Query(default="1y"), db: Session = Depends(get_db)) -> APIResponse:
+    """Get breadth indicators (from cached MarketPulse data)."""
+    client = _get_client(db)
     data = client.get_breadth_history(lookback=lookback)
     if data is None:
         return APIResponse(
             success=False,
             error=ErrorDetail(
                 code="MARKETPULSE_UNAVAILABLE",
-                message="MarketPulse breadth data unavailable",
+                message="MarketPulse breadth data unavailable — run sync job",
             ),
         )
     return APIResponse(data=data)
 
 
 @router.get("/sentiment")
-def get_sentiment() -> APIResponse:
-    """Get sentiment composite from MarketPulse."""
-    client = _get_client()
+def get_sentiment(db: Session = Depends(get_db)) -> APIResponse:
+    """Get sentiment composite (from cached MarketPulse data)."""
+    client = _get_client(db)
     data = client.get_sentiment()
     if data is None:
         return APIResponse(
             success=False,
             error=ErrorDetail(
                 code="MARKETPULSE_UNAVAILABLE",
-                message="MarketPulse sentiment data unavailable",
+                message="MarketPulse sentiment data unavailable — run sync job",
             ),
         )
     return APIResponse(data=data)
 
 
 @router.get("/sectors")
-def get_sectors(period: str = Query(default="3M")) -> APIResponse:
-    """Get sector RS scores from MarketPulse."""
-    client = _get_client()
+def get_sectors(period: str = Query(default="3M"), db: Session = Depends(get_db)) -> APIResponse:
+    """Get sector RS scores (from cached MarketPulse data)."""
+    client = _get_client(db)
     data = client.get_sector_scores(period=period)
     if data is None:
         return APIResponse(
             success=False,
             error=ErrorDetail(
                 code="MARKETPULSE_UNAVAILABLE",
-                message="MarketPulse sector data unavailable",
+                message="MarketPulse sector data unavailable — run sync job",
             ),
         )
     return APIResponse(data=data)
 
 
 @router.get("/nifty")
-def get_nifty() -> APIResponse:
-    """Get NIFTY index data with period returns from MarketPulse."""
-    settings = get_settings()
-    # Use shorter timeout for nifty — these endpoints may not exist
-    client = MarketPulseClient(
-        base_url=settings.marketpulse_base_url,
-        timeout=min(settings.marketpulse_timeout_seconds, 5),
-    )
-
+def get_nifty(db: Session = Depends(get_db)) -> APIResponse:
+    """Get NIFTY index data with period returns (from cached MarketPulse data)."""
+    client = _get_client(db)
     indices_data = client.get_indices()
     returns_data = client.get_indices_latest()
 
@@ -85,14 +89,13 @@ def get_nifty() -> APIResponse:
             success=False,
             error=ErrorDetail(
                 code="MARKETPULSE_UNAVAILABLE",
-                message="MarketPulse index data unavailable",
+                message="MarketPulse index data unavailable — run sync job",
             ),
         )
 
     # Extract NIFTY object from indices response
     nifty = None
     if indices_data:
-        # Handle both list and dict responses
         if isinstance(indices_data, list):
             for idx in indices_data:
                 if isinstance(idx, dict) and "NIFTY" in (idx.get("name", "") or "").upper():
@@ -101,7 +104,7 @@ def get_nifty() -> APIResponse:
         elif isinstance(indices_data, dict):
             nifty = indices_data.get("NIFTY") or indices_data.get("nifty") or indices_data
 
-    # Build all_indices map keyed by normalized name (e.g. BANKNIFTY, NIFTYIT)
+    # Build all_indices map
     all_indices = {}
     if indices_data:
         if isinstance(indices_data, list):
@@ -124,16 +127,29 @@ def get_nifty() -> APIResponse:
 
 
 @router.get("/regime")
-def get_market_regime() -> APIResponse:
-    """Get current market regime + leading sectors from MarketPulse."""
-    client = _get_client()
+def get_market_regime(db: Session = Depends(get_db)) -> APIResponse:
+    """Get current market regime (from cached MarketPulse data)."""
+    client = _get_client(db)
     data = client.get_market_picks()
     if data is None:
         return APIResponse(
             success=False,
             error=ErrorDetail(
                 code="MARKETPULSE_UNAVAILABLE",
-                message="MarketPulse regime data unavailable",
+                message="MarketPulse regime data unavailable — run sync job",
             ),
         )
     return APIResponse(data=data)
+
+
+@router.post("/sync")
+def trigger_sync(db: Session = Depends(get_db)) -> APIResponse:
+    """Manually trigger MarketPulse data sync."""
+    client = _get_client(db)
+    results = client.sync_all()
+    success_count = sum(1 for v in results.values() if v)
+    return APIResponse(data={
+        "synced": success_count,
+        "total": len(results),
+        "details": results,
+    })

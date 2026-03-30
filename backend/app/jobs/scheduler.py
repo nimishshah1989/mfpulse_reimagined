@@ -281,20 +281,23 @@ class JobScheduler:
             db.close()
 
     def job_sync_marketpulse(self) -> None:
-        """Cache breadth, sentiment, and sector data from MarketPulse."""
+        """Fetch from MarketPulse and persist to kv_cache DB table."""
         from app.core.config import get_settings
         from app.services.marketpulse_client import MarketPulseClient
 
         settings = get_settings()
-        client = MarketPulseClient(
-            base_url=settings.marketpulse_base_url,
-            timeout=settings.marketpulse_timeout_seconds,
-        )
-        # Force-refresh cache by calling each endpoint
-        client.get_breadth_history()
-        client.get_sentiment()
-        client.get_sector_scores()
-        logger.info("MarketPulse signals synced")
+        db = self._db_session_factory()
+        try:
+            client = MarketPulseClient(
+                base_url=settings.marketpulse_base_url,
+                timeout=min(settings.marketpulse_timeout_seconds, 10),
+                db=db,
+            )
+            results = client.sync_all()
+            success = sum(1 for v in results.values() if v)
+            logger.info("MarketPulse sync: %d/%d endpoints cached to DB", success, len(results))
+        finally:
+            db.close()
 
     def job_expire_overrides(self) -> None:
         """Expire stale FM overrides."""

@@ -1,8 +1,8 @@
 /**
- * SectorRiskReturn — Aggregate sector-level risk vs return scatter.
- * X = RS Score (proxy for relative strength), Y = Weighted Return,
+ * SectorRiskReturn — Aggregate sector-level risk vs momentum scatter.
+ * X = RS Score (0-100), Y = RS Momentum (score change),
  * Bubble size = total AUM exposed. Color = quadrant.
- * Tells the story: "Which sectors are delivering returns at which risk level?"
+ * Tells the story: "Which sectors have strength AND improving trajectory?"
  */
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { QUADRANT_COLORS } from '../../lib/sectors';
@@ -31,11 +31,10 @@ export default function SectorRiskReturn({ sectors, onSectorClick }) {
   const data = useMemo(() => {
     if (!sectors?.length) return [];
     return sectors
-      .filter((s) => s.weighted_return != null)
       .map((s) => ({
         ...s,
         x: s.rs_score ?? 50,
-        y: s.weighted_return ?? 0,
+        y: s.rs_momentum ?? s.momentum_1m ?? 0,
         r: Math.max(12, Math.min(32, 8 + Math.sqrt((s.total_aum_exposed ?? 0) / 1e10) * 4)),
       }));
   }, [sectors]);
@@ -107,8 +106,30 @@ export default function SectorRiskReturn({ sectors, onSectorClick }) {
     ctx.save();
     ctx.translate(12, (t + b) / 2);
     ctx.rotate(-Math.PI / 2);
-    ctx.fillText('Weighted Return (%) →', 0, 0);
+    ctx.fillText('↑ RS Momentum (Score Change)', 0, 0);
     ctx.restore();
+
+    // Quadrant divider at RS=50 (vertical) and Momentum=0 (horizontal)
+    const midX = l + ((50 - xExtent[0]) / (xExtent[1] - xExtent[0])) * (r - l);
+    const midY = b - ((0 - yExtent[0]) / (yExtent[1] - yExtent[0])) * (b - t);
+    if (midX > l && midX < r) {
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(midX, t); ctx.lineTo(midX, b); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#94a3b8'; ctx.font = '8px Inter, sans-serif';
+      ctx.textAlign = 'center'; ctx.fillText('RS=50', midX, t - 4);
+    }
+    if (midY > t && midY < b) {
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(l, midY); ctx.lineTo(r, midY); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#94a3b8'; ctx.font = '8px Inter, sans-serif';
+      ctx.textAlign = 'right'; ctx.fillText('Mom=0', l - 4, midY + 3);
+    }
 
     // Tick labels
     ctx.textBaseline = 'top';
@@ -180,9 +201,9 @@ export default function SectorRiskReturn({ sectors, onSectorClick }) {
     <div className="bg-white rounded-xl border border-slate-200 p-5">
       <div className="flex items-center justify-between mb-2">
         <div>
-          <p className="section-title">Sector Risk-Return Map</p>
+          <p className="section-title">Sector Strength vs Momentum</p>
           <p className="text-[11px] text-slate-400 mt-0.5">
-            Relative strength vs weighted return. Bubble size = AUM exposed. Click to explore.
+            Top-right = strong AND accelerating (best). Bottom-left = weak AND decelerating (avoid). Bubble = AUM.
           </p>
         </div>
       </div>
@@ -215,9 +236,9 @@ export default function SectorRiskReturn({ sectors, onSectorClick }) {
               <div className="grid grid-cols-2 gap-1 mt-1 text-[10px]">
                 <span className="text-slate-400">RS Score</span>
                 <span className="font-bold tabular-nums text-right">{Math.round(hovered.x)}</span>
-                <span className="text-slate-400">Wt. Return</span>
+                <span className="text-slate-400">Momentum</span>
                 <span className={`font-bold tabular-nums text-right ${hovered.y >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {formatPct(hovered.y)}
+                  {hovered.y > 0 ? '+' : ''}{Number(hovered.y).toFixed(1)}
                 </span>
                 <span className="text-slate-400">AUM</span>
                 <span className="font-semibold tabular-nums text-right">{formatAUMRaw(hovered.total_aum_exposed)}</span>

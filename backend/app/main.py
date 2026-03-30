@@ -49,6 +49,27 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
             scheduler.start()
             set_scheduler(scheduler)
             logger.info("Job scheduler started")
+
+            # Prime MarketPulse cache on startup (background, non-blocking)
+            import threading
+            def _prime_mp_cache():
+                try:
+                    from app.services.marketpulse_client import MarketPulseClient
+                    db_session = SessionLocal()
+                    try:
+                        client = MarketPulseClient(
+                            base_url=settings.marketpulse_base_url,
+                            timeout=min(settings.marketpulse_timeout_seconds, 10),
+                            db=db_session,
+                        )
+                        results = client.sync_all()
+                        ok = sum(1 for v in results.values() if v)
+                        logger.info("Startup MP cache prime: %d/%d endpoints cached", ok, len(results))
+                    finally:
+                        db_session.close()
+                except Exception as e:
+                    logger.warning("Startup MP cache prime failed (non-fatal): %s", e)
+            threading.Thread(target=_prime_mp_cache, daemon=True).start()
         except Exception as e:
             logger.error("Failed to start scheduler: %s", e)
 
@@ -112,7 +133,7 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
         if request.method == "GET" and response.status_code == 200:
             path = request.url.path
             if path.startswith("/api/v1/market/"):
-                response.headers["Cache-Control"] = "public, max-age=60"
+                response.headers["Cache-Control"] = "public, max-age=3600"  # 1h — DB-cached data
             elif path.startswith("/api/v1/"):
                 response.headers["Cache-Control"] = "public, max-age=300"
         return response

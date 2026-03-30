@@ -68,7 +68,6 @@ export default function FundExposureMatrix({
   }, [funds, sectorExposures]);
 
   if (
-    !online ||
     !sectorData?.length ||
     matrixFunds.length === 0 ||
     sectorColumns.length === 0
