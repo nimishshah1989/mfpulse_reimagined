@@ -170,13 +170,6 @@ export default function TierSummary({
         </p>
       </div>
 
-      {/* Reading the Chart */}
-      <div className="glass-card p-4" style={{ background: 'rgba(240, 253, 250, 0.9)' }}>
-        <p className="text-xs font-bold text-teal-700 mb-1.5">Reading the Chart</p>
-        <p className="text-[11px] text-teal-600 leading-relaxed">
-          <strong>Top-left = ideal</strong> (high return, low risk). Bubble size = AUM. Color = {lensName} score. Look for large, dark-green bubbles in the top-left quadrant.
-        </p>
-      </div>
     </div>
   );
 }

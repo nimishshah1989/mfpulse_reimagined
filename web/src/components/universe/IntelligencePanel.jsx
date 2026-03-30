@@ -156,53 +156,6 @@ export default function IntelligencePanel({
 
   return (
     <div className="hidden lg:block col-span-3 space-y-4">
-      {/* Market Context */}
-      <div className="glass-card p-5">
-        <div className="flex items-center gap-1 mb-3">
-          <p className="section-title">Market Context</p>
-          <InfoIcon tip="Current market regime affects which funds perform well. In Risk-On regimes, aggressive funds outperform. In Risk-Off, defensive funds shine." />
-        </div>
-        {regime ? (
-          <>
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] text-slate-600">Regime</span>
-                <span className={`text-[13px] font-bold ${regimeColor(regime.market_regime)}`}>
-                  {regime.market_regime || 'Unknown'}
-                </span>
-              </div>
-              {regime.trend && (
-                <div className="flex items-center justify-between">
-                  <span className="text-[13px] text-slate-600">Trend</span>
-                  <span className="text-[13px] font-bold text-slate-700">{regime.trend}</span>
-                </div>
-              )}
-              {topCategories.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-slate-100">
-                  <p className="text-xs text-slate-500 font-semibold mb-2">Top Categories <span className="font-normal text-slate-400">(% of visible funds)</span></p>
-                  {topCategories.map((cat) => (
-                    <div key={cat.name} className="flex items-center justify-between py-1">
-                      <span className="text-xs text-slate-600 truncate flex-1">{cat.name}</span>
-                      <div className="flex items-center gap-2 ml-2">
-                        <span className="text-xs font-bold text-teal-600 tabular-nums">{cat.pct}%</span>
-                        <span className="text-[11px] text-slate-400 tabular-nums">{cat.count}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className={`mt-3 p-3 rounded-xl ${regimeBg(regime.market_regime)}`}>
-              <p className={`text-[11px] leading-relaxed ${regimeTextColor(regime.market_regime)}`}>
-                <strong>Implication:</strong> {regimeImplication(regime.market_regime)}
-              </p>
-            </div>
-          </>
-        ) : (
-          <p className="text-xs text-slate-400">Loading market data...</p>
-        )}
-      </div>
-
       {/* Top 5 */}
       <div className="glass-card p-5">
         <p className="section-title mb-3">Top 5 -- Visible Funds</p>

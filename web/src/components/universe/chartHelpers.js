@@ -76,6 +76,37 @@ export function drawChart(ctx, params) {
   ctx.save();
   ctx.translate(margin.left, margin.top);
 
+  const xMidVal = isReturnX ? (xDomain[0] + xDomain[1]) / 2 : 50;
+  const yMidVal = isReturnY ? (yDomain[0] + yDomain[1]) / 2 : 50;
+  const xMid = xScale(xMidVal);
+  const yMid = yScale(yMidVal);
+
+  // Quadrant backgrounds — drawn OUTSIDE zoom so they always fill visible area
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, innerW, innerH);
+  ctx.clip();
+
+  ctx.fillStyle = 'rgba(5, 150, 105, 0.04)';
+  ctx.fillRect(0, 0, xMid, yMid);
+  ctx.fillStyle = 'rgba(245, 158, 11, 0.04)';
+  ctx.fillRect(xMid, 0, innerW - xMid, yMid);
+  ctx.fillStyle = 'rgba(14, 165, 233, 0.04)';
+  ctx.fillRect(0, yMid, xMid, innerH - yMid);
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.04)';
+  ctx.fillRect(xMid, yMid, innerW - xMid, innerH - yMid);
+
+  // Quadrant divider lines — dashed at midpoint
+  ctx.setLineDash([6, 6]);
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(xMid, 0); ctx.lineTo(xMid, innerH); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, yMid); ctx.lineTo(innerW, yMid); ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.restore();
+
+  // Clipped + zoomed area for grid + bubbles
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, 0, innerW, innerH);
@@ -85,37 +116,10 @@ export function drawChart(ctx, params) {
   ctx.translate(currentTransform.x, currentTransform.y);
   ctx.scale(currentTransform.k, currentTransform.k);
 
-  const xMidVal = isReturnX ? (xDomain[0] + xDomain[1]) / 2 : 50;
-  const yMidVal = isReturnY ? (yDomain[0] + yDomain[1]) / 2 : 50;
-  const xMid = xScale(xMidVal);
-  const yMid = yScale(yMidVal);
-
-  // Quadrant background rectangles
-  // Top-left: low risk + high return = SWEET SPOT (emerald tint)
-  ctx.fillStyle = 'rgba(5, 150, 105, 0.04)';
-  ctx.fillRect(0, 0, xMid, yMid);
-  // Top-right: high risk + high return = HIGH RISK HIGH RETURN (amber tint)
-  ctx.fillStyle = 'rgba(245, 158, 11, 0.04)';
-  ctx.fillRect(xMid, 0, innerW - xMid, yMid);
-  // Bottom-left: low risk + low return = CONSERVATIVE (sky tint)
-  ctx.fillStyle = 'rgba(14, 165, 233, 0.04)';
-  ctx.fillRect(0, yMid, xMid, innerH - yMid);
-  // Bottom-right: high risk + low return = AVOID (red tint)
-  ctx.fillStyle = 'rgba(239, 68, 68, 0.04)';
-  ctx.fillRect(xMid, yMid, innerW - xMid, innerH - yMid);
-
-  // Grid
-  ctx.strokeStyle = '#f1f5f9';
-  ctx.lineWidth = 0.5 / currentTransform.k;
+  // Grid lines — visible
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 0.8 / currentTransform.k;
   drawGridLines(ctx, xScale, yScale, innerW, innerH, xDomain, yDomain, isReturnX, isReturnY);
-
-  // Quadrant divider lines — dashed gray at midpoint of each axis
-  ctx.setLineDash([4 / currentTransform.k, 4 / currentTransform.k]);
-  ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
-  ctx.lineWidth = 1 / currentTransform.k;
-  ctx.beginPath(); ctx.moveTo(xMid, 0); ctx.lineTo(xMid, innerH); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0, yMid); ctx.lineTo(innerW, yMid); ctx.stroke();
-  ctx.setLineDash([]);
 
   // Bubbles
   for (const pt of pts) {
@@ -145,6 +149,14 @@ export function drawChart(ctx, params) {
   ctx.restore(); // zoom
   ctx.restore(); // clip
 
+  // Axis lines — solid borders
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.lineTo(0, innerH); // Y axis
+  ctx.moveTo(0, innerH); ctx.lineTo(innerW, innerH); // X axis
+  ctx.stroke();
+
   // Quadrant labels — centered in each quadrant
   ctx.font = '700 13px Inter, sans-serif';
   ctx.textAlign = 'center';
@@ -165,19 +177,19 @@ export function drawChart(ctx, params) {
   ctx.textBaseline = 'alphabetic';
 
   // Axis labels
-  ctx.fillStyle = '#475569';
+  ctx.fillStyle = '#334155';
   ctx.font = '600 12px Inter, sans-serif';
   ctx.textAlign = 'center';
   const xLabel = isReturnX
-    ? 'Risk (Std Dev 3Y %) \u2014 Lower is Better  \u2192'
+    ? 'Risk Score (0-100) \u2014 Lower is Better  \u2192'
     : `${LENS_LABELS[xAxis] || xAxis} Score (0-100)`;
-  ctx.fillText(xLabel, innerW / 2, innerH + 36);
+  ctx.fillText(xLabel, innerW / 2, innerH + 38);
 
   const yLabel = isReturnY
     ? `\u2191  ${yAxis === 'return_1y' ? '1Y' : yAxis === 'return_3y' ? '3Y' : '5Y'} Return %`
     : `\u2191  ${LENS_LABELS[yAxis] || yAxis} Score`;
   ctx.save();
-  ctx.translate(-42, innerH / 2);
+  ctx.translate(-44, innerH / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.fillText(yLabel, 0, 0);
   ctx.restore();
@@ -214,8 +226,8 @@ function drawGridLines(ctx, xScale, yScale, innerW, innerH, xDomain, yDomain, is
 }
 
 function drawTicks(ctx, xScale, yScale, innerW, innerH, xDomain, yDomain, isReturnX, isReturnY) {
-  ctx.fillStyle = '#64748b';
-  ctx.font = '10px Inter, sans-serif';
+  ctx.fillStyle = '#475569';
+  ctx.font = '500 11px Inter, sans-serif';
   ctx.textAlign = 'center';
   if (!isReturnX) {
     for (const v of [0, 25, 50, 75, 100]) {
