@@ -14,8 +14,10 @@ import {
 import { LENS_OPTIONS, LENS_CLASS_KEYS } from '../lib/lens';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
 import EmptyState from '../components/shared/EmptyState';
+import InfoBulb from '../components/shared/InfoBulb';
 import FundSearch from '../components/fund360/FundSearch';
 import HeroSection from '../components/fund360/HeroSection';
+import FundManagerStrategy from '../components/fund360/FundManagerStrategy';
 import NarrativeCard from '../components/fund360/NarrativeCard';
 import PerformanceChart from '../components/fund360/PerformanceChart';
 import ReturnsBars from '../components/fund360/ReturnsBars';
@@ -33,20 +35,18 @@ import PeerScatter from '../components/fund360/PeerScatter';
 import PortfolioMetrics from '../components/fund360/PortfolioMetrics';
 import CreditQuality from '../components/fund360/CreditQuality';
 
-/* ---- Section wrapper matching mockup white cards ---- */
+/* ---- Section wrapper — matches sectors page design language ---- */
 function SectionCard({ title, subtitle, badge, children, className = '' }) {
   return (
-    <div className={`bg-white rounded-2xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5 animate-in ${className}`}>
+    <div className={`bg-white rounded-xl border border-slate-200 p-5 ${className}`}>
       {(title || subtitle || badge) && (
         <div className="flex items-center justify-between mb-4">
           <div>
             {title && (
-              <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-slate-400">
-                {title}
-              </p>
+              <p className="section-title">{title}</p>
             )}
             {subtitle && (
-              <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>
             )}
           </div>
           {badge}
@@ -227,12 +227,12 @@ export default function Fund360Page() {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto space-y-6">
-        <SkeletonLoader className="h-48 rounded-2xl" />
+        <SkeletonLoader className="h-48 rounded-xl" />
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <SkeletonLoader className="lg:col-span-2 h-72 rounded-2xl" />
-          <SkeletonLoader className="lg:col-span-3 h-72 rounded-2xl" />
+          <SkeletonLoader className="lg:col-span-2 h-72 rounded-xl" />
+          <SkeletonLoader className="lg:col-span-3 h-72 rounded-xl" />
         </div>
-        <SkeletonLoader className="h-80 rounded-2xl" />
+        <SkeletonLoader className="h-80 rounded-xl" />
       </div>
     );
   }
@@ -255,7 +255,7 @@ export default function Fund360Page() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* SECTION 1: Hero */}
+      {/* SECTION 1: Hero — Fund Identity + Quick Stats + Returns Strip */}
       <HeroSection
         fundDetail={fundDetail}
         lensScores={lensScores}
@@ -263,16 +263,27 @@ export default function Fund360Page() {
         onCompare={() => setCompareOpen(true)}
       />
 
-      {/* SECTION 2: Six-Lens Radar + Lens Breakdown */}
+      {/* SECTION 2: Fund Manager & Strategy (qualitative) */}
+      <FundManagerStrategy fundDetail={fundDetail} />
+
+      {/* SECTION 3: Intelligence Signals — 3 actionable cards up front */}
+      <SectionCard
+        title="Intelligence Signals"
+        subtitle="Three things to know before making a decision on this fund"
+      >
+        <IntelligenceCards mstarId={mstarId} />
+      </SectionCard>
+
+      {/* SECTION 4: Six-Lens Radar + Lens Breakdown */}
       {lensScores && (
-        <div className="animate-in grid grid-cols-1 lg:grid-cols-5 gap-4" style={{ animationDelay: '0.1s' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Narrative / Radar (2 cols) */}
           <div className="lg:col-span-2 space-y-4">
             <NarrativeCard
               mstarId={mstarId}
               headlineTag={lensScores?.headline_tag}
             />
-            <SectionCard title="Fund DNA — Six Lenses">
+            <SectionCard title="Six-Lens Classification" subtitle="Each lens is an independent 0-100 percentile rank within this category">
               <RadarChart
                 funds={[{
                   label: fundDetail.fund_name || 'Fund',
@@ -288,6 +299,11 @@ export default function Fund360Page() {
                 size={280}
                 categoryAvg={peerAvgs}
               />
+              <InfoBulb title="Radar Chart" items={[
+                { icon: '🎯', label: 'Solid teal', text: 'This fund. Points farther from center = higher score.' },
+                { icon: '- - -', label: 'Dashed gray', text: 'Category median. Compare the shapes to see where this fund excels vs peers.' },
+                { icon: '📊', label: 'No composite', text: 'Each lens is independent. A fund can be a Leader in returns but Weak in efficiency.' },
+              ]} />
             </SectionCard>
           </div>
 
@@ -319,8 +335,11 @@ export default function Fund360Page() {
         </div>
       )}
 
-      {/* SECTION 3: NAV Performance Chart */}
-      <SectionCard title="Performance">
+      {/* SECTION 5: Performance Comparison */}
+      <SectionCard
+        title="Performance Comparison"
+        subtitle="Growth of investment — fund vs benchmark vs category average"
+      >
         <PerformanceChart
           mstarId={mstarId}
           initialData={navData}
@@ -329,25 +348,15 @@ export default function Fund360Page() {
         />
       </SectionCard>
 
-      {/* SECTION 4: Quartile Consistency Ribbon */}
-      {fundDetail.ranks && (
-        <SectionCard title="Quartile Consistency">
-          <QuartileRibbon
-            ranks={fundDetail.ranks}
-            categoryName={fundDetail.category_name}
-          />
-        </SectionCard>
-      )}
-
-      {/* SECTION 5: Returns vs Category + Peer Scatter side by side */}
-      <div className="animate-in grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* SECTION 5b: Returns vs Category + Peer Scatter side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <SectionCard title="Returns vs Category">
           <ReturnsBars
             fundReturns={fundReturns}
             categoryReturns={categoryReturns}
           />
         </SectionCard>
-        <SectionCard title="Peer Scatter" subtitle="Risk vs Return in category">
+        <SectionCard title="Peer Scatter" subtitle="Risk vs return — this fund highlighted in teal">
           <PeerScatter
             fund={fundDetail}
             lensScores={lensScores}
@@ -357,15 +366,35 @@ export default function Fund360Page() {
         </SectionCard>
       </div>
 
-      {/* SECTION 6: Risk Profile Stats Grid */}
-      <SectionCard title="Risk Profile">
+      {/* SECTION 6: Quartile Rank History */}
+      {fundDetail.ranks && (
+        <SectionCard
+          title="Quartile Rank History"
+          subtitle="Where this fund ranked within its category over time. Q1 = top 25%."
+        >
+          <QuartileRibbon
+            ranks={fundDetail.ranks}
+            categoryName={fundDetail.category_name}
+          />
+          <InfoBulb title="Quartile History" items={[
+            { icon: '🏆', label: 'Consistency matters', text: 'A fund in Q1/Q2 most years is genuinely consistent. If great trailing returns come from one exceptional year, the calendar view exposes it.' },
+            { icon: '📅', label: 'Calendar year percentiles', text: 'Lower percentile = better. P10 = top 10% that year. Look for sustained low percentiles across years.' },
+          ]} />
+        </SectionCard>
+      )}
+
+      {/* SECTION 7: Risk Profile */}
+      <SectionCard
+        title="Risk Profile"
+        subtitle="All metrics are 3-year rolling. Lower is better for risk metrics (except Sharpe/Sortino — higher is better)."
+      >
         <RiskProfile riskStats={combinedRiskStats} />
       </SectionCard>
 
-      {/* SECTION 7: Holdings + Sector + Asset + Portfolio + Credit */}
-      <div className="animate-in grid grid-cols-1 lg:grid-cols-3 gap-4" style={{ animationDelay: '0.3s' }}>
+      {/* SECTION 8: Portfolio Holdings — expandable accordion */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Holdings (2 cols) */}
-        <SectionCard title="Top Holdings" className="lg:col-span-2">
+        <SectionCard title="Portfolio Holdings" subtitle="Click sections to expand. All allocations sum to 100%." className="lg:col-span-2">
           <HoldingsTable holdings={holdings} sectorQuadrants={sectorQuadrants} />
         </SectionCard>
 
@@ -386,25 +415,20 @@ export default function Fund360Page() {
         </div>
       </div>
 
-      {/* SECTION 7b: Portfolio Metrics */}
+      {/* SECTION 8b: Portfolio Metrics */}
       {(fundDetail.portfolio || holdingsSnapshot) && (
-        <SectionCard title="Portfolio Metrics" subtitle="From latest holdings snapshot">
+        <SectionCard title="Portfolio Characteristics" subtitle="Valuation, quality, and style metrics from latest holdings snapshot">
           <PortfolioMetrics holdingsData={fundDetail.portfolio || holdingsSnapshot} />
         </SectionCard>
       )}
 
-      {/* SECTION 8: Peer Positioning */}
-      <SectionCard title="Peer Positioning">
+      {/* SECTION 9: Peer Comparison */}
+      <SectionCard title="Peer Comparison" subtitle="All funds in the same SEBI category, sorted by Sharpe ratio">
         <PeerPositioning
           scores={lensScores}
           peerAvgs={peerAvgs}
           peers={peers}
         />
-      </SectionCard>
-
-      {/* SECTION 9: Fund Intelligence */}
-      <SectionCard title="Fund Intelligence" subtitle="Actionable insights for this fund">
-        <IntelligenceCards mstarId={mstarId} />
       </SectionCard>
 
       {/* Compare Mode Panel */}

@@ -133,7 +133,7 @@ export default function HeroSection({ fundDetail, lensScores, mstarId, onCompare
 
   return (
     <div className="animate-in">
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         {/* Teal top bar */}
         <div className="flex items-center justify-between px-6 py-3 bg-gradient-to-r from-teal-600 to-teal-500 flex-wrap gap-2">
           <div className="flex items-center gap-3 flex-wrap">
@@ -145,6 +145,16 @@ export default function HeroSection({ fundDetail, lensScores, mstarId, onCompare
             {fundDetail.purchase_mode && (
               <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                 {fundDetail.purchase_mode === 2 || fundDetail.purchase_mode === 'Direct' ? 'Direct' : fundDetail.purchase_mode === 1 || fundDetail.purchase_mode === 'Regular' ? 'Regular' : fundDetail.purchase_mode || ''} {'\u2022'} Growth
+              </span>
+            )}
+            {fundDetail.sip_available && (
+              <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                SIP {'\u2713'}
+              </span>
+            )}
+            {fundDetail.primary_benchmark && (
+              <span className="text-white/70 text-[10px] font-medium">
+                Benchmark: <span className="text-teal-200 font-semibold">{fundDetail.primary_benchmark}</span>
               </span>
             )}
           </div>

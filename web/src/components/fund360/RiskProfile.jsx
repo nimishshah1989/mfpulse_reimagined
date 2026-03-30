@@ -1,6 +1,7 @@
 import InfoIcon from '../shared/InfoIcon';
+import InfoBulb from '../shared/InfoBulb';
 
-function StatCard({ label, value, format, sublabel, sublabelColor, catAvg, catFormat }) {
+function StatCard({ label, value, format, sublabel, sublabelColor, catAvg, catFormat, explanation }) {
   const displayVal = value != null ? format(value) : '\u2014';
   const isPositive = typeof displayVal === 'string' && displayVal.startsWith('+');
   const isNegative = typeof displayVal === 'string' && (displayVal.startsWith('-') || displayVal.startsWith('\u2212'));
@@ -20,6 +21,9 @@ function StatCard({ label, value, format, sublabel, sublabelColor, catAvg, catFo
       <p className={`text-lg font-bold font-mono tabular-nums ${valueColor}`}>{displayVal}</p>
       {catAvg != null && (
         <p className="text-[9px] text-slate-400 font-mono tabular-nums">Cat: {(catFormat || format)(catAvg)}</p>
+      )}
+      {explanation && (
+        <p className="text-[9px] text-slate-400 mt-1 leading-relaxed">{explanation}</p>
       )}
       {sublabel && (
         <p className={`text-[10px] ${sublabelColor || 'text-slate-500'}`}>{sublabel}</p>
@@ -57,12 +61,14 @@ export default function RiskProfile({ riskStats }) {
       value: riskStats.std_dev_3y ?? riskStats.std_dev,
       format: fmtPct,
       catAvg: riskStats.cat_std_dev_3y,
+      explanation: 'How much returns fluctuate. Lower = smoother ride.',
     },
     {
       label: 'Beta (3Y)',
       value: riskStats.beta_3y ?? riskStats.beta,
       format: fmtNum,
       catAvg: riskStats.cat_beta_3y,
+      explanation: 'Sensitivity to market moves. <1 = less volatile than market.',
       sublabel: (riskStats.beta_3y ?? riskStats.beta) != null ? (Number(riskStats.beta_3y ?? riskStats.beta) < 1 ? 'Below market' : 'Above market') : null,
       sublabelColor: (riskStats.beta_3y ?? riskStats.beta) != null ? (Number(riskStats.beta_3y ?? riskStats.beta) < 1 ? 'text-emerald-600' : 'text-amber-600') : '',
     },
@@ -72,6 +78,7 @@ export default function RiskProfile({ riskStats }) {
       format: (v) => `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`,
       catAvg: riskStats.cat_alpha_3y,
       catFormat: (v) => `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`,
+      explanation: 'Excess return after adjusting for risk. Positive = manager adds value.',
       sublabel: 'Manager skill',
     },
     {
@@ -79,12 +86,14 @@ export default function RiskProfile({ riskStats }) {
       value: riskStats.sharpe_3y ?? riskStats.sharpe_ratio,
       format: fmtNum,
       catAvg: riskStats.cat_sharpe_3y,
+      explanation: 'Return per unit of risk. >1 = good, >1.5 = excellent.',
     },
     {
       label: 'Sortino (3Y)',
       value: riskStats.sortino_3y ?? riskStats.sortino,
       format: fmtNum,
       catAvg: riskStats.cat_sortino_3y,
+      explanation: 'Like Sharpe but only penalizes downside volatility.',
       sublabel: 'Downside adjusted',
     },
     {
@@ -92,18 +101,21 @@ export default function RiskProfile({ riskStats }) {
       value: riskStats.info_ratio_3y ?? riskStats.info_ratio,
       format: fmtNum,
       catAvg: riskStats.cat_info_ratio_3y,
+      explanation: 'Active return per unit of tracking error.',
     },
     {
       label: 'Capture Up',
       value: riskStats.capture_up_3y ?? riskStats.upside_capture_3y ?? riskStats.upside_capture,
       format: fmtPct0,
       catAvg: riskStats.cat_capture_up_3y,
+      explanation: 'How much of benchmark\'s rise the fund captures. >100% = amplifies gains.',
     },
     {
       label: 'Capture Down',
       value: riskStats.capture_down_3y ?? riskStats.downside_capture_3y ?? riskStats.downside_capture,
       format: fmtPct0,
       catAvg: riskStats.cat_capture_down_3y,
+      explanation: 'How much of benchmark\'s fall the fund captures. <100% = loses less.',
       sublabelColor: (riskStats.capture_down_3y ?? riskStats.downside_capture_3y ?? riskStats.downside_capture) != null && Number(riskStats.capture_down_3y ?? riskStats.downside_capture_3y ?? riskStats.downside_capture) < 90 ? 'text-emerald-600' : 'text-amber-600',
       sublabel: (riskStats.capture_down_3y ?? riskStats.downside_capture_3y ?? riskStats.downside_capture) != null ? (Number(riskStats.capture_down_3y ?? riskStats.downside_capture_3y ?? riskStats.downside_capture) < 90 ? 'Falls less' : null) : null,
     },
@@ -113,12 +125,14 @@ export default function RiskProfile({ riskStats }) {
       format: (v) => `${(Number(v) * (Number(v) > 1 ? 1 : 100)).toFixed(1)}%`,
       catAvg: riskStats.cat_r_squared_3y,
       catFormat: (v) => `${(Number(v) * (Number(v) > 1 ? 1 : 100)).toFixed(1)}%`,
+      explanation: 'How closely the fund tracks the benchmark. >80% = index-like.',
     },
     {
       label: 'Skewness (3Y)',
       value: riskStats.skewness_3y ?? riskStats.skewness,
       format: (v) => `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}`,
       catAvg: riskStats.cat_skewness_3y,
+      explanation: 'Return distribution shape. Positive = more upside surprises.',
       sublabel: riskStats.skewness_3y != null || riskStats.skewness != null
         ? (Number(riskStats.skewness_3y ?? riskStats.skewness) >= 0 ? 'Positive skew' : 'Negative skew')
         : null,
@@ -129,12 +143,14 @@ export default function RiskProfile({ riskStats }) {
       value: riskStats.tracking_error_3y ?? riskStats.tracking_error,
       format: fmtPct,
       catAvg: riskStats.cat_tracking_error_3y,
+      explanation: 'How much the fund deviates from benchmark. Higher = more active.',
       sublabel: 'Active deviation',
     },
     {
       label: 'Max Drawdown (3Y)',
       value: riskStats.max_drawdown_3y ?? riskStats.max_drawdown,
       format: fmtPct1,
+      explanation: 'Largest peak-to-trough fall. The worst-case you\'d have experienced.',
       sublabel: 'Worst peak-to-trough',
       sublabelColor: 'text-red-500',
     },
@@ -143,12 +159,14 @@ export default function RiskProfile({ riskStats }) {
       value: riskStats.kurtosis_3y ?? riskStats.kurtosis,
       format: fmtNum,
       catAvg: riskStats.cat_kurtosis_3y,
+      explanation: 'Tail risk measure. Higher = more extreme events.',
       sublabel: 'Tail risk',
     },
     {
       label: 'Mean Return (3Y)',
       value: riskStats.mean_3y ?? riskStats.mean_return_3y ?? riskStats.mean_return,
       format: fmtPct,
+      explanation: 'Average monthly return over the period.',
       sublabel: 'Monthly average',
     },
   ];
@@ -156,19 +174,27 @@ export default function RiskProfile({ riskStats }) {
   const validMetrics = metrics.filter((m) => m.value != null);
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-      {validMetrics.map((m) => (
-        <StatCard
-          key={m.label}
-          label={m.label}
-          value={m.value}
-          format={m.format}
-          sublabel={m.sublabel}
-          sublabelColor={m.sublabelColor}
-          catAvg={m.catAvg}
-          catFormat={m.catFormat}
-        />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {validMetrics.map((m) => (
+          <StatCard
+            key={m.label}
+            label={m.label}
+            value={m.value}
+            format={m.format}
+            sublabel={m.sublabel}
+            sublabelColor={m.sublabelColor}
+            catAvg={m.catAvg}
+            catFormat={m.catFormat}
+            explanation={m.explanation}
+          />
+        ))}
+      </div>
+      <InfoBulb title="Risk Statistics" items={[
+        { icon: '\ud83d\udcca', label: 'All metrics are 3-year rolling', text: 'Based on monthly returns over the trailing 3 years. Longer periods smooth out noise.' },
+        { icon: '\ud83c\udfaf', label: 'Category average', text: 'The "Cat:" value below each metric shows how the average fund in this category compares. Better than average = the fund is managing risk well.' },
+        { icon: '\u2696\ufe0f', label: 'The ideal combination', text: 'High upside capture + low downside capture = the fund makes more when markets rise and loses less when they fall.' },
+      ]} />
+    </>
   );
 }
