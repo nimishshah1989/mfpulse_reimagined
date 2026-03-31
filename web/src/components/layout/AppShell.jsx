@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { key: 'universe', label: 'Universe' },
   { key: 'sectors', label: 'Sectors' },
   { key: 'simulation', label: 'Simulate' },
-  { key: 'strategy', label: 'Strategy' },
+  { key: 'strategies', label: 'Strategy' },
 ];
 
 const SECONDARY_ITEMS = [
