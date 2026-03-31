@@ -158,6 +158,12 @@ export default function FundSearch({ onSelect }) {
     [selectedBroad, categories],
   );
 
+  // Pre-compute global max AUM for composite sort normalization
+  const globalMaxAum = useMemo(() => {
+    if (!universe?.length) return 1;
+    return Math.max(...universe.map((f) => Number(f.aum) || 0), 1);
+  }, [universe]);
+
   // Sort function
   const sortFn = useCallback((a, b) => {
     switch (sortBy) {
@@ -166,10 +172,9 @@ export default function FundSearch({ onSelect }) {
         const aumA = Number(a.aum) || 0, aumB = Number(b.aum) || 0;
         const retA = Number(a.return_3y) || Number(a.return_1y) || -999;
         const retB = Number(b.return_3y) || Number(b.return_1y) || -999;
-        // Weighted: 40% AUM rank + 60% return rank (normalize to 0-1 scale)
-        const maxAum = Math.max(aumA, aumB, 1);
-        const scoreA = (aumA / maxAum) * 0.4 + (retA > 0 ? retA / 100 : 0) * 0.6;
-        const scoreB = (aumB / maxAum) * 0.4 + (retB > 0 ? retB / 100 : 0) * 0.6;
+        // Weighted: 40% AUM (normalized to global max) + 60% return
+        const scoreA = (aumA / globalMaxAum) * 0.4 + (retA > 0 ? retA / 100 : 0) * 0.6;
+        const scoreB = (aumB / globalMaxAum) * 0.4 + (retB > 0 ? retB / 100 : 0) * 0.6;
         return scoreB - scoreA;
       }
       case 'return_1y_desc': return (Number(b.return_1y) || -999) - (Number(a.return_1y) || -999);
@@ -183,7 +188,7 @@ export default function FundSearch({ onSelect }) {
       case 'consistency_score_desc': return (Number(b.consistency_score) || 0) - (Number(a.consistency_score) || 0);
       default: return 0;
     }
-  }, [sortBy]);
+  }, [sortBy, globalMaxAum]);
 
   // Universe stats (computed from real data)
   const universeStats = useMemo(() => {

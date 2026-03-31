@@ -117,11 +117,11 @@ export default function UniversePage() {
   const [activeSection, setActiveSection] = useState('explorer');
   const [isPending, startTransition] = useTransition();
 
-  // Global filters — match dashboard defaults
+  // Local filters — default to OFF (no pre-filtering). Global FilterContext handles cross-page filters.
   const [globalFilters, setGlobalFilters] = useState({
-    directOnly: true,
-    equityOnly: true,
-    minAum: true,
+    directOnly: false,
+    equityOnly: false,
+    minAum: false,
   });
 
   const [xAxis, setXAxis] = useState('risk_score');
