@@ -1,20 +1,14 @@
 import { useState, useReducer, useCallback, useEffect } from 'react';
 import { strategyReducer, initialState } from '../../lib/strategyReducer';
-import { EMPTY_RULE, DEFAULT_CONFIG, computeStartDate } from '../../lib/simulation';
+import { EMPTY_RULE, DEFAULT_CONFIG, computeStartDate, MODE_LABELS } from '../../lib/simulation';
 import { compareModes, createStrategy, updateStrategy, fetchDefaultRules, fetchFunds } from '../../lib/api';
 
 import ModeToggle from './ModeToggle';
 import FundSelector from './FundSelector';
 import ConditionBuilder from './ConditionBuilder';
-import ReviewStep from './ReviewStep';
-
-const STEPS = [
-  { key: 'name', label: 'Name & Setup', icon: '1' },
-  { key: 'mode', label: 'Choose Mode', icon: '2' },
-  { key: 'funds', label: 'Select Funds', icon: '3' },
-  { key: 'conditions', label: 'Signal Conditions', icon: '4' },
-  { key: 'review', label: 'Review & Backtest', icon: '5' },
-];
+import SimulationResults from './SimulationResults';
+import Pill from '../shared/Pill';
+import { formatINR } from '../../lib/format';
 
 const BENCHMARKS = [
   'Nifty 50 TRI',
@@ -54,6 +48,8 @@ const SMART_PRESETS = [
   },
 ];
 
+const PERIODS = ['3Y', '5Y', '7Y', '10Y'];
+
 export default function StrategyEditor({
   editingStrategy,
   initialMode,
@@ -61,7 +57,6 @@ export default function StrategyEditor({
   onCancel,
   marketpulseOnline = true,
 }) {
-  const [activeStep, setActiveStep] = useState(0);
   const [state, dispatch] = useReducer(strategyReducer, initialState);
   const [mode, setMode] = useState('sip_topups');
   const [config, setConfig] = useState({ ...DEFAULT_CONFIG });
@@ -76,6 +71,7 @@ export default function StrategyEditor({
   const [simulating, setSimulating] = useState(false);
   const [simError, setSimError] = useState(null);
   const [presetLoading, setPresetLoading] = useState(null);
+  const [showConditions, setShowConditions] = useState(false);
 
   // Load defaults
   useEffect(() => {
@@ -128,9 +124,8 @@ export default function StrategyEditor({
   const handleSmartPreset = useCallback(async (preset) => {
     setPresetLoading(preset.key);
     try {
-      const res = await fetchFunds({ ...preset.params });
+      const res = await fetchFunds({ ...preset.params, min_nav_count: 1250 });
       const funds = res.data || [];
-      // Clear existing and add preset funds
       dispatch({ type: 'RESET' });
       for (const fund of funds) {
         dispatch({ type: 'ADD_FUND', fund });
@@ -148,7 +143,6 @@ export default function StrategyEditor({
     setSimError(null);
 
     try {
-      // Compare endpoint expects single mstar_id — use highest-allocation fund
       const sortedFunds = [...state.funds].sort(
         (a, b) => (state.allocations[b.mstar_id] || 0) - (state.allocations[a.mstar_id] || 0)
       );
@@ -161,7 +155,31 @@ export default function StrategyEditor({
         signal_rules: mode !== 'sip_topups' || rules.length === 0 ? [] : rules,
       };
       const res = await compareModes(payload);
-      setResults(res.data || res);
+      const data = res.data || res;
+
+      // Check if results are meaningful (not all zeros)
+      const modes = Object.keys(data).filter((k) => data[k]?.summary);
+      if (modes.length === 0) {
+        setSimError(
+          `No simulation results for "${primaryFund.fund_name}". This fund may have insufficient NAV history for the selected period. Try a shorter period or a different fund.`
+        );
+        setResults(null);
+      } else {
+        // Check if all final values are near-zero (sparse NAV data)
+        const allNearZero = modes.every((m) => {
+          const fv = data[m]?.summary?.final_value || 0;
+          const ti = data[m]?.summary?.total_invested || 0;
+          return fv < 100 && ti < 100;
+        });
+        if (allNearZero) {
+          setSimError(
+            `Simulation returned near-zero values for "${primaryFund.fund_name}". This typically means the fund has very few NAV data points. Historical NAV backfill is in progress — please try again later or select a fund with longer history.`
+          );
+          setResults(null);
+        } else {
+          setResults(data);
+        }
+      }
     } catch (err) {
       setSimError(err.message || 'Simulation failed');
     } finally {
@@ -198,17 +216,7 @@ export default function StrategyEditor({
     } catch (err) {
       setSimError(err.message || 'Failed to save strategy');
     }
-  }, [strategyName, mode, config, rules, period, backtestOnly, state, editingStrategy, onSave]);
-
-  const canAdvance = () => {
-    switch (activeStep) {
-      case 0: return strategyName.trim().length > 0;
-      case 1: return true;
-      case 2: return state.funds.length > 0;
-      case 3: return true;
-      default: return false;
-    }
-  };
+  }, [strategyName, strategyDescription, benchmark, mode, config, rules, exitRules, period, backtestOnly, state, editingStrategy, onSave]);
 
   const totalAlloc = Object.values(state.allocations).reduce((s, v) => s + (v || 0), 0);
 
@@ -245,191 +253,151 @@ export default function StrategyEditor({
         )}
       </div>
 
-      {/* Stepper */}
-      <div className="flex items-center gap-2">
-        {STEPS.map((step, idx) => {
-          const isActive = idx === activeStep;
-          const isCompleted = idx < activeStep;
-          const isDisabled = idx > activeStep + 1;
-          return (
-            <button
-              key={step.key}
-              type="button"
-              onClick={() => !isDisabled && setActiveStep(idx)}
-              disabled={isDisabled}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg transition-all ${
-                isActive
-                  ? 'bg-teal-600 text-white shadow-sm'
-                  : isCompleted
-                    ? 'bg-teal-50 text-teal-700 hover:bg-teal-100'
-                    : 'bg-slate-100 text-slate-400'
-              } ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-            >
-              <span className={`w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded-full ${
-                isActive ? 'bg-white/20' :
-                isCompleted ? 'bg-teal-200 text-teal-800' :
-                'bg-slate-200 text-slate-500'
-              }`}>
-                {isCompleted ? (
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
-                ) : step.icon}
-              </span>
-              <span className="hidden sm:inline">{step.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Step content */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        {/* Step 0: Name & Setup */}
-        {activeStep === 0 && (
-          <div className="space-y-5">
-            <div>
-              <h3 className="text-base font-semibold text-slate-800">Name Your Strategy</h3>
-              <p className="text-xs text-slate-500 mt-1">Give your strategy a name, optional description, and select a benchmark.</p>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs text-slate-600 font-medium block mb-1.5">Strategy Name</label>
-                <input
-                  type="text"
-                  value={strategyName}
-                  onChange={(e) => setStrategyName(e.target.value)}
-                  placeholder="e.g. All-Weather Alpha Portfolio"
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-lg font-semibold text-slate-800 placeholder-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-600 font-medium block mb-1.5">Description (optional)</label>
-                <textarea
-                  value={strategyDescription}
-                  onChange={(e) => setStrategyDescription(e.target.value)}
-                  placeholder="Describe the goal and thesis of this strategy..."
-                  rows={3}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 placeholder-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none resize-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-600 font-medium block mb-1.5">Benchmark</label>
-                <select
-                  value={benchmark}
-                  onChange={(e) => setBenchmark(e.target.value)}
-                  className="w-full sm:w-72 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none bg-white"
-                >
-                  {BENCHMARKS.map((b) => (
-                    <option key={b} value={b}>{b}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 1: Choose Mode */}
-        {activeStep === 1 && (
-          <div className="space-y-5">
-            <div>
-              <h3 className="text-base font-semibold text-slate-800">Choose Investment Mode</h3>
-              <p className="text-xs text-slate-500 mt-1">Select how you want to deploy capital into this strategy.</p>
-            </div>
-            <ModeToggle
-              mode={mode}
-              onModeChange={setMode}
-              sipAmount={config.sipAmount}
-              onSipChange={(v) => setConfig({ ...config, sipAmount: v })}
+      {/* Section 1: Strategy Name + Mode (compact row) */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs text-slate-600 font-medium block mb-1.5">Strategy Name</label>
+            <input
+              type="text"
+              value={strategyName}
+              onChange={(e) => setStrategyName(e.target.value)}
+              placeholder="e.g. All-Weather Alpha Portfolio"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-800 placeholder-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
             />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
-              <div>
-                <label className="text-xs text-slate-600 font-medium block mb-1.5">Monthly SIP Amount</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">INR</span>
-                  <input
-                    type="number"
-                    value={config.sipAmount}
-                    onChange={(e) => setConfig({ ...config, sipAmount: Number(e.target.value) })}
-                    className="w-full border border-slate-200 rounded-lg pl-10 pr-3 py-2 text-sm font-mono tabular-nums focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
-                    min={0}
-                    step={1000}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-slate-600 font-medium block mb-1.5">Lumpsum Reserve</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">INR</span>
-                  <input
-                    type="number"
-                    value={config.lumpsumAmount}
-                    onChange={(e) => setConfig({ ...config, lumpsumAmount: Number(e.target.value) })}
-                    className="w-full border border-slate-200 rounded-lg pl-10 pr-3 py-2 text-sm font-mono tabular-nums focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
-                    min={0}
-                    step={10000}
-                  />
-                </div>
-              </div>
-            </div>
           </div>
-        )}
+          <div>
+            <label className="text-xs text-slate-600 font-medium block mb-1.5">Benchmark</label>
+            <select
+              value={benchmark}
+              onChange={(e) => setBenchmark(e.target.value)}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none bg-white"
+            >
+              {BENCHMARKS.map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
-        {/* Step 2: Select Funds */}
-        {activeStep === 2 && (
-          <div className="space-y-5">
-            <div>
-              <h3 className="text-base font-semibold text-slate-800">Select Funds & Allocations</h3>
-              <p className="text-xs text-slate-500 mt-1">Use smart presets or search to build your portfolio.</p>
-            </div>
+        {/* Mode + Config */}
+        <div className="border-t border-slate-100 pt-4">
+          <ModeToggle
+            mode={mode}
+            onModeChange={setMode}
+            sipAmount={config.sipAmount}
+            onSipChange={(v) => setConfig({ ...config, sipAmount: v })}
+          />
+        </div>
 
-            {/* Smart Presets */}
-            <div>
-              <p className="text-xs font-semibold text-slate-600 mb-2">Smart Presets</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {SMART_PRESETS.map((preset) => (
-                  <button
-                    key={preset.key}
-                    type="button"
-                    onClick={() => handleSmartPreset(preset)}
-                    disabled={presetLoading === preset.key}
-                    className={`p-3 rounded-lg border text-left transition-all hover:shadow-sm ${
-                      preset.color === 'emerald' ? 'border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50' :
-                      preset.color === 'teal' ? 'border-teal-200 hover:border-teal-400 hover:bg-teal-50' :
-                      preset.color === 'blue' ? 'border-blue-200 hover:border-blue-400 hover:bg-blue-50' :
-                      'border-violet-200 hover:border-violet-400 hover:bg-violet-50'
-                    } ${presetLoading === preset.key ? 'opacity-50' : ''}`}
-                  >
-                    <p className="text-xs font-semibold text-slate-700">{preset.label}</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">{preset.description}</p>
-                    {presetLoading === preset.key && (
-                      <p className="text-[10px] text-teal-600 mt-1 font-medium">Loading...</p>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t border-slate-100 pt-4">
-              <FundSelector
-                funds={state.funds}
-                allocations={state.allocations}
-                onAddFund={handleAddFund}
-                onRemoveFund={handleRemoveFund}
-                onSetAllocation={handleSetAllocation}
-                totalInvestment={config.sipAmount + config.lumpsumAmount}
-                initialNlQuery={initialMode?.nlQuery || null}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="text-xs text-slate-600 font-medium block mb-1">Monthly SIP</label>
+            <div className="relative">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">INR</span>
+              <input
+                type="number"
+                value={config.sipAmount}
+                onChange={(e) => setConfig({ ...config, sipAmount: Number(e.target.value) })}
+                className="w-full border border-slate-200 rounded-lg pl-9 pr-2 py-2 text-sm font-mono tabular-nums focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                min={0}
+                step={1000}
               />
             </div>
           </div>
-        )}
-
-        {/* Step 3: Signal Conditions */}
-        {activeStep === 3 && (
-          <div className="space-y-5">
-            <div>
-              <h3 className="text-base font-semibold text-slate-800">Signal Conditions</h3>
-              <p className="text-xs text-slate-500 mt-1">Configure market signals that trigger additional investments.</p>
+          <div>
+            <label className="text-xs text-slate-600 font-medium block mb-1">Lumpsum Reserve</label>
+            <div className="relative">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">INR</span>
+              <input
+                type="number"
+                value={config.lumpsumAmount}
+                onChange={(e) => setConfig({ ...config, lumpsumAmount: Number(e.target.value) })}
+                className="w-full border border-slate-200 rounded-lg pl-9 pr-2 py-2 text-sm font-mono tabular-nums focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                min={0}
+                step={10000}
+              />
             </div>
+          </div>
+          <div>
+            <label className="text-xs text-slate-600 font-medium block mb-1">Backtest Period</label>
+            <div className="flex items-center gap-1.5">
+              {PERIODS.map((p) => (
+                <Pill key={p} active={period === p} onClick={() => setPeriod(p)}>
+                  {p}
+                </Pill>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Section 2: Fund Selection */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-800">Select Funds</h3>
+            <p className="text-[10px] text-slate-500 mt-0.5">Use smart presets or search to build your portfolio.</p>
+          </div>
+        </div>
+
+        {/* Smart Presets */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {SMART_PRESETS.map((preset) => (
+            <button
+              key={preset.key}
+              type="button"
+              onClick={() => handleSmartPreset(preset)}
+              disabled={presetLoading === preset.key}
+              className={`p-2.5 rounded-lg border text-left transition-all hover:shadow-sm ${
+                preset.color === 'emerald' ? 'border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50' :
+                preset.color === 'teal' ? 'border-teal-200 hover:border-teal-400 hover:bg-teal-50' :
+                preset.color === 'blue' ? 'border-blue-200 hover:border-blue-400 hover:bg-blue-50' :
+                'border-violet-200 hover:border-violet-400 hover:bg-violet-50'
+              } ${presetLoading === preset.key ? 'opacity-50' : ''}`}
+            >
+              <p className="text-xs font-semibold text-slate-700">{preset.label}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">{preset.description}</p>
+              {presetLoading === preset.key && (
+                <p className="text-[10px] text-teal-600 mt-1 font-medium">Loading...</p>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <FundSelector
+          funds={state.funds}
+          allocations={state.allocations}
+          onAddFund={handleAddFund}
+          onRemoveFund={handleRemoveFund}
+          onSetAllocation={handleSetAllocation}
+          totalInvestment={config.sipAmount + config.lumpsumAmount}
+          initialNlQuery={initialMode?.nlQuery || null}
+        />
+      </div>
+
+      {/* Section 3: Signal Conditions (collapsible) */}
+      <div className="bg-white rounded-xl border border-slate-200">
+        <button
+          type="button"
+          onClick={() => setShowConditions(!showConditions)}
+          className="w-full flex items-center justify-between p-5 text-left"
+        >
+          <div>
+            <h3 className="text-sm font-semibold text-slate-800">Signal Conditions</h3>
+            <p className="text-[10px] text-slate-500 mt-0.5">
+              {rules.length} rule{rules.length !== 1 ? 's' : ''} configured — market signals that trigger additional investments
+            </p>
+          </div>
+          <svg
+            className={`w-4 h-4 text-slate-400 transition-transform ${showConditions ? 'rotate-180' : ''}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+        {showConditions && (
+          <div className="px-5 pb-5 border-t border-slate-100 pt-4">
             <ConditionBuilder
               rules={rules}
               onRulesChange={setRules}
@@ -439,63 +407,71 @@ export default function StrategyEditor({
             />
           </div>
         )}
-
-        {/* Step 4: Review & Backtest */}
-        {activeStep === 4 && (
-          <ReviewStep
-            state={state}
-            config={config}
-            rules={rules}
-            period={period}
-            setPeriod={setPeriod}
-            backtestOnly={backtestOnly}
-            setBacktestOnly={setBacktestOnly}
-            simulating={simulating}
-            simError={simError}
-            results={results}
-            onRunSimulation={handleRunSimulation}
-            onSave={handleSave}
-          />
-        )}
       </div>
 
-      {/* Navigation buttons */}
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setActiveStep(Math.max(0, activeStep - 1))}
-          disabled={activeStep === 0}
-          className="flex items-center gap-1.5 px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-          </svg>
-          Previous
-        </button>
-        <div className="flex items-center gap-2">
-          {activeStep === 4 && results && (
+      {/* Section 4: Run Simulation */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={handleSave}
-              className="px-4 py-2 text-sm font-medium text-teal-700 border border-teal-200 rounded-lg hover:bg-teal-50 transition-colors"
+              onClick={handleRunSimulation}
+              disabled={state.funds.length === 0 || simulating}
+              className="px-6 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 shadow-sm"
             >
-              Save Strategy
+              {simulating ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Running...
+                </span>
+              ) : 'Run Backtest'}
             </button>
-          )}
-          {activeStep < 4 && (
-            <button
-              type="button"
-              onClick={() => setActiveStep(Math.min(4, activeStep + 1))}
-              disabled={!canAdvance()}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors"
-            >
-              Next
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-            </button>
-          )}
+            {state.funds.length === 0 && (
+              <p className="text-xs text-amber-600">Add at least one fund to run simulation</p>
+            )}
+            {state.funds.length > 0 && !results && !simulating && !simError && (
+              <p className="text-xs text-slate-400">
+                Comparing {state.funds.length} fund{state.funds.length > 1 ? 's' : ''} across 4 modes over {period}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 text-[10px] text-slate-500">
+              <input
+                type="checkbox"
+                checked={backtestOnly}
+                onChange={(e) => setBacktestOnly(e.target.checked)}
+                className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-3.5 h-3.5"
+              />
+              Backtest only
+            </label>
+            {results && (
+              <button
+                type="button"
+                onClick={handleSave}
+                className="px-4 py-2 text-xs font-medium text-teal-700 border border-teal-200 rounded-lg hover:bg-teal-50 transition-colors"
+              >
+                Save Strategy
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Results */}
+        {(results || simError) && (
+          <div className="pt-4 border-t border-slate-100">
+            <SimulationResults
+              results={results}
+              loading={simulating}
+              error={simError}
+              onSave={handleSave}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -66,6 +66,8 @@ def list_funds(
     sort_dir: str = "asc",
     limit: int = Query(default=100, le=500),
     offset: int = 0,
+    # NAV history filter (for backtesting)
+    min_nav_count: int = Query(default=0, ge=0, description="Min NAV data points (1250=5Y)"),
     # Lens score filters
     min_return_score: Optional[float] = None,
     min_risk_score: Optional[float] = None,
@@ -112,6 +114,7 @@ def list_funds(
         sort_dir=sort_dir,
         limit=limit,
         offset=offset,
+        min_nav_count=min_nav_count,
     )
 
     # Enrich with lens scores
@@ -175,14 +178,22 @@ def list_amcs(db: Session = Depends(get_db)) -> dict:
 def natural_language_search(
     body: dict,
     limit: int = Query(default=50, le=200),
+    min_nav_count: int = Query(default=0, ge=0, description="Min NAV data points (1250=5Y, 750=3Y, 250=1Y)"),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Rule-based NL query parser — backend authoritative version."""
+    """Rule-based NL query parser — backend authoritative version.
+
+    Pass min_nav_count to filter funds by NAV history depth (for backtesting).
+    """
     from app.services.nl_search_service import NLSearchService
 
     query_text = body.get("query", "")
+    # Allow min_nav_count from body too (for POST convenience)
+    nav_count_override = body.get("min_nav_count")
+    effective_min_nav = nav_count_override if nav_count_override is not None else min_nav_count
+
     svc = NLSearchService(db)
-    result = svc.search(query_text, limit=limit)
+    result = svc.search(query_text, limit=limit, min_nav_count=int(effective_min_nav))
     return {
         "success": True,
         "data": result,

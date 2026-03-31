@@ -43,7 +43,8 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
   const doSearch = useCallback(async (params) => {
     setSearching(true);
     try {
-      const res = await fetchFunds({ ...params, limit: params.limit || 20 });
+      // Always filter for 5Y+ NAV history in strategy context
+      const res = await fetchFunds({ ...params, limit: params.limit || 20, min_nav_count: 1250 });
       setResults(res.data || []);
     } catch {
       setResults([]);
@@ -86,12 +87,12 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
 
   const handleNlSearch = useCallback(async (e) => {
     if (e.key !== 'Enter' || !nlQuery.trim()) return;
-    // Use backend authoritative NL search
+    // Use backend authoritative NL search — filter for 5Y+ NAV history
     setSearching(true);
     setSearch('');
     setActiveTierFilter(null);
     try {
-      const res = await searchFundsNL(nlQuery.trim());
+      const res = await searchFundsNL(nlQuery.trim(), { minNavCount: 1250 });
       const data = res.data || res;
       const funds = data.funds || [];
       setResults(funds);
@@ -140,7 +141,7 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
       initialSearchDone.current = true;
       setNlQuery(initialNlQuery);
       setSearching(true);
-      searchFundsNL(initialNlQuery)
+      searchFundsNL(initialNlQuery, { minNavCount: 1250 })
         .then((res) => {
           const data = res.data || res;
           setResults(data.funds || []);
@@ -301,6 +302,13 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
                   ))}
                   {fund.category_name && (
                     <span className="text-[10px] text-slate-400 truncate ml-1">{fund.category_name}</span>
+                  )}
+                  {fund.nav_count != null && fund.nav_count > 0 && (
+                    <span className={`text-[10px] ml-1 font-mono tabular-nums ${
+                      fund.nav_count >= 1250 ? 'text-emerald-500' : fund.nav_count >= 500 ? 'text-amber-500' : 'text-red-400'
+                    }`}>
+                      {fund.nav_count >= 1250 ? '5Y+' : fund.nav_count >= 750 ? '3Y+' : fund.nav_count >= 250 ? '1Y+' : `${fund.nav_count}d`} NAV
+                    </span>
                   )}
                 </div>
                 {/* Tier badges */}

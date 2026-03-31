@@ -37,6 +37,7 @@ class FundRepository:
         offset: int = 0,
         sort_by: str = "fund_name",
         sort_dir: str = "asc",
+        min_nav_count: int = 0,
     ) -> tuple[list[FundMaster], int]:
         """Returns (funds, total_count) for pagination."""
         query = self.db.query(FundMaster)
@@ -59,6 +60,20 @@ class FundRepository:
                     FundMaster.legal_name.ilike(pattern),
                 )
             )
+
+        # Filter by minimum NAV history depth
+        if min_nav_count > 0:
+            nav_count_sq = (
+                self.db.query(
+                    NavDaily.mstar_id.label("mstar_id"),
+                    func.count(NavDaily.id).label("nav_count"),
+                )
+                .filter(NavDaily.nav.isnot(None))
+                .group_by(NavDaily.mstar_id)
+                .having(func.count(NavDaily.id) >= min_nav_count)
+                .subquery("nav_counts")
+            )
+            query = query.join(nav_count_sq, FundMaster.mstar_id == nav_count_sq.c.mstar_id)
 
         total = query.count()
 

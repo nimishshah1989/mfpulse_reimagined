@@ -196,10 +196,11 @@ export const fetchFundIntelligence = (mstarId) =>
   apiFetch(`/api/v1/funds/${mstarId}/intelligence`);
 
 // NL search (backend authoritative)
-export const searchFundsNL = (query) =>
+// min_nav_count: 1250 = 5Y backtestable, 750 = 3Y, 250 = 1Y, 0 = no filter
+export const searchFundsNL = (query, { minNavCount = 0 } = {}) =>
   apiFetch('/api/v1/funds/search/natural', {
     method: 'POST',
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, min_nav_count: minNavCount }),
   });
 
 // Portfolio analytics

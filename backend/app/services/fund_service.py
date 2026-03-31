@@ -55,6 +55,7 @@ class FundService:
         sort_dir: str = "asc",
         limit: int = 100,
         offset: int = 0,
+        min_nav_count: int = 0,
     ) -> tuple[list[dict], int]:
         """List funds with compact FundSummary including latest NAV."""
         funds, total = self.fund_repo.get_all_funds(
@@ -67,6 +68,7 @@ class FundService:
             sort_dir=sort_dir,
             limit=limit,
             offset=offset,
+            min_nav_count=min_nav_count,
         )
         # Batch fetch latest NAVs — single query instead of N+1
         mstar_ids = [f.mstar_id for f in funds]

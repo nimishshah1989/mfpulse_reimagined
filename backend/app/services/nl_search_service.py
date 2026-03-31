@@ -84,13 +84,18 @@ class NLSearchService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def search(self, query: str, limit: int = 50) -> dict:
-        """Parse NL query and return matching funds."""
+    def search(self, query: str, limit: int = 50, min_nav_count: int = 0) -> dict:
+        """Parse NL query and return matching funds.
+
+        Args:
+            min_nav_count: Minimum number of NAV data points required.
+                          Use 1250 for 5Y backtestable, 750 for 3Y, 250 for 1Y.
+        """
         parsed = self._parse(query)
         if not parsed:
             return {"parsed": None, "funds": [], "count": 0}
 
-        funds = self._execute(parsed, limit=limit)
+        funds = self._execute(parsed, limit=limit, min_nav_count=min_nav_count)
         return {
             "parsed": parsed,
             "funds": funds,
@@ -158,7 +163,7 @@ class NLSearchService:
         )
         return result if has_filters else None
 
-    def _execute(self, parsed: dict, limit: int = 50) -> list[dict]:
+    def _execute(self, parsed: dict, limit: int = 50, min_nav_count: int = 0) -> list[dict]:
         """Execute parsed filters against DB."""
         # Get latest lens date
         latest_lens = self.db.query(func.max(FundLensScores.computed_date)).scalar()
@@ -167,7 +172,18 @@ class NLSearchService:
         if not latest_lens:
             return []
 
-        # Base query: funds with lens scores
+        # NAV count subquery — counts non-NULL NAV records per fund
+        nav_count_sq = (
+            self.db.query(
+                NavDaily.mstar_id.label("mstar_id"),
+                func.count(NavDaily.id).label("nav_count"),
+            )
+            .filter(NavDaily.nav.isnot(None))
+            .group_by(NavDaily.mstar_id)
+            .subquery("nav_counts")
+        )
+
+        # Base query: funds with lens scores + nav count
         query = (
             self.db.query(
                 FundMaster.mstar_id,
@@ -180,13 +196,19 @@ class NLSearchService:
                 FundLensScores.consistency_score,
                 FundLensScores.efficiency_score,
                 FundLensScores.resilience_score,
+                nav_count_sq.c.nav_count,
             )
             .join(FundLensScores, FundMaster.mstar_id == FundLensScores.mstar_id)
+            .outerjoin(nav_count_sq, FundMaster.mstar_id == nav_count_sq.c.mstar_id)
             .filter(
                 FundMaster.is_eligible.is_(True),
                 FundLensScores.computed_date == latest_lens,
             )
         )
+
+        # Filter by minimum NAV count if requested
+        if min_nav_count > 0:
+            query = query.filter(nav_count_sq.c.nav_count >= min_nav_count)
 
         # Category filter
         if parsed["categories"]:
@@ -237,6 +259,7 @@ class NLSearchService:
                 "consistency_score": float(r.consistency_score) if r.consistency_score else None,
                 "efficiency_score": float(r.efficiency_score) if r.efficiency_score else None,
                 "resilience_score": float(r.resilience_score) if r.resilience_score else None,
+                "nav_count": r.nav_count or 0,
             }
             for r in rows
         ]
