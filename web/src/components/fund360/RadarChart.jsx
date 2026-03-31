@@ -66,7 +66,7 @@ export default function RadarChart({ funds = [], size = 320, categoryAvg = null 
     // Axis labels
     AXES.forEach((axis, i) => {
       const a = angleFor(i);
-      const labelR = radius + 30;
+      const labelR = radius + 36;
       const lx = cx + labelR * Math.cos(a);
       const ly = cy + labelR * Math.sin(a);
       chart.append('text')
@@ -130,18 +130,21 @@ export default function RadarChart({ funds = [], size = 320, categoryAvg = null 
           .text(`${fund.label} - ${AXES[i].label}: ${score}`);
 
         const a = angleFor(i);
-        const dist = 18;
+        // Place score text INSIDE the polygon (toward center) to avoid overlap with axis labels
+        const dist = -16;
         const offsetX = Math.cos(a) * dist;
         const offsetY = Math.sin(a) * dist;
-        // Dynamic text-anchor to prevent overlap at edges
         const anchor = Math.abs(Math.cos(a)) < 0.3 ? 'middle'
-          : Math.cos(a) > 0 ? 'start' : 'end';
+          : Math.cos(a) > 0 ? 'end' : 'start';  // Reversed anchoring for inward placement
         chart.append('text')
           .attr('x', p.x + offsetX)
           .attr('y', p.y + offsetY)
           .attr('text-anchor', anchor)
           .attr('dominant-baseline', 'middle')
           .attr('class', 'font-mono text-[10px] font-bold fill-slate-700')
+          .attr('paint-order', 'stroke')
+          .attr('stroke', '#fff')
+          .attr('stroke-width', 3)
           .text(score);
       });
     });

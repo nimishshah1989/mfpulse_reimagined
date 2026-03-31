@@ -225,6 +225,13 @@ export default function HeroSection({ fundDetail, lensScores, mstarId, onCompare
                 )}
               </div>
 
+              {/* Investment Strategy (moved from FundManagerStrategy per feedback) */}
+              {(fundDetail.investment_strategy || fundDetail.investment_philosophy) && (
+                <p className="text-[11px] text-slate-500 leading-relaxed pt-1.5 max-w-2xl line-clamp-2">
+                  {fundDetail.investment_strategy || fundDetail.investment_philosophy}
+                </p>
+              )}
+
               {/* Action buttons */}
               <div className="flex items-center gap-2 pt-2">
                 <button

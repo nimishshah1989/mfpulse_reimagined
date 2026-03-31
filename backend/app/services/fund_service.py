@@ -183,7 +183,9 @@ class FundService:
 
         fund_returns = self.fund_repo.get_trailing_returns(mstar_id)
         peers = self.fund_repo.get_category_peers(
-            fund.category_name, exclude_mstar_id=mstar_id,
+            fund.category_name,
+            exclude_mstar_id=mstar_id,
+            purchase_mode=fund.purchase_mode,
         )
 
         fund_return_1y = (

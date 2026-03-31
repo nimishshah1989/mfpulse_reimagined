@@ -61,6 +61,9 @@ class KVCache(Base):
         default=lambda: __import__("datetime").datetime.now(__import__("datetime").timezone.utc),
         nullable=False,
     )
+    expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
 
 
 class EngineConfig(Base, UUIDPrimaryKey, TimestampMixin):

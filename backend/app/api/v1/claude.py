@@ -18,6 +18,8 @@ from app.services.claude_client import (
     generate_fund_verdict,
     parse_strategy_query,
     generate_weekly_intelligence,
+    generate_risk_interpretation,
+    generate_portfolio_story,
     get_usage_stats,
 )
 from app.services.marketpulse_client import MarketPulseClient
@@ -347,6 +349,78 @@ def get_weekly_intelligence(db: Session = Depends(get_db)) -> dict:
         "success": True,
         "data": {"points": points, "context": context},
         "meta": {"timestamp": Meta().timestamp},
+        "error": None,
+    }
+
+
+@router.get("/risk-interpretation/{mstar_id}")
+def get_risk_interpretation(mstar_id: str, db: Session = Depends(get_db)) -> dict:
+    """AI-generated interpretation of a fund's risk metrics.
+
+    Turns raw stats (std dev, beta, Sharpe etc) into an actionable narrative.
+    Cached 7 days in kv_cache.
+    """
+    from app.services.fund_service import FundService
+
+    svc = FundService(db)
+    fund = svc.fund_repo.get_fund_by_mstar_id(mstar_id)
+    if not fund:
+        return {"success": False, "data": None, "error": {"code": "NOT_FOUND", "message": f"Fund {mstar_id} not found"}}
+
+    risk_stats = svc.fund_repo.get_risk_stats(mstar_id)
+    risk_data = {
+        "mstar_id": mstar_id,
+        "fund_name": fund.fund_name,
+        "category_name": fund.category_name,
+    }
+    if risk_stats:
+        for k, v in risk_stats.items():
+            if v is not None:
+                risk_data[k] = str(v) if hasattr(v, '__class__') and 'Decimal' in v.__class__.__name__ else v
+
+    interpretation = generate_risk_interpretation(risk_data)
+    return {
+        "success": True,
+        "data": interpretation,
+        "meta": {"timestamp": Meta().timestamp, "mstar_id": mstar_id},
+        "error": None,
+    }
+
+
+@router.get("/portfolio-story/{mstar_id}")
+def get_portfolio_story(mstar_id: str, db: Session = Depends(get_db)) -> dict:
+    """AI-generated narrative from portfolio characteristics (P/E, P/B, ROE, style etc).
+
+    Turns 8 KPIs into a coherent portfolio story. Cached 7 days.
+    """
+    from app.services.fund_service import FundService
+    from app.repositories.holdings_repo import HoldingsRepository
+
+    fund_svc = FundService(db)
+    fund = fund_svc.fund_repo.get_fund_by_mstar_id(mstar_id)
+    if not fund:
+        return {"success": False, "data": None, "error": {"code": "NOT_FOUND", "message": f"Fund {mstar_id} not found"}}
+
+    holdings_repo = HoldingsRepository(db)
+    snapshot = holdings_repo.get_latest_snapshot(mstar_id)
+
+    portfolio_data = {
+        "mstar_id": mstar_id,
+        "fund_name": fund.fund_name,
+        "category_name": fund.category_name,
+    }
+    if snapshot:
+        for field in ("pe_ratio", "pb_ratio", "ps_ratio", "roe_ttm", "avg_market_cap",
+                       "num_holdings", "turnover_ratio", "equity_style_box", "prospective_div_yield"):
+            val = getattr(snapshot, field, None)
+            if val is not None:
+                portfolio_data[field] = str(val)
+
+    story = generate_portfolio_story(portfolio_data)
+    return {
+        "success": True,
+        "data": story,
+        "meta": {"timestamp": Meta().timestamp, "mstar_id": mstar_id},
         "error": None,
     }
 

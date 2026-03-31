@@ -89,17 +89,40 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS
+# CORS — tightened from allow-all to specific methods/headers
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Request-ID", "X-Admin-Key"],
 )
 
 # GZip compression for responses > 1KB
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+# Security headers middleware
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        if not request.url.path.startswith("/api/"):
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "font-src 'self' https://fonts.gstatic.com; "
+                "img-src 'self' data:; "
+                "connect-src 'self' https://api.anthropic.com"
+            )
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 # Request logging middleware
@@ -307,6 +330,31 @@ if _frontend_dir.is_dir():
             if root_index.is_file():
                 return FileResponse(str(root_index))
 
-            return await call_next(request)
+            # Nothing matched — return 404 page if it exists, else JSON 404
+            not_found_page = _frontend_dir / "404" / "index.html"
+            if not_found_page.is_file():
+                return FileResponse(str(not_found_page), status_code=404)
+            return JSONResponse(
+                status_code=404,
+                content={"success": False, "data": None, "error": {"code": "NOT_FOUND", "message": "Page not found"}},
+            )
 
     app.add_middleware(FrontendMiddleware)
+
+
+# Catch-all for unhandled exceptions — return proper JSON, never a bare 500
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.error("Unhandled exception: %s", exc, exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "data": None,
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "An unexpected error occurred",
+                "details": {},
+            },
+        },
+    )

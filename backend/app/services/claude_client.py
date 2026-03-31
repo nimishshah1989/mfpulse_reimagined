@@ -448,7 +448,7 @@ def parse_strategy_query(query: str) -> dict:
 INTELLIGENCE_SYSTEM = (
     "You are MF Pulse's weekly intelligence engine for an Indian mutual fund manager. "
     "Given current market conditions, sector sentiment, and fund universe data, "
-    "generate exactly 10 actionable intelligence points. "
+    "generate exactly 15 actionable intelligence points. "
     "Each point MUST follow this format and be a JSON object:\n"
     '{"headline": "Short punchy headline (10 words max)", '
     '"insight": "What is happening and why (1-2 sentences)", '
@@ -498,10 +498,10 @@ def generate_weekly_intelligence(context: dict) -> list[dict]:
         f"{context.get('worst_categories', 'N/A')}\n"
         f"\n=== UNIVERSE SUMMARY ===\n"
         f"{context.get('universe_summary', 'N/A')}\n"
-        f"\nGenerate 10 weekly intelligence points as a JSON array."
+        f"\nGenerate 15 weekly intelligence points as a JSON array."
     )
 
-    result = _call_claude(INTELLIGENCE_SYSTEM, prompt, max_tokens=2000, timeout=30.0)
+    result = _call_claude(INTELLIGENCE_SYSTEM, prompt, max_tokens=3000, timeout=30.0)
     if result:
         import json
         _log_feature("weekly_intelligence")
@@ -509,12 +509,231 @@ def generate_weekly_intelligence(context: dict) -> list[dict]:
             start = result.index("[")
             end = result.rindex("]") + 1
             points = json.loads(result[start:end])
-            _cache_set(cache_key, json.dumps(points), 86400)  # 24 hours
+            _cache_set(cache_key, json.dumps(points), 86400)  # L1: 24 hours in-memory
+            # L2: Persist to kv_cache for 7-day survival across restarts
+            try:
+                from app.core.database import SessionLocal
+                from app.repositories.cache_repo import CacheRepository
+                from app.core.cache_keys import CACHE_CLAUDE_PREFIX, CLAUDE_TTL_SECONDS
+                db = SessionLocal()
+                try:
+                    CacheRepository(db).set(
+                        f"{CACHE_CLAUDE_PREFIX}{cache_key}",
+                        {"points": points},
+                        CLAUDE_TTL_SECONDS,
+                    )
+                finally:
+                    db.close()
+            except Exception as e:
+                logger.warning("Failed to persist weekly intelligence to kv_cache: %s", e)
             return points
         except (ValueError, json.JSONDecodeError):
             logger.warning("Failed to parse weekly intelligence JSON")
 
+    # Fallback: try kv_cache if API call failed
+    try:
+        from app.core.database import SessionLocal
+        from app.repositories.cache_repo import CacheRepository
+        from app.core.cache_keys import CACHE_CLAUDE_PREFIX
+        db = SessionLocal()
+        try:
+            cached_data = CacheRepository(db).get(f"{CACHE_CLAUDE_PREFIX}{cache_key}")
+            if cached_data and "points" in cached_data:
+                return cached_data["points"]
+        finally:
+            db.close()
+    except Exception:
+        pass
+
     return []
+
+
+# ── Feature 9: Risk Profile Interpretation ────────────────────────────────────
+
+RISK_INTERPRETATION_SYSTEM = (
+    "You are MF Pulse's risk analyst for an Indian mutual fund manager. "
+    "Given a fund's risk metrics, generate a clear, actionable interpretation. "
+    "Write for a professional who understands markets but wants quick answers. "
+    "Return a JSON object with these fields:\n"
+    '{"summary": "2-3 sentence overall risk assessment", '
+    '"verdict": "One of: Low Risk Fortress | Moderate & Balanced | Elevated but Rewarded | High Risk Alert", '
+    '"key_takeaways": ["3-4 specific actionable points about this fund\'s risk profile"], '
+    '"comparison": "How this fund compares to category average in one sentence"}\n\n'
+    "Use Indian mutual fund context. Reference category averages when provided."
+)
+
+
+def generate_risk_interpretation(risk_data: dict) -> dict:
+    """Generate AI interpretation of a fund's risk metrics.
+
+    Args:
+        risk_data: Dict with keys: fund_name, category_name, std_dev_3y, max_drawdown,
+                   beta, sharpe, sortino, downside_capture, upside_capture,
+                   skewness, kurtosis, r_squared, category_avg_*
+    """
+    cache_key = f"risk_interp:{risk_data.get('mstar_id', '')}"
+    cached = _cache_get(cache_key)
+    if cached:
+        import json
+        try:
+            return json.loads(cached)
+        except Exception:
+            pass
+
+    metrics_text = "\n".join(
+        f"  {k}: {v}" for k, v in risk_data.items()
+        if k not in ("mstar_id",) and v is not None
+    )
+    prompt = (
+        f"Fund: {risk_data.get('fund_name', 'Unknown')}\n"
+        f"Category: {risk_data.get('category_name', 'Unknown')}\n\n"
+        f"Risk Metrics:\n{metrics_text}\n\n"
+        f"Generate the risk interpretation JSON."
+    )
+
+    result = _call_claude(RISK_INTERPRETATION_SYSTEM, prompt, max_tokens=600, timeout=15.0)
+    if result:
+        import json
+        _log_feature("risk_interpretation")
+        try:
+            start = result.index("{")
+            end = result.rindex("}") + 1
+            parsed = json.loads(result[start:end])
+            _cache_set(cache_key, json.dumps(parsed), 86400)  # 24h in-memory
+            # Persist to kv_cache (7 days)
+            try:
+                from app.core.database import SessionLocal
+                from app.repositories.cache_repo import CacheRepository
+                from app.core.cache_keys import CACHE_CLAUDE_PREFIX, CLAUDE_TTL_SECONDS
+                db = SessionLocal()
+                try:
+                    CacheRepository(db).set(
+                        f"{CACHE_CLAUDE_PREFIX}{cache_key}",
+                        parsed,
+                        CLAUDE_TTL_SECONDS,
+                    )
+                finally:
+                    db.close()
+            except Exception:
+                pass
+            return parsed
+        except (ValueError, json.JSONDecodeError):
+            logger.warning("Failed to parse risk interpretation JSON")
+
+    # Fallback from kv_cache
+    try:
+        from app.core.database import SessionLocal
+        from app.repositories.cache_repo import CacheRepository
+        from app.core.cache_keys import CACHE_CLAUDE_PREFIX
+        db = SessionLocal()
+        try:
+            cached_data = CacheRepository(db).get(f"{CACHE_CLAUDE_PREFIX}{cache_key}")
+            if cached_data:
+                return cached_data
+        finally:
+            db.close()
+    except Exception:
+        pass
+
+    return {
+        "summary": "Risk interpretation unavailable.",
+        "verdict": "Unknown",
+        "key_takeaways": [],
+        "comparison": "",
+    }
+
+
+# ── Feature 10: Portfolio Characteristics Story ───────────────────────────────
+
+PORTFOLIO_STORY_SYSTEM = (
+    "You are MF Pulse's portfolio analyst for an Indian mutual fund manager. "
+    "Given a fund's portfolio characteristics (P/E, P/B, ROE, turnover, style, holdings count, etc), "
+    "generate a concise story about what these numbers mean together. "
+    "Return a JSON object with:\n"
+    '{"story": "3-4 sentence narrative connecting the KPIs into a coherent portfolio picture", '
+    '"style_label": "A descriptive label like: Concentrated Growth | Diversified Value | High Conviction Blend", '
+    '"highlights": ["2-3 standout characteristics worth noting"]}\n\n'
+    "Use Indian mutual fund context."
+)
+
+
+def generate_portfolio_story(portfolio_data: dict) -> dict:
+    """Generate AI story from portfolio characteristics.
+
+    Args:
+        portfolio_data: Dict with keys: fund_name, pe_ratio, pb_ratio, ps_ratio,
+                        roe_ttm, avg_market_cap, num_holdings, turnover_ratio,
+                        equity_style_box, div_yield, category_name
+    """
+    cache_key = f"portfolio_story:{portfolio_data.get('mstar_id', '')}"
+    cached = _cache_get(cache_key)
+    if cached:
+        import json
+        try:
+            return json.loads(cached)
+        except Exception:
+            pass
+
+    metrics_text = "\n".join(
+        f"  {k}: {v}" for k, v in portfolio_data.items()
+        if k not in ("mstar_id",) and v is not None
+    )
+    prompt = (
+        f"Fund: {portfolio_data.get('fund_name', 'Unknown')}\n"
+        f"Category: {portfolio_data.get('category_name', 'Unknown')}\n\n"
+        f"Portfolio Characteristics:\n{metrics_text}\n\n"
+        f"Generate the portfolio story JSON."
+    )
+
+    result = _call_claude(PORTFOLIO_STORY_SYSTEM, prompt, max_tokens=500, timeout=15.0)
+    if result:
+        import json
+        _log_feature("portfolio_story")
+        try:
+            start = result.index("{")
+            end = result.rindex("}") + 1
+            parsed = json.loads(result[start:end])
+            _cache_set(cache_key, json.dumps(parsed), 86400)
+            # Persist to kv_cache
+            try:
+                from app.core.database import SessionLocal
+                from app.repositories.cache_repo import CacheRepository
+                from app.core.cache_keys import CACHE_CLAUDE_PREFIX, CLAUDE_TTL_SECONDS
+                db = SessionLocal()
+                try:
+                    CacheRepository(db).set(
+                        f"{CACHE_CLAUDE_PREFIX}{cache_key}",
+                        parsed,
+                        CLAUDE_TTL_SECONDS,
+                    )
+                finally:
+                    db.close()
+            except Exception:
+                pass
+            return parsed
+        except (ValueError, json.JSONDecodeError):
+            logger.warning("Failed to parse portfolio story JSON")
+
+    # Fallback from kv_cache
+    try:
+        from app.core.database import SessionLocal
+        from app.repositories.cache_repo import CacheRepository
+        from app.core.cache_keys import CACHE_CLAUDE_PREFIX
+        db = SessionLocal()
+        try:
+            cached_data = CacheRepository(db).get(f"{CACHE_CLAUDE_PREFIX}{cache_key}")
+            if cached_data:
+                return cached_data
+        finally:
+            db.close()
+    except Exception:
+        pass
+
+    return {
+        "story": "Portfolio analysis unavailable.",
+        "style_label": "Unknown",
+        "highlights": [],
+    }
 
 
 # ── Usage tracking ───────────────────────────────────────────────────────────

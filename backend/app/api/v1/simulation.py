@@ -118,6 +118,7 @@ def run_simulation(
         sip_day=request.sip_day,
         lumpsum_amount=request.lumpsum_amount or request.sip_amount,
         lumpsum_deploy_pct=request.lumpsum_deploy_pct,
+        lumpsum_per_trigger=request.lumpsum_per_trigger,
         start_date=request.start_date,
         end_date=request.end_date,
         benchmark_index=request.benchmark_index,

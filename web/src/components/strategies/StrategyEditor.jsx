@@ -371,7 +371,8 @@ export default function StrategyEditor({
           onAddFund={handleAddFund}
           onRemoveFund={handleRemoveFund}
           onSetAllocation={handleSetAllocation}
-          totalInvestment={config.sipAmount + config.lumpsumAmount}
+          sipAmount={config.sipAmount}
+          lumpsumAmount={config.lumpsumAmount}
           initialNlQuery={initialMode?.nlQuery || null}
         />
       </div>

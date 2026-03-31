@@ -25,6 +25,9 @@ VALID_JOBS = frozenset({
     "fetch_nav",
     "fetch_full",
     "sector_rotation",
+    "aum_sync",
+    "cache_warm",
+    "cache_cleanup",
 })
 
 # Job schedule descriptions
@@ -38,6 +41,9 @@ JOB_SCHEDULES = {
     "fetch_nav": "Daily 9:30 PM IST (API)",
     "fetch_full": "Weekly Sun 11:00 PM IST (API)",
     "sector_rotation": "Monthly 8th 10:00 AM IST",
+    "aum_sync": "Daily 10:00 PM IST",
+    "cache_warm": "Daily 10:15 PM IST + 6:15 AM IST",
+    "cache_cleanup": "Daily 3:00 AM IST",
 }
 
 
@@ -125,6 +131,36 @@ class JobScheduler:
             lambda: self._run_with_audit("sector_rotation", self.job_compute_sector_rotation),
             CronTrigger(day=8, hour=10, minute=0),
             id="sector_rotation",
+            replace_existing=True,
+        )
+
+        # Daily 10:00 PM IST — sync latest AUM to fund_master
+        self._scheduler.add_job(
+            lambda: self._run_with_audit("aum_sync", self.job_sync_aum),
+            CronTrigger(hour=22, minute=0),
+            id="aum_sync",
+            replace_existing=True,
+        )
+
+        # Daily 10:15 PM IST + 6:15 AM IST — warm caches
+        self._scheduler.add_job(
+            lambda: self._run_with_audit("cache_warm", self.job_warm_cache),
+            CronTrigger(hour=22, minute=15),
+            id="cache_warm_night",
+            replace_existing=True,
+        )
+        self._scheduler.add_job(
+            lambda: self._run_with_audit("cache_warm", self.job_warm_cache),
+            CronTrigger(hour=6, minute=15),
+            id="cache_warm_morning",
+            replace_existing=True,
+        )
+
+        # Daily 3:00 AM IST — clean expired cache entries
+        self._scheduler.add_job(
+            lambda: self._run_with_audit("cache_cleanup", self.job_cleanup_cache),
+            CronTrigger(hour=3, minute=0),
+            id="cache_cleanup",
             replace_existing=True,
         )
 
@@ -321,6 +357,8 @@ class JobScheduler:
             results = fetcher.fetch_nav_only()
             for r in results:
                 logger.info("Fetch %s: %s (%d funds)", r.api_name, r.status, r.fund_count)
+            # Chain: warm cache after NAV update
+            self.job_warm_cache()
         finally:
             db.close()
 
@@ -353,5 +391,41 @@ class JobScheduler:
             lens_svc = LensService(db)
             lens_result = lens_svc.compute_all_categories()
             logger.info("Post-fetch lens recompute: %s", lens_result)
+            # Chain: AUM sync + cache warm after full fetch
+            self.job_sync_aum()
+            self.job_warm_cache()
+        finally:
+            db.close()
+
+    def job_sync_aum(self) -> None:
+        """Sync latest AUM from holdings snapshots to fund_master for fast filtering."""
+        from app.services.cache_warmer import CacheWarmer
+        db = self._db_session_factory()
+        try:
+            warmer = CacheWarmer(db)
+            count = warmer.sync_latest_aum()
+            logger.info("AUM sync complete: %d rows updated", count)
+        finally:
+            db.close()
+
+    def job_warm_cache(self) -> None:
+        """Pre-compute expensive API responses into kv_cache."""
+        from app.services.cache_warmer import CacheWarmer
+        db = self._db_session_factory()
+        try:
+            warmer = CacheWarmer(db)
+            results = warmer.warm_all()
+            ok = sum(1 for v in results.values() if v)
+            logger.info("Cache warm: %d/%d succeeded — %s", ok, len(results), results)
+        finally:
+            db.close()
+
+    def job_cleanup_cache(self) -> None:
+        """Delete expired kv_cache entries."""
+        from app.repositories.cache_repo import CacheRepository
+        db = self._db_session_factory()
+        try:
+            count = CacheRepository(db).cleanup_expired()
+            logger.info("Cache cleanup: %d expired entries removed", count)
         finally:
             db.close()

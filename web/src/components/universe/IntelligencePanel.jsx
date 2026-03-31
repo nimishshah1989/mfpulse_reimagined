@@ -158,7 +158,7 @@ export default function IntelligencePanel({
     <div className="hidden lg:block col-span-3 space-y-4">
       {/* Top 5 */}
       <div className="glass-card p-5">
-        <p className="section-title mb-3">Top 5 -- Visible Funds</p>
+        <p className="section-title mb-3">Top 5 Visible Funds</p>
         <div className="space-y-2">
           {top5.map((fund, i) => {
             const retVal = Number(fund[yKey]) || 0;

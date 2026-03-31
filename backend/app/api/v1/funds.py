@@ -37,12 +37,28 @@ LENS_TIER_FILTERS = {
 def get_universe_data(db: Session = Depends(get_db)) -> dict:
     """Single-query bulk endpoint for Universe Explorer — all active funds with lens scores.
 
-    Response is cached in-memory for 10 minutes to avoid repeated 14s DB queries.
+    Cache priority: (1) PostgreSQL kv_cache (pre-computed nightly), (2) in-memory 10-min cache, (3) live query.
     """
+    # L1: PostgreSQL pre-computed cache (fastest — no query)
+    from app.repositories.cache_repo import CacheRepository
+    from app.core.cache_keys import CACHE_UNIVERSE_DATA
+
+    kv_cached = CacheRepository(db).get(CACHE_UNIVERSE_DATA)
+    if kv_cached is not None:
+        data = kv_cached
+        return {
+            "success": True,
+            "data": data,
+            "meta": {"timestamp": Meta().timestamp, "count": len(data), "cached": True},
+            "error": None,
+        }
+
+    # L2: In-memory cache (10 min TTL)
     now = time.time()
     if _universe_cache["data"] is not None and (now - _universe_cache["ts"]) < _UNIVERSE_CACHE_TTL:
         data = _universe_cache["data"]
     else:
+        # L3: Live query (14s)
         service = FundService(db)
         data = service.get_universe_data()
         _universe_cache["data"] = data
@@ -50,7 +66,7 @@ def get_universe_data(db: Session = Depends(get_db)) -> dict:
     return {
         "success": True,
         "data": data,
-        "meta": {"timestamp": Meta().timestamp, "count": len(data)},
+        "meta": {"timestamp": Meta().timestamp, "count": len(data), "cached": False},
         "error": None,
     }
 

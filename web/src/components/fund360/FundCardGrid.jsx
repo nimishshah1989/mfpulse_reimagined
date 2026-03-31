@@ -49,10 +49,10 @@ export default function FundCardGrid({ funds, onSelect }) {
             {/* Row 1: Name + Return */}
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-bold text-slate-800 truncate group-hover:text-teal-700 transition-colors">
+                <p className="text-sm font-bold text-slate-800 truncate group-hover:text-teal-700 transition-colors">
                   {name}
                 </p>
-                <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                <p className="text-xs text-slate-500 mt-0.5 truncate">
                   {f.amc_name} {'\u00B7'} {f.category_name}
                 </p>
               </div>
@@ -78,7 +78,7 @@ export default function FundCardGrid({ funds, onSelect }) {
                 ))}
               </div>
               {f.headline_tag && (
-                <span className="text-[9px] italic text-slate-400 ml-1.5 truncate">
+                <span className="text-[10px] italic text-slate-500 ml-1.5 truncate">
                   &ldquo;{f.headline_tag}&rdquo;
                 </span>
               )}
@@ -95,8 +95,8 @@ export default function FundCardGrid({ funds, onSelect }) {
               </div>
               <div className="flex gap-3 items-center flex-shrink-0">
                 {aumCr != null && (
-                  <span className="text-[10px] text-slate-400">
-                    AUM: <span className="font-mono tabular-nums font-semibold text-slate-600">{formatAUM(aumCr)}</span>
+                  <span className="text-[11px] text-slate-500">
+                    AUM: <span className="font-mono tabular-nums font-semibold text-slate-700">{formatAUM(aumCr)}</span>
                   </span>
                 )}
                 {sharpe != null && (

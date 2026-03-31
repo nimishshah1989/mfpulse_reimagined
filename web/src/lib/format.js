@@ -84,3 +84,30 @@ export function formatCount(num) {
   if (num == null) return '0';
   return Number(num).toLocaleString('en-IN');
 }
+
+/**
+ * Check if a name represents an "Other" category — should always sort last.
+ */
+export function isOtherCategory(name) {
+  if (!name) return false;
+  const lower = name.toLowerCase().trim();
+  return lower === 'other' || lower === 'others' || lower.endsWith('- other') || lower.endsWith('- others');
+}
+
+/**
+ * Sort comparator that pushes "Other" categories/sectors to the end.
+ * Use as: arr.sort(sortOtherLast(originalComparator))
+ * @param {Function} compareFn - original sort comparator
+ */
+export function sortOtherLast(compareFn) {
+  return (a, b) => {
+    const nameA = a.category_name || a.sector_name || a.name || a.category || '';
+    const nameB = b.category_name || b.sector_name || b.name || b.category || '';
+    const aIsOther = isOtherCategory(nameA);
+    const bIsOther = isOtherCategory(nameB);
+    if (aIsOther && !bIsOther) return 1;
+    if (!aIsOther && bIsOther) return -1;
+    if (aIsOther && bIsOther) return 0;
+    return compareFn(a, b);
+  };
+}

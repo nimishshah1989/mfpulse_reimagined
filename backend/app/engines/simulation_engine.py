@@ -42,6 +42,7 @@ class SimulationParams:
     sip_day: int = 5
     lumpsum_amount: Decimal = Decimal("0")
     lumpsum_deploy_pct: Decimal = Decimal("100")
+    lumpsum_per_trigger: Optional[Decimal] = None  # Flat amount per trigger (overrides deploy_pct if set)
     start_date: date = date(2020, 1, 1)
     end_date: Optional[date] = None
     benchmark_index: str = "NIFTY 50 TRI"
@@ -176,10 +177,15 @@ class SimulationEngine:
                 if remaining_reserve <= Decimal("0"):
                     break
                 if params.start_date <= se.date <= end_date:
-                    deploy = (remaining_reserve * params.lumpsum_deploy_pct / Decimal("100")).quantize(
-                        Decimal("0.01"), ROUND_HALF_UP
-                    )
-                    deploy = min(deploy, remaining_reserve)
+                    # If lumpsum_per_trigger is set, deploy flat amount per trigger
+                    # Otherwise fall back to percentage of remaining reserve
+                    if params.lumpsum_per_trigger and params.lumpsum_per_trigger > Decimal("0"):
+                        deploy = min(params.lumpsum_per_trigger, remaining_reserve)
+                    else:
+                        deploy = (remaining_reserve * params.lumpsum_deploy_pct / Decimal("100")).quantize(
+                            Decimal("0.01"), ROUND_HALF_UP
+                        )
+                        deploy = min(deploy, remaining_reserve)
                     event = self._process_lumpsum(se.date, deploy, nav_series)
                     if event:
                         cashflow_events.append(event)

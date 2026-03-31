@@ -21,6 +21,7 @@ const PURCHASE_MODES = [
   { label: 'Regular', value: 1 },
 ];
 const SORT_OPTIONS = [
+  { label: 'Top Funds (AUM + 3Y)', value: 'composite_desc' },
   { label: '1Y Return \u2193', value: 'return_1y_desc' },
   { label: '1Y Return \u2191', value: 'return_1y_asc' },
   { label: 'AUM \u2193', value: 'aum_desc' },
@@ -80,7 +81,7 @@ export default function FundSearch({ onSelect }) {
   const [universe, setUniverse] = useState([]);
   const [universeLoading, setUniverseLoading] = useState(true);
   const [purchaseMode, setPurchaseMode] = useState(2); // Default: Direct
-  const [sortBy, setSortBy] = useState('return_1y_desc');
+  const [sortBy, setSortBy] = useState('composite_desc');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [activeLensFilters, setActiveLensFilters] = useState(new Set());
   const [recentFunds, setRecentFunds] = useState([]);
@@ -160,6 +161,17 @@ export default function FundSearch({ onSelect }) {
   // Sort function
   const sortFn = useCallback((a, b) => {
     switch (sortBy) {
+      case 'composite_desc': {
+        // Composite: AUM rank + 3Y return rank — shows top recognizable, high-performing funds
+        const aumA = Number(a.aum) || 0, aumB = Number(b.aum) || 0;
+        const retA = Number(a.return_3y) || Number(a.return_1y) || -999;
+        const retB = Number(b.return_3y) || Number(b.return_1y) || -999;
+        // Weighted: 40% AUM rank + 60% return rank (normalize to 0-1 scale)
+        const maxAum = Math.max(aumA, aumB, 1);
+        const scoreA = (aumA / maxAum) * 0.4 + (retA > 0 ? retA / 100 : 0) * 0.6;
+        const scoreB = (aumB / maxAum) * 0.4 + (retB > 0 ? retB / 100 : 0) * 0.6;
+        return scoreB - scoreA;
+      }
       case 'return_1y_desc': return (Number(b.return_1y) || -999) - (Number(a.return_1y) || -999);
       case 'return_1y_asc': return (Number(a.return_1y) || -999) - (Number(b.return_1y) || -999);
       case 'aum_desc': return (Number(b.aum) || 0) - (Number(a.aum) || 0);
@@ -266,7 +278,7 @@ export default function FundSearch({ onSelect }) {
     return { displayFunds: sorted, displayLabel: label };
   }, [universe, activeBucket, bucketFundIds, purchaseMode, selectedBroad, selectedCategory, selectedAmc, query, activeLensFilters, sortFn]);
 
-  const hasActiveFilters = selectedCategory || selectedAmc || selectedBroad !== 'All' || query || activeBucket || purchaseMode !== 0 || sortBy !== 'return_1y_desc' || activeLensFilters.size > 0;
+  const hasActiveFilters = selectedCategory || selectedAmc || selectedBroad !== 'All' || query || activeBucket || purchaseMode !== 0 || sortBy !== 'composite_desc' || activeLensFilters.size > 0;
 
   const clearAllFilters = useCallback(() => {
     setQuery('');

@@ -12,9 +12,9 @@ import { useRef, useEffect, useMemo } from 'react';
  */
 export default function PeerScatter({ fund, lensScores, peers, fundDetail }) {
   const canvasRef = useRef(null);
-  const W = 320;
-  const H = 220;
-  const margin = { top: 20, right: 20, bottom: 30, left: 40 };
+  const W = 480;
+  const H = 320;
+  const margin = { top: 24, right: 24, bottom: 36, left: 44 };
 
   const fundRisk = Number(lensScores?.risk_score) || 50;
   const fundReturn = Number(fundDetail?.returns?.return_1y ?? fundDetail?.return_1y) || 0;

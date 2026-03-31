@@ -263,10 +263,7 @@ export default function Fund360Page() {
         onCompare={() => setCompareOpen(true)}
       />
 
-      {/* SECTION 2: Fund Manager & Strategy (qualitative) */}
-      <FundManagerStrategy fundDetail={fundDetail} />
-
-      {/* SECTION 3: Intelligence Signals — 3 actionable cards up front */}
+      {/* SECTION 2: Intelligence Signals — 3 actionable cards up front */}
       <SectionCard
         title="Intelligence Signals"
         subtitle="Three things to know before making a decision on this fund"
@@ -313,6 +310,13 @@ export default function Fund360Page() {
             subtitle="Click any lens to see detailed breakdown"
             className="lg:col-span-3"
           >
+            <p className="text-[10px] text-slate-500 leading-relaxed mb-3 ds-callout ds-callout-teal">
+              Each lens is an independent percentile rank (0-100) within the fund&apos;s SEBI category.
+              <strong> Return</strong> measures if it makes money. <strong>Risk</strong> measures volatility.
+              <strong> Consistency</strong> measures reliability over time. <strong>Alpha</strong> measures manager skill.
+              <strong> Efficiency</strong> measures cost-effectiveness. <strong>Resilience</strong> measures bad-market behavior.
+              A score of 80 means the fund is better than 80% of peers on that dimension.
+            </p>
             <div className="space-y-2">
               {LENS_OPTIONS.map((lens) => {
                 const classKey = LENS_CLASS_KEYS[lens.key];
@@ -357,6 +361,10 @@ export default function Fund360Page() {
           />
         </SectionCard>
         <SectionCard title="Peer Scatter" subtitle="Risk vs return — this fund highlighted in teal">
+          <p className="text-[10px] text-slate-500 mb-3 leading-relaxed">
+            Each dot is a peer fund in the same SEBI category. X-axis is risk score (higher = riskier),
+            Y-axis is 1-year return. Funds in the top-left offer the best risk-adjusted returns.
+          </p>
           <PeerScatter
             fund={fundDetail}
             lensScores={lensScores}
@@ -391,14 +399,14 @@ export default function Fund360Page() {
         <RiskProfile riskStats={combinedRiskStats} />
       </SectionCard>
 
-      {/* SECTION 8: Portfolio Holdings — expandable accordion */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Holdings (2 cols) */}
-        <SectionCard title="Portfolio Holdings" subtitle="Click sections to expand. All allocations sum to 100%." className="lg:col-span-2">
+      {/* SECTION 8: Portfolio Holdings + Sector Holdings — equal side-by-side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left: Portfolio Holdings */}
+        <SectionCard title="Portfolio Holdings" subtitle="Top holdings by weight. Click to expand full list.">
           <HoldingsTable holdings={holdings} sectorQuadrants={sectorQuadrants} />
         </SectionCard>
 
-        {/* Sector + Asset + Credit (1 col) */}
+        {/* Right: Sector + Asset + Credit stacked */}
         <div className="space-y-4">
           <SectionCard title="Sector Allocation">
             <SectorAllocation sectors={sectors} sectorQuadrants={sectorQuadrants} />

@@ -1,5 +1,5 @@
-import UniversePage from './universe';
+import DashboardPage from './dashboard';
 
 export default function Home(props) {
-  return <UniversePage {...props} />;
+  return <DashboardPage {...props} />;
 }

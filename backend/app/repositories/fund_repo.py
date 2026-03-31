@@ -121,13 +121,19 @@ class FundRepository:
             .order_by(FundMaster.category_name)
             .all()
         )
+        # Sort "Other" categories to the end — user requirement
+        def _other_last_key(r):
+            name = (r.category_name or "").lower().strip()
+            is_other = name == "other" or name.endswith("- other") or name.endswith("- others")
+            return (1 if is_other else 0, r.category_name or "")
+
         return [
             {
                 "category_name": r.category_name,
                 "broad_category": r.broad_category,
                 "fund_count": r.fund_count,
             }
-            for r in rows
+            for r in sorted(rows, key=_other_last_key)
         ]
 
     def get_amcs(self) -> list[dict]:
@@ -560,24 +566,75 @@ class FundRepository:
         category_name: str,
         exclude_mstar_id: Optional[str] = None,
         limit: int = 50,
+        purchase_mode: Optional[int] = None,
     ) -> list[dict]:
-        """All funds in the same SEBI category with latest NAV returns + lens scores."""
+        """Funds in same SEBI category, ordered by AUM (most relevant peers first).
+
+        Filters to same purchase_mode (Direct/Regular) when provided.
+        Limits per-AMC to 5 funds to ensure diversity.
+        """
         from app.models.db.lens_scores import FundLensScores
+        from app.models.db.holdings import FundHoldingsSnapshot
+
+        # Subquery: latest AUM per fund from holdings snapshots
+        latest_aum_sub = (
+            self.db.query(
+                FundHoldingsSnapshot.mstar_id,
+                func.max(FundHoldingsSnapshot.portfolio_date).label("max_date"),
+            )
+            .group_by(FundHoldingsSnapshot.mstar_id)
+            .subquery()
+        )
+        aum_sub = (
+            self.db.query(
+                FundHoldingsSnapshot.mstar_id,
+                FundHoldingsSnapshot.aum,
+            )
+            .join(
+                latest_aum_sub,
+                (FundHoldingsSnapshot.mstar_id == latest_aum_sub.c.mstar_id)
+                & (FundHoldingsSnapshot.portfolio_date == latest_aum_sub.c.max_date),
+            )
+            .subquery()
+        )
 
         query = (
-            self.db.query(FundMaster)
+            self.db.query(FundMaster, aum_sub.c.aum.label("latest_aum"))
+            .outerjoin(aum_sub, FundMaster.mstar_id == aum_sub.c.mstar_id)
             .filter(FundMaster.category_name == category_name)
             .filter(FundMaster.is_eligible.is_(True))
         )
         if exclude_mstar_id:
             query = query.filter(FundMaster.mstar_id != exclude_mstar_id)
-        funds = query.order_by(FundMaster.fund_name).limit(limit).all()
+        if purchase_mode is not None:
+            query = query.filter(FundMaster.purchase_mode == purchase_mode)
+
+        # Order by AUM descending (biggest/most relevant funds first), nulls last
+        all_funds = (
+            query.order_by(aum_sub.c.aum.desc().nullslast(), FundMaster.fund_name)
+            .limit(limit * 3)  # Fetch extra to allow AMC diversity filtering
+            .all()
+        )
+
+        # Diversify: max 5 funds per AMC to avoid one AMC dominating the peer list
+        MAX_PER_AMC = 5
+        amc_counts: dict[str, int] = {}
+        funds = []
+        for row in all_funds:
+            fund = row[0] if isinstance(row, tuple) else row
+            amc = fund.amc_name or "Unknown"
+            if amc_counts.get(amc, 0) >= MAX_PER_AMC:
+                continue
+            amc_counts[amc] = amc_counts.get(amc, 0) + 1
+            funds.append((fund, row[1] if isinstance(row, tuple) else None))
+            if len(funds) >= limit:
+                break
 
         if not funds:
             return []
 
         # Batch fetch latest NAVs
-        mstar_ids = [f.mstar_id for f in funds]
+        mstar_ids = [f.mstar_id for f, _aum in funds]
         nav_map = self.get_latest_navs_batch(mstar_ids)
 
         # Batch fetch latest lens scores
@@ -602,7 +659,7 @@ class FundRepository:
         lens_map: dict[str, FundLensScores] = {r.mstar_id: r for r in lens_rows}
 
         result = []
-        for f in funds:
+        for f, latest_aum in funds:
             nav = nav_map.get(f.mstar_id, {})
             lens = lens_map.get(f.mstar_id)
             result.append({
@@ -612,6 +669,7 @@ class FundRepository:
                 "amc_name": f.amc_name,
                 "category_name": f.category_name,
                 "net_expense_ratio": f.net_expense_ratio,
+                "aum": str(latest_aum) if latest_aum else None,
                 "purchase_mode": _PURCHASE_MODE_MAP.get(f.purchase_mode, "Unknown"),
                 "dividend_type": "IDCW" if _IDCW_PATTERN.search(f.fund_name or "") else "Growth",
                 "return_1y": nav.get("return_1y"),

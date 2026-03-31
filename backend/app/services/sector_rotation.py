@@ -176,7 +176,7 @@ class SectorRotationService:
         return results
 
     def get_current_rotation(self) -> list[dict]:
-        """Get the latest computed sector rotation."""
+        """Get the latest computed sector rotation with normalized weights (sum to 100%)."""
         latest_date = self.db.query(
             func.max(SectorRotationHistory.snapshot_date)
         ).scalar()
@@ -188,7 +188,16 @@ class SectorRotationService:
             SectorRotationHistory.snapshot_date == latest_date
         ).order_by(SectorRotationHistory.rs_score.desc()).all()
 
-        return [self._row_to_dict(r) for r in rows]
+        result = [self._row_to_dict(r) for r in rows]
+
+        # Normalize avg_weight_pct to sum to 100% — raw averages don't sum to 100
+        # because they're independent per-sector averages across different fund sets
+        total_weight = sum(r["avg_weight_pct"] for r in result)
+        if total_weight > 0:
+            for r in result:
+                r["avg_weight_pct"] = round(r["avg_weight_pct"] / total_weight * 100, 2)
+
+        return result
 
     def get_history(self, months: int = 6) -> list[dict]:
         """Get sector rotation history for the last N months."""

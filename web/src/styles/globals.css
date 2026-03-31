@@ -81,6 +81,123 @@ html {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── DESIGN SYSTEM TOKENS (from fund360.html mockup) ─── */
+
+/* RULE: No text lighter than slate-500 (#64748b) on white backgrounds.
+   Light grey camouflages on white — banned per feedback. */
+
+/* Section titles: 11px, semibold, uppercase, slate-400 tracking */
+.ds-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+}
+
+/* Metric label: 10px, medium, slate-500 — minimum readable grey */
+.ds-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+/* Metric value: 14-18px, bold, slate-800 — highly readable */
+.ds-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-value-lg {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Context text (category comparison, etc): 10px, emerald/red/slate */
+.ds-context {
+  font-size: 10px;
+  color: #64748b;
+}
+
+/* Dense stat card: tight padding, stacked label→value→context */
+.ds-stat-card {
+  background: linear-gradient(to bottom right, rgba(240, 253, 250, 0.3), rgba(248, 250, 252, 0.5));
+  border-radius: 12px;
+  padding: 12px;
+}
+
+/* Compact table: tighter rows, readable fonts */
+.ds-table th {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  padding: 6px 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ds-table td {
+  font-size: 12px;
+  color: #334155;
+  padding: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.ds-table tr:hover td {
+  background: #f8fafc;
+}
+
+/* Interpretive callout (from fund360.html lens detail) */
+.ds-callout {
+  font-size: 10px;
+  line-height: 1.6;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.ds-callout-teal {
+  background: #f0fdfa;
+  color: #115e59;
+}
+
+.ds-callout-amber {
+  background: #fefce8;
+  color: #92400e;
+}
+
+.ds-callout-red {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+/* Percentile bar (4px height, from fund360.html) */
+.ds-pctile-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.ds-pctile-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+/* Expandable section chevron rotation */
+.ds-chevron {
+  transition: transform 0.3s ease;
+}
+
+.ds-chevron-open {
+  transform: rotate(90deg);
+}
+
 .card {
   background: #ffffff;
   border: 1px solid #e2e8f0;

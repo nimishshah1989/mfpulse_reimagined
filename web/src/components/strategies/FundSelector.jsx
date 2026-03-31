@@ -30,7 +30,11 @@ const LENS_KEYS = [
 
 const PURCHASE_MODES = ['Regular', 'Direct'];
 
-export default function FundSelector({ funds, allocations, onAddFund, onRemoveFund, onSetAllocation, totalInvestment, initialNlQuery }) {
+export default function FundSelector({ funds, allocations, onAddFund, onRemoveFund, onSetAllocation, sipAmount = 0, lumpsumAmount = 0, totalInvestment, initialNlQuery }) {
+  // SIP and lumpsum are separate investment streams — show them independently
+  const effectiveSip = sipAmount || 0;
+  const effectiveLumpsum = lumpsumAmount || 0;
+  const hasInvestmentAmounts = effectiveSip > 0 || effectiveLumpsum > 0;
   const [search, setSearch] = useState('');
   const [nlQuery, setNlQuery] = useState('');
   const [nlTokens, setNlTokens] = useState([]);
@@ -376,8 +380,11 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
                   <th className="text-left px-3 py-2 text-slate-500 font-medium">Fund</th>
                   <th className="text-left px-3 py-2 text-slate-500 font-medium w-20">Lenses</th>
                   <th className="text-right px-3 py-2 text-slate-500 font-medium w-24">Allocation</th>
-                  {totalInvestment > 0 && (
-                    <th className="text-right px-3 py-2 text-slate-500 font-medium w-24">INR Amount</th>
+                  {hasInvestmentAmounts && effectiveSip > 0 && (
+                    <th className="text-right px-3 py-2 text-slate-500 font-medium w-24">SIP/mo</th>
+                  )}
+                  {hasInvestmentAmounts && effectiveLumpsum > 0 && (
+                    <th className="text-right px-3 py-2 text-slate-500 font-medium w-24">Lumpsum Reserve</th>
                   )}
                   <th className="w-8" />
                 </tr>
@@ -385,7 +392,8 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
               <tbody className="divide-y divide-slate-100">
                 {funds.map((fund) => {
                   const alloc = allocations[fund.mstar_id] || 0;
-                  const inrAmount = totalInvestment > 0 ? (alloc / 100) * totalInvestment : 0;
+                  const sipPerFund = effectiveSip > 0 ? (alloc / 100) * effectiveSip : 0;
+                  const lumpPerFund = effectiveLumpsum > 0 ? (alloc / 100) * effectiveLumpsum : 0;
                   return (
                     <tr key={fund.mstar_id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-3 py-2.5">
@@ -427,9 +435,14 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
                           <span className="text-[10px] text-slate-400">%</span>
                         </div>
                       </td>
-                      {totalInvestment > 0 && (
+                      {hasInvestmentAmounts && effectiveSip > 0 && (
                         <td className="px-3 py-2.5 text-right font-mono tabular-nums text-slate-600">
-                          {formatINR(inrAmount, 0)}
+                          {formatINR(sipPerFund, 0)}
+                        </td>
+                      )}
+                      {hasInvestmentAmounts && effectiveLumpsum > 0 && (
+                        <td className="px-3 py-2.5 text-right font-mono tabular-nums text-teal-700">
+                          {formatINR(lumpPerFund, 0)}
                         </td>
                       )}
                       <td className="px-2 py-2.5">

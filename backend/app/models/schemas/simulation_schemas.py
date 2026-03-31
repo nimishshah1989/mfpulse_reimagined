@@ -28,6 +28,7 @@ class SimulationRequest(BaseModel):
     sip_day: int = Field(default=5, ge=1, le=31)
     lumpsum_amount: Optional[Decimal] = None
     lumpsum_deploy_pct: Decimal = Field(default=Decimal("100"), ge=Decimal("1"), le=Decimal("100"))
+    lumpsum_per_trigger: Optional[Decimal] = Field(default=None, ge=Decimal("0"), description="Flat amount to deploy per trigger event. Overrides lumpsum_deploy_pct when set.")
     start_date: date
     end_date: Optional[date] = None
     signal_rules: Optional[list[SignalRuleSchema]] = None

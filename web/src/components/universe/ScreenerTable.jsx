@@ -4,7 +4,7 @@
  */
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { formatPct, formatAUM } from '../../lib/format';
+import { formatPct, formatAUM, isOtherCategory } from '../../lib/format';
 import { scoreColor } from '../../lib/lens';
 
 const PAGE_SIZE = 50;
@@ -127,6 +127,12 @@ export default function ScreenerTable({
     const col = SORTABLE_COLUMNS[sortKey];
     if (!col) return funds;
     return [...funds].sort((a, b) => {
+      // "Other" categories always sort to end regardless of sort direction
+      const nameA = a.category_name || a.name || '';
+      const nameB = b.category_name || b.name || '';
+      if (isOtherCategory(nameA) && !isOtherCategory(nameB)) return 1;
+      if (!isOtherCategory(nameA) && isOtherCategory(nameB)) return -1;
+
       const av = col.numeric ? (Number(a[sortKey]) || 0) : (a[sortKey] || '');
       const bv = col.numeric ? (Number(b[sortKey]) || 0) : (b[sortKey] || '');
       if (typeof av === 'number') {

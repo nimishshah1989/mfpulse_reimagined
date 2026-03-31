@@ -40,6 +40,9 @@ class FundMaster(Base, UUIDPrimaryKey, TimestampMixin):
     is_insurance_product: Mapped[Optional[bool]] = mapped_column(Boolean)
     sip_available: Mapped[Optional[bool]] = mapped_column(Boolean)
 
+    # AUM (denormalized from fund_holdings_snapshot, synced nightly)
+    latest_aum: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 2), nullable=True)
+
     # Costs & ratios
     net_expense_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
     gross_expense_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)

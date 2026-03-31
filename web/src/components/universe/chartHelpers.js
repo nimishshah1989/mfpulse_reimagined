@@ -157,22 +157,30 @@ export function drawChart(ctx, params) {
   ctx.moveTo(0, innerH); ctx.lineTo(innerW, innerH); // X axis
   ctx.stroke();
 
-  // Quadrant labels — centered in each quadrant
-  ctx.font = '700 13px Inter, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  // Quadrant labels — positioned at corners to avoid bubble overlap
+  ctx.font = '600 10px Inter, sans-serif';
+  ctx.textBaseline = 'alphabetic';
+  const labelPad = 8;
 
-  ctx.fillStyle = 'rgba(5, 150, 105, 0.35)';
-  ctx.fillText('SWEET SPOT', xMid / 2, yMid / 2);
+  // Top-left: SWEET SPOT
+  ctx.fillStyle = 'rgba(5, 150, 105, 0.55)';
+  ctx.textAlign = 'left';
+  ctx.fillText('SWEET SPOT', labelPad, labelPad + 10);
 
-  ctx.fillStyle = 'rgba(245, 158, 11, 0.35)';
-  ctx.fillText('HIGH RISK HIGH RETURN', xMid + (innerW - xMid) / 2, yMid / 2);
+  // Top-right: HIGH RISK HIGH RETURN
+  ctx.fillStyle = 'rgba(245, 158, 11, 0.55)';
+  ctx.textAlign = 'right';
+  ctx.fillText('HIGH RISK HIGH RETURN', innerW - labelPad, labelPad + 10);
 
-  ctx.fillStyle = 'rgba(14, 165, 233, 0.35)';
-  ctx.fillText('CONSERVATIVE', xMid / 2, yMid + (innerH - yMid) / 2);
+  // Bottom-left: CONSERVATIVE
+  ctx.fillStyle = 'rgba(14, 165, 233, 0.55)';
+  ctx.textAlign = 'left';
+  ctx.fillText('CONSERVATIVE', labelPad, innerH - labelPad);
 
-  ctx.fillStyle = 'rgba(239, 68, 68, 0.35)';
-  ctx.fillText('AVOID', xMid + (innerW - xMid) / 2, yMid + (innerH - yMid) / 2);
+  // Bottom-right: AVOID
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.55)';
+  ctx.textAlign = 'right';
+  ctx.fillText('AVOID', innerW - labelPad, innerH - labelPad);
 
   ctx.textBaseline = 'alphabetic';
 
