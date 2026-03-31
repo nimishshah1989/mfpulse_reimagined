@@ -610,8 +610,13 @@ class FundRepository:
             query = query.filter(FundMaster.purchase_mode == purchase_mode)
 
         # Order by AUM descending (biggest/most relevant funds first), nulls last
+        from sqlalchemy import case
         all_funds = (
-            query.order_by(aum_sub.c.aum.desc().nullslast(), FundMaster.fund_name)
+            query.order_by(
+                case((aum_sub.c.aum.is_(None), 1), else_=0),  # NULLs last
+                aum_sub.c.aum.desc(),
+                FundMaster.fund_name,
+            )
             .limit(limit * 3)  # Fetch extra to allow AMC diversity filtering
             .all()
         )
@@ -621,12 +626,14 @@ class FundRepository:
         amc_counts: dict[str, int] = {}
         funds = []
         for row in all_funds:
-            fund = row[0] if isinstance(row, tuple) else row
+            # SQLAlchemy Row: row[0] = FundMaster, row[1] = latest_aum
+            fund = row[0]
+            aum_val = row[1]
             amc = fund.amc_name or "Unknown"
             if amc_counts.get(amc, 0) >= MAX_PER_AMC:
                 continue
             amc_counts[amc] = amc_counts.get(amc, 0) + 1
-            funds.append((fund, row[1] if isinstance(row, tuple) else None))
+            funds.append((fund, aum_val))
             if len(funds) >= limit:
                 break
 
