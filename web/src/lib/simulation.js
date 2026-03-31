@@ -1,4 +1,4 @@
-const PERIOD_YEARS = { '5Y': 5, '7Y': 7, '10Y': 10, max: 25 };
+const PERIOD_YEARS = { '3Y': 3, '5Y': 5, '7Y': 7, '10Y': 10, max: 25 };
 
 export function computeStartDate(period) {
   const today = new Date();
@@ -50,6 +50,11 @@ export const MODE_COLORS = {
   SIP_SIGNAL: '#059669',
   LUMPSUM: '#f59e0b',
   HYBRID: '#7c3aed',
+  // API compare_modes uses lowercase keys
+  pure_sip: '#0d9488',
+  sip_signal: '#059669',
+  lumpsum: '#f59e0b',
+  hybrid: '#7c3aed',
 };
 
 export const MODE_LABELS = {
@@ -57,6 +62,11 @@ export const MODE_LABELS = {
   SIP_SIGNAL: 'SIP + Signal',
   LUMPSUM: 'Lumpsum',
   HYBRID: 'Hybrid',
+  // API compare_modes uses lowercase keys
+  pure_sip: 'Pure SIP',
+  sip_signal: 'SIP + Signal',
+  lumpsum: 'Lumpsum',
+  hybrid: 'Hybrid',
 };
 
 export function findBestMode(results) {

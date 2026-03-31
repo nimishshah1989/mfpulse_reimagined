@@ -178,24 +178,25 @@ export default function SimulationResults({ results, loading, error, onSave }) {
   const modes = Object.keys(results).filter((k) => results[k]?.summary);
   const bestMode = findBestMode(results);
 
-  // Merge all timelines for chart
+  // Merge all timelines for chart — API returns daily_timeline with portfolio_value
   const chartData = useMemo(() => {
     if (modes.length === 0) return [];
     const firstMode = modes[0];
-    const timeline = results[firstMode]?.timeline || [];
+    const timeline = results[firstMode]?.daily_timeline || results[firstMode]?.timeline || [];
     const resampled = resampleTimeline(timeline);
     return resampled.map((point) => {
       const row = { date: point.date };
       modes.forEach((m) => {
-        const modeTimeline = results[m]?.timeline || [];
+        const modeTimeline = results[m]?.daily_timeline || results[m]?.timeline || [];
         const match = modeTimeline.find((p) => p.date === point.date);
-        row[m] = match ? match.value : null;
+        row[m] = match ? (match.portfolio_value || match.value) : null;
       });
       return row;
     });
   }, [results, modes]);
 
-  const events = results[bestMode]?.events || results.SIP_SIGNAL?.events || [];
+  const events = results[bestMode]?.cashflow_events || results[bestMode]?.events
+    || results.sip_signal?.cashflow_events || results.SIP_SIGNAL?.events || [];
 
   return (
     <div className="space-y-6">
