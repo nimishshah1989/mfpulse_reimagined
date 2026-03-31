@@ -2,21 +2,26 @@ import { useState, useReducer, useCallback, useEffect } from 'react';
 import { strategyReducer, initialState } from '../../lib/strategyReducer';
 import { EMPTY_RULE, DEFAULT_CONFIG, computeStartDate } from '../../lib/simulation';
 import { compareModes, createStrategy, updateStrategy, fetchDefaultRules, fetchFunds } from '../../lib/api';
-import { formatINR } from '../../lib/format';
+
 import ModeToggle from './ModeToggle';
 import FundSelector from './FundSelector';
 import ConditionBuilder from './ConditionBuilder';
-import SimulationResults from './SimulationResults';
-import Pill from '../shared/Pill';
+import ReviewStep from './ReviewStep';
 
 const STEPS = [
-  { key: 'mode', label: 'Choose Mode', icon: '1' },
-  { key: 'funds', label: 'Select Funds', icon: '2' },
-  { key: 'conditions', label: 'Signal Conditions', icon: '3' },
-  { key: 'review', label: 'Review & Backtest', icon: '4' },
+  { key: 'name', label: 'Name & Setup', icon: '1' },
+  { key: 'mode', label: 'Choose Mode', icon: '2' },
+  { key: 'funds', label: 'Select Funds', icon: '3' },
+  { key: 'conditions', label: 'Signal Conditions', icon: '4' },
+  { key: 'review', label: 'Review & Backtest', icon: '5' },
 ];
 
-const PERIODS = ['3Y', '5Y', '7Y', '10Y'];
+const BENCHMARKS = [
+  'Nifty 50 TRI',
+  'Nifty 500 TRI',
+  'Nifty Midcap 150 TRI',
+  'S&P BSE Sensex TRI',
+];
 
 const SMART_PRESETS = [
   {
@@ -64,6 +69,9 @@ export default function StrategyEditor({
   const [period, setPeriod] = useState('5Y');
   const [backtestOnly, setBacktestOnly] = useState(true);
   const [strategyName, setStrategyName] = useState('');
+  const [strategyDescription, setStrategyDescription] = useState('');
+  const [benchmark, setBenchmark] = useState('Nifty 50 TRI');
+  const [exitRules, setExitRules] = useState([]);
   const [results, setResults] = useState(null);
   const [simulating, setSimulating] = useState(false);
   const [simError, setSimError] = useState(null);
@@ -92,9 +100,12 @@ export default function StrategyEditor({
   useEffect(() => {
     if (!editingStrategy) return;
     setStrategyName(editingStrategy.name || '');
+    setStrategyDescription(editingStrategy.description || '');
+    if (editingStrategy.benchmark) setBenchmark(editingStrategy.benchmark);
     setMode(editingStrategy.mode || 'sip_topups');
     if (editingStrategy.config) setConfig({ ...DEFAULT_CONFIG, ...editingStrategy.config });
     if (editingStrategy.rules) setRules(editingStrategy.rules);
+    if (editingStrategy.exitRules) setExitRules(editingStrategy.exitRules);
     if (editingStrategy.period) setPeriod(editingStrategy.period);
     if (editingStrategy.funds) {
       dispatch({ type: 'LOAD_STRATEGY', data: editingStrategy });
@@ -160,9 +171,12 @@ export default function StrategyEditor({
   const handleSave = useCallback(async () => {
     const data = {
       name: strategyName || `Strategy ${new Date().toISOString().slice(0, 10)}`,
+      description: strategyDescription,
+      benchmark,
       mode,
       config,
       rules,
+      exitRules,
       period,
       status: backtestOnly ? 'BACKTEST' : 'ACTIVE',
       funds: state.funds.map((f) => ({
@@ -187,9 +201,10 @@ export default function StrategyEditor({
 
   const canAdvance = () => {
     switch (activeStep) {
-      case 0: return true;
-      case 1: return state.funds.length > 0;
-      case 2: return true;
+      case 0: return strategyName.trim().length > 0;
+      case 1: return true;
+      case 2: return state.funds.length > 0;
+      case 3: return true;
       default: return false;
     }
   };
@@ -211,14 +226,12 @@ export default function StrategyEditor({
             </svg>
             Back
           </button>
-          <div className="h-5 w-px bg-slate-200" />
-          <input
-            type="text"
-            value={strategyName}
-            onChange={(e) => setStrategyName(e.target.value)}
-            placeholder="Name your strategy..."
-            className="text-lg font-semibold text-slate-800 border-none bg-transparent focus:outline-none focus:ring-0 p-0 placeholder-slate-300"
-          />
+          {strategyName && (
+            <>
+              <div className="h-5 w-px bg-slate-200" />
+              <span className="text-lg font-semibold text-slate-800">{strategyName}</span>
+            </>
+          )}
         </div>
         {state.funds.length > 0 && (
           <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
@@ -270,8 +283,52 @@ export default function StrategyEditor({
 
       {/* Step content */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
-        {/* Step 1: Choose Mode */}
+        {/* Step 0: Name & Setup */}
         {activeStep === 0 && (
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-base font-semibold text-slate-800">Name Your Strategy</h3>
+              <p className="text-xs text-slate-500 mt-1">Give your strategy a name, optional description, and select a benchmark.</p>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-slate-600 font-medium block mb-1.5">Strategy Name</label>
+                <input
+                  type="text"
+                  value={strategyName}
+                  onChange={(e) => setStrategyName(e.target.value)}
+                  placeholder="e.g. All-Weather Alpha Portfolio"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-lg font-semibold text-slate-800 placeholder-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-600 font-medium block mb-1.5">Description (optional)</label>
+                <textarea
+                  value={strategyDescription}
+                  onChange={(e) => setStrategyDescription(e.target.value)}
+                  placeholder="Describe the goal and thesis of this strategy..."
+                  rows={3}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 placeholder-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none resize-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-600 font-medium block mb-1.5">Benchmark</label>
+                <select
+                  value={benchmark}
+                  onChange={(e) => setBenchmark(e.target.value)}
+                  className="w-full sm:w-72 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none bg-white"
+                >
+                  {BENCHMARKS.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 1: Choose Mode */}
+        {activeStep === 1 && (
           <div className="space-y-5">
             <div>
               <h3 className="text-base font-semibold text-slate-800">Choose Investment Mode</h3>
@@ -317,7 +374,7 @@ export default function StrategyEditor({
         )}
 
         {/* Step 2: Select Funds */}
-        {activeStep === 1 && (
+        {activeStep === 2 && (
           <div className="space-y-5">
             <div>
               <h3 className="text-base font-semibold text-slate-800">Select Funds & Allocations</h3>
@@ -365,7 +422,7 @@ export default function StrategyEditor({
         )}
 
         {/* Step 3: Signal Conditions */}
-        {activeStep === 2 && (
+        {activeStep === 3 && (
           <div className="space-y-5">
             <div>
               <h3 className="text-base font-semibold text-slate-800">Signal Conditions</h3>
@@ -374,127 +431,29 @@ export default function StrategyEditor({
             <ConditionBuilder
               rules={rules}
               onRulesChange={setRules}
+              exitRules={exitRules}
+              onExitRulesChange={setExitRules}
               marketpulseOnline={marketpulseOnline}
             />
           </div>
         )}
 
         {/* Step 4: Review & Backtest */}
-        {activeStep === 3 && (
-          <div className="space-y-5">
-            <div>
-              <h3 className="text-base font-semibold text-slate-800">Review & Backtest</h3>
-              <p className="text-xs text-slate-500 mt-1">Verify your configuration and run the simulation.</p>
-            </div>
-
-            {/* Summary cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-3 bg-slate-50 rounded-lg">
-                <p className="text-[10px] text-slate-500 font-medium">Funds</p>
-                <p className="text-lg font-bold font-mono tabular-nums text-slate-800">{state.funds.length}</p>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-lg">
-                <p className="text-[10px] text-slate-500 font-medium">Monthly SIP</p>
-                <p className="text-lg font-bold font-mono tabular-nums text-slate-800">{formatINR(config.sipAmount, 0)}</p>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-lg">
-                <p className="text-[10px] text-slate-500 font-medium">Lumpsum</p>
-                <p className="text-lg font-bold font-mono tabular-nums text-slate-800">{formatINR(config.lumpsumAmount, 0)}</p>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-lg">
-                <p className="text-[10px] text-slate-500 font-medium">Signal Rules</p>
-                <p className="text-lg font-bold font-mono tabular-nums text-slate-800">{rules.length}</p>
-              </div>
-            </div>
-
-            {/* Fund list summary */}
-            {state.funds.length > 0 && (
-              <div className="border border-slate-200 rounded-lg overflow-hidden">
-                <table className="w-full text-xs">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      <th className="text-left px-3 py-2 text-slate-500 font-medium">Fund</th>
-                      <th className="text-right px-3 py-2 text-slate-500 font-medium">Allocation</th>
-                      <th className="text-right px-3 py-2 text-slate-500 font-medium">SIP Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {state.funds.map((fund) => {
-                      const alloc = state.allocations[fund.mstar_id] || 0;
-                      const sipShare = (alloc / 100) * config.sipAmount;
-                      return (
-                        <tr key={fund.mstar_id} className="hover:bg-slate-50">
-                          <td className="px-3 py-2 text-slate-700 truncate max-w-[200px]">{fund.fund_name}</td>
-                          <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-600">{alloc.toFixed(1)}%</td>
-                          <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-600">{formatINR(sipShare, 0)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Period selection */}
-            <div className="space-y-3">
-              <p className="text-xs font-semibold text-slate-600">Simulation Period</p>
-              <div className="flex items-center gap-2">
-                {PERIODS.map((p) => (
-                  <Pill key={p} active={period === p} onClick={() => setPeriod(p)}>
-                    {p}
-                  </Pill>
-                ))}
-              </div>
-            </div>
-
-            {/* Backtest toggle */}
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-xs text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={backtestOnly}
-                  onChange={(e) => setBacktestOnly(e.target.checked)}
-                  className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                />
-                Backtest only (do not activate for live tracking)
-              </label>
-            </div>
-
-            {/* Run simulation button */}
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleRunSimulation}
-                disabled={state.funds.length === 0 || simulating}
-                className="px-6 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 shadow-sm"
-              >
-                {simulating ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Running Simulation...
-                  </span>
-                ) : 'Run Backtest'}
-              </button>
-              {state.funds.length === 0 && (
-                <p className="text-xs text-amber-600">Add at least one fund to run simulation</p>
-              )}
-            </div>
-
-            {/* Results */}
-            {(results || simError) && (
-              <div className="pt-4 border-t border-slate-100">
-                <SimulationResults
-                  results={results}
-                  loading={simulating}
-                  error={simError}
-                  onSave={handleSave}
-                />
-              </div>
-            )}
-          </div>
+        {activeStep === 4 && (
+          <ReviewStep
+            state={state}
+            config={config}
+            rules={rules}
+            period={period}
+            setPeriod={setPeriod}
+            backtestOnly={backtestOnly}
+            setBacktestOnly={setBacktestOnly}
+            simulating={simulating}
+            simError={simError}
+            results={results}
+            onRunSimulation={handleRunSimulation}
+            onSave={handleSave}
+          />
         )}
       </div>
 
@@ -512,7 +471,7 @@ export default function StrategyEditor({
           Previous
         </button>
         <div className="flex items-center gap-2">
-          {activeStep === 3 && results && (
+          {activeStep === 4 && results && (
             <button
               type="button"
               onClick={handleSave}
@@ -521,10 +480,10 @@ export default function StrategyEditor({
               Save Strategy
             </button>
           )}
-          {activeStep < 3 && (
+          {activeStep < 4 && (
             <button
               type="button"
-              onClick={() => setActiveStep(Math.min(3, activeStep + 1))}
+              onClick={() => setActiveStep(Math.min(4, activeStep + 1))}
               disabled={!canAdvance()}
               className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors"
             >

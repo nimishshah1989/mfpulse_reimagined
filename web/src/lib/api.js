@@ -202,6 +202,10 @@ export const searchFundsNL = (query) =>
     body: JSON.stringify({ query }),
   });
 
+// Portfolio analytics
+export const fetchPortfolioAnalytics = (portfolioId) =>
+  apiFetch(`/api/v1/strategies/portfolios/${portfolioId}/analytics`);
+
 // Ingestion triggers
 export const fetchDataFreshness = () =>
   apiFetch('/api/v1/ingestion/data-freshness');

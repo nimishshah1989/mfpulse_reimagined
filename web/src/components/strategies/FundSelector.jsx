@@ -3,6 +3,7 @@ import { fetchFunds } from '../../lib/api';
 import LensCircle from '../shared/LensCircle';
 import TierBadge from '../shared/TierBadge';
 import { formatPct, formatINR } from '../../lib/format';
+import { parseNLQuery, tokensToSearchParams, TOKEN_COLORS } from '../../lib/nlParser';
 
 const QUICK_FILTERS = [
   { label: 'Top 5 by Alpha', params: { sort: 'alpha_score', order: 'desc', limit: 5 } },
@@ -30,6 +31,8 @@ const PURCHASE_MODES = ['Regular', 'Direct'];
 
 export default function FundSelector({ funds, allocations, onAddFund, onRemoveFund, onSetAllocation, totalInvestment }) {
   const [search, setSearch] = useState('');
+  const [nlQuery, setNlQuery] = useState('');
+  const [nlTokens, setNlTokens] = useState([]);
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [activeTierFilter, setActiveTierFilter] = useState(null);
@@ -80,6 +83,31 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
     doSearch({ return_class: tier, sort: 'return_score', order: 'desc', limit: 20, purchase_mode: modeVal });
   }, [activeTierFilter, doSearch]);
 
+  const handleNlSearch = useCallback((e) => {
+    if (e.key !== 'Enter' || !nlQuery.trim()) return;
+    const tokens = parseNLQuery(nlQuery);
+    setNlTokens(tokens);
+    if (tokens.length > 0) {
+      const params = tokensToSearchParams(tokens);
+      const modeVal = purchaseMode === 'Regular' ? 1 : 2;
+      doSearch({ ...params, purchase_mode: modeVal });
+      setSearch('');
+      setActiveTierFilter(null);
+    }
+  }, [nlQuery, doSearch, purchaseMode]);
+
+  const removeNlToken = useCallback((idx) => {
+    const updated = nlTokens.filter((_, i) => i !== idx);
+    setNlTokens(updated);
+    if (updated.length > 0) {
+      const params = tokensToSearchParams(updated);
+      const modeVal = purchaseMode === 'Regular' ? 1 : 2;
+      doSearch({ ...params, purchase_mode: modeVal });
+    } else {
+      setResults([]);
+    }
+  }, [nlTokens, doSearch, purchaseMode]);
+
   const totalAlloc = Object.values(allocations).reduce((s, v) => s + (v || 0), 0);
   const allocPct = Math.min(100, totalAlloc);
 
@@ -87,14 +115,58 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
 
   return (
     <div className="space-y-4">
-      {/* Search */}
+      {/* NL Search */}
+      <div className="space-y-2">
+        <div className="relative">
+          <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Try: top 5 alpha large cap funds with sharpe > 1.5"
+            value={nlQuery}
+            onChange={(e) => setNlQuery(e.target.value)}
+            onKeyDown={handleNlSearch}
+            className="w-full border border-slate-200 rounded-xl pl-11 pr-3 py-3 text-base text-slate-800 placeholder-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+          />
+          {nlQuery && (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-medium">Press Enter</span>
+          )}
+        </div>
+        {nlTokens.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {nlTokens.map((token, idx) => {
+              const colors = TOKEN_COLORS[token.color] || TOKEN_COLORS.slate;
+              return (
+                <span
+                  key={idx}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${colors}`}
+                >
+                  {token.label}
+                  <button
+                    type="button"
+                    onClick={() => removeNlToken(idx)}
+                    className="ml-0.5 hover:opacity-70 transition-opacity"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Text Search */}
       <div className="relative">
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
         </svg>
         <input
           type="text"
-          placeholder="Search funds by name, AMC, or ISIN..."
+          placeholder="Or search by name, AMC, or ISIN..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"

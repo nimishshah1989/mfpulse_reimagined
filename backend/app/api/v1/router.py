@@ -19,6 +19,7 @@ from app.api.v1.backfill import router as backfill_router
 from app.api.v1.claude import router as claude_router
 from app.api.v1.sectors import router as sectors_router
 from app.api.v1.dashboard import router as dashboard_router
+from app.api.v1.portfolio_analytics import router as portfolio_analytics_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(system_router)
@@ -38,3 +39,4 @@ api_v1_router.include_router(backfill_router)
 api_v1_router.include_router(claude_router)
 api_v1_router.include_router(sectors_router)
 api_v1_router.include_router(dashboard_router)
+api_v1_router.include_router(portfolio_analytics_router)
