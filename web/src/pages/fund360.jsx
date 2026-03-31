@@ -37,15 +37,15 @@ import CreditQuality from '../components/fund360/CreditQuality';
 /* ---- Section wrapper — matches sectors page design language ---- */
 function SectionCard({ title, subtitle, badge, children, className = '' }) {
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 p-5 ${className}`}>
+    <div className={`bg-white rounded-xl border border-slate-200 p-4 ${className}`}>
       {(title || subtitle || badge) && (
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-2.5">
           <div>
             {title && (
-              <p className="section-title">{title}</p>
+              <p className="ds-section-title">{title}</p>
             )}
             {subtitle && (
-              <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">{subtitle}</p>
             )}
           </div>
           {badge}
@@ -225,7 +225,7 @@ export default function Fund360Page() {
   /* ---- Loading state ---- */
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-4">
         <SkeletonLoader className="h-48 rounded-xl" />
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <SkeletonLoader className="lg:col-span-2 h-72 rounded-xl" />
@@ -253,7 +253,7 @@ export default function Fund360Page() {
   const combinedRiskStats = riskStats || fundDetail.risk_stats || null;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-4">
       {/* SECTION 1: Hero — Fund Identity + Quick Stats + Returns Strip */}
       <HeroSection
         fundDetail={fundDetail}
@@ -272,7 +272,7 @@ export default function Fund360Page() {
 
       {/* SECTION 4: Six-Lens Radar + Lens Breakdown */}
       {lensScores && (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {/* Narrative / Radar (2 cols) */}
           <div className="lg:col-span-2 space-y-4">
             <NarrativeCard
@@ -352,7 +352,7 @@ export default function Fund360Page() {
       </SectionCard>
 
       {/* SECTION 5b: Returns vs Category + Peer Scatter side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <SectionCard title="Returns vs Category">
           <ReturnsBars
             fundReturns={fundReturns}
@@ -399,7 +399,7 @@ export default function Fund360Page() {
       </SectionCard>
 
       {/* SECTION 8: Portfolio Holdings + Sector Holdings — equal side-by-side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Left: Portfolio Holdings */}
         <SectionCard title="Portfolio Holdings" subtitle="Top holdings by weight. Click to expand full list.">
           <HoldingsTable holdings={holdings} sectorQuadrants={sectorQuadrants} />

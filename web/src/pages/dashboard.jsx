@@ -85,9 +85,9 @@ function UniversalFilterBar({ totalCount, filteredCount }) {
         </button>
       )}
 
-      <span className="text-[11px] text-slate-400 ml-auto tabular-nums">
+      <span className="text-[11px] text-slate-500 ml-auto tabular-nums">
         {filteredCount != null && totalCount != null
-          ? `${filteredCount.toLocaleString('en-IN')} of ${totalCount.toLocaleString('en-IN')} funds`
+          ? `${filteredCount.toLocaleString('en-IN')} Growth funds (excl. IDCW & segregated)`
           : ''}
       </span>
     </div>
