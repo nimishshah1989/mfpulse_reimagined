@@ -188,6 +188,9 @@ class JobScheduler:
             "fetch_nav": self.job_fetch_nav,
             "fetch_full": self.job_fetch_full,
             "sector_rotation": self.job_compute_sector_rotation,
+            "aum_sync": self.job_sync_aum,
+            "cache_warm": self.job_warm_cache,
+            "cache_cleanup": self.job_cleanup_cache,
         }
 
         func = job_map[job_name]
