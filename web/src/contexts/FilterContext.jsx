@@ -102,10 +102,22 @@ export function FilterProvider({ children }) {
   );
 }
 
+const SAFE_DEFAULT = {
+  filters: DEFAULT_FILTERS,
+  setFilter: () => {},
+  resetFilters: () => {},
+  filterQueryString: () => '',
+  applyFilters: (funds) => funds,
+  hasActiveFilters: false,
+  AUM_OPTIONS,
+  PLAN_OPTIONS,
+  FUND_TYPE_OPTIONS,
+};
+
 export function useFilters() {
   const ctx = useContext(FilterContext);
-  if (!ctx) throw new Error('useFilters must be used within FilterProvider');
-  return ctx;
+  // Return safe defaults during SSR/static prerender when provider is absent
+  return ctx ?? SAFE_DEFAULT;
 }
 
 export default FilterContext;
