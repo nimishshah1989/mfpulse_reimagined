@@ -141,7 +141,7 @@ export default function DashboardPage() {
       }
       return f;
     });
-  }, [universe, filters]);
+  }, [universe, applyFilters]);
 
   // Also filter the matrix data
   const filteredMatrix = useMemo(() => {
