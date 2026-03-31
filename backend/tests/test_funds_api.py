@@ -52,7 +52,7 @@ def _fund_detail_dict(**overrides) -> dict:
         "indian_risk_level": "Moderate",
         "primary_benchmark": "Nifty 50",
         "investment_strategy": "Growth oriented",
-        "managers": "John Doe",
+        "managers": "Sankaran Naren",
         "returns": {"return_1y": Decimal("15.50")},
         "risk_stats": {"sharpe_3y": Decimal("1.25")},
         "ranks": {"quartile_1y": 1},

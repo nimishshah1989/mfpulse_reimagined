@@ -88,7 +88,7 @@ class TestGetFundDetail:
         fund.indian_risk_level = "Moderate"
         fund.primary_benchmark = "Nifty 50"
         fund.investment_strategy = "Growth oriented"
-        fund.managers = "John Doe"
+        fund.managers = "Sankaran Naren"
 
         service.fund_repo.get_fund_by_mstar_id = MagicMock(return_value=fund)
         service.fund_repo.get_latest_nav = MagicMock(return_value={
