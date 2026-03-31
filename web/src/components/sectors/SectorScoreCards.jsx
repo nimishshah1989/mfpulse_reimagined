@@ -64,22 +64,34 @@ function SectorCard({ sector, onClick }) {
         <RSGauge score={sector.rs_score} color={colors.circle} />
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1 mb-2">
+      {/* Stats grid — enriched with 3M momentum, weight %, and fund count */}
+      <div className="grid grid-cols-3 gap-x-2 gap-y-1 mb-2">
         <div>
-          <span className="text-[8px] text-slate-400 uppercase">Momentum</span>
+          <span className="text-[8px] text-slate-400 uppercase">1M Mom</span>
           <p className={`text-[11px] font-bold tabular-nums ${mom >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
             {mom > 0 ? '+' : ''}{Number(mom).toFixed(1)}
           </p>
         </div>
         <div>
-          <span className="text-[8px] text-slate-400 uppercase">Wt. Return</span>
+          <span className="text-[8px] text-slate-400 uppercase">3M Mom</span>
+          <p className={`text-[11px] font-bold tabular-nums ${(sector.momentum_3m || 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+            {(sector.momentum_3m || 0) > 0 ? '+' : ''}{Number(sector.momentum_3m || 0).toFixed(1)}
+          </p>
+        </div>
+        <div>
+          <span className="text-[8px] text-slate-400 uppercase">1Y Return</span>
           <p className={`text-[11px] font-bold tabular-nums ${wRet >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
             {formatPct(wRet)}
           </p>
         </div>
         <div>
-          <span className="text-[8px] text-slate-400 uppercase">AUM Exposed</span>
+          <span className="text-[8px] text-slate-400 uppercase">Weight</span>
+          <p className="text-[11px] font-semibold text-slate-600 tabular-nums">
+            {Number(sector.avg_weight_pct || 0).toFixed(1)}%
+          </p>
+        </div>
+        <div>
+          <span className="text-[8px] text-slate-400 uppercase">AUM</span>
           <p className="text-[11px] font-semibold text-slate-600 tabular-nums">
             {formatAUMRaw(aum)}
           </p>

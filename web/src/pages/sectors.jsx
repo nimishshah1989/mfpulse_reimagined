@@ -316,8 +316,9 @@ export default function SectorsPage() {
           <div className="flex items-center justify-between mb-3">
             <div>
               <p className="section-title">Sector Rotation Compass</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Click any sector bubble to explore the funds within it
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                X-axis: RS Score (relative strength). Y-axis: Momentum (score change).
+                Dotted trail lines show movement from previous months — follow the trail to see direction of rotation.
               </p>
             </div>
           </div>
@@ -359,17 +360,43 @@ export default function SectorsPage() {
         </div>
       )}
 
-      {/* 4. Two-column: Risk-Return Map + Money Flow */}
+      {/* 4. Two-column: Sector Money Flow + Weight Distribution */}
       {sectorData.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <SectorRiskReturn
-            sectors={sectorData}
-            onSectorClick={handleSectorClick}
-          />
           <MoneyFlowChart
             sectorData={sectorData}
             onSectorClick={handleSectorClick}
           />
+          {/* Sector Weight Distribution — replaces duplicate risk-return scatter */}
+          <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <p className="section-title mb-1">Sector Weight Distribution</p>
+            <p className="text-[11px] text-slate-500 mb-3">Where is the money concentrated? Larger = more AUM exposed.</p>
+            <div className="space-y-2">
+              {[...sectorData].sort((a, b) => (b.avg_weight_pct || 0) - (a.avg_weight_pct || 0)).map((s) => {
+                const wt = Number(s.avg_weight_pct) || 0;
+                const maxWt = Math.max(...sectorData.map((ss) => Number(ss.avg_weight_pct) || 0), 1);
+                const barW = (wt / maxWt) * 100;
+                const retVal = Number(s.weighted_return) || 0;
+                return (
+                  <button
+                    key={s.sector_name}
+                    type="button"
+                    onClick={() => handleSectorClick(s.sector_name)}
+                    className="w-full flex items-center gap-2 hover:bg-teal-50/50 rounded px-1 py-1 transition-colors text-left"
+                  >
+                    <span className="text-[10px] font-medium text-slate-700 w-[100px] truncate">{s.sector_name}</span>
+                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-teal-500" style={{ width: `${barW}%` }} />
+                    </div>
+                    <span className="text-[10px] font-bold tabular-nums text-slate-600 w-[40px] text-right">{wt.toFixed(1)}%</span>
+                    <span className={`text-[10px] font-bold tabular-nums w-[45px] text-right ${retVal >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {retVal >= 0 ? '+' : ''}{retVal.toFixed(1)}%
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
