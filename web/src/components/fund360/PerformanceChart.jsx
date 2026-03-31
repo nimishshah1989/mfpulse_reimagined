@@ -21,12 +21,17 @@ function formatAxisDate(dateStr, period) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  // For short periods (1m, 3m), show day + month
+  // Short periods: day + month
   if (period === '1m' || period === '3m') {
     return `${d.getDate()} ${months[d.getMonth()]}`;
   }
-  // For 6m/1y, show month + year
-  return `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
+  // Medium periods: month + short year
+  if (period === '6m' || period === '1y') {
+    return `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
+  }
+  // Long periods (3y, 5y, max): quarter + year for readability
+  const quarter = Math.floor(d.getMonth() / 3) + 1;
+  return `Q${quarter} '${String(d.getFullYear()).slice(2)}`;
 }
 
 function TooltipContent({ active, payload }) {
@@ -144,7 +149,7 @@ export default function PerformanceChart({ mstarId, initialData = [], fundReturn
               No NAV data available for this period
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer key={`perf-${period}`} width="100%" height={280}>
               <ComposedChart data={cleanData} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
                 <defs>
                   <linearGradient id="navGradient360" x1="0" y1="0" x2="0" y2="1">
