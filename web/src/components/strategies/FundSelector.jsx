@@ -1,14 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { fetchFunds } from '../../lib/api';
+import { fetchFunds, searchFundsNL } from '../../lib/api';
 import LensCircle from '../shared/LensCircle';
 import TierBadge from '../shared/TierBadge';
 import { formatPct, formatINR } from '../../lib/format';
 import { parseNLQuery, tokensToSearchParams, TOKEN_COLORS } from '../../lib/nlParser';
 
 const QUICK_FILTERS = [
-  { label: 'Top 5 by Alpha', params: { sort: 'alpha_score', order: 'desc', limit: 5 } },
-  { label: 'Large Cap Leaders', params: { broad_category: 'Equity', search: 'large cap', sort: 'return_score', order: 'desc', limit: 5 } },
-  { label: 'Best Sharpe', params: { sort: 'efficiency_score', order: 'desc', limit: 5 } },
+  { label: 'Top 5 by Alpha', params: { sort_by: 'alpha_score', sort_dir: 'desc', limit: 5 } },
+  { label: 'Large Cap Leaders', params: { category: 'Large Cap', sort_by: 'return_score', sort_dir: 'desc', limit: 10 } },
+  { label: 'Best Sharpe', params: { sort_by: 'efficiency_score', sort_dir: 'desc', limit: 5 } },
+  { label: 'Browse All', params: { sort_by: 'return_score', sort_dir: 'desc', limit: 50 } },
 ];
 
 const TIER_FILTERS = [
@@ -29,7 +30,7 @@ const LENS_KEYS = [
 
 const PURCHASE_MODES = ['Regular', 'Direct'];
 
-export default function FundSelector({ funds, allocations, onAddFund, onRemoveFund, onSetAllocation, totalInvestment }) {
+export default function FundSelector({ funds, allocations, onAddFund, onRemoveFund, onSetAllocation, totalInvestment, initialNlQuery }) {
   const [search, setSearch] = useState('');
   const [nlQuery, setNlQuery] = useState('');
   const [nlTokens, setNlTokens] = useState([]);
@@ -80,19 +81,36 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
     setActiveTierFilter(tier);
     setSearch('');
     const modeVal = purchaseMode === 'Regular' ? 1 : 2;
-    doSearch({ return_class: tier, sort: 'return_score', order: 'desc', limit: 20, purchase_mode: modeVal });
+    doSearch({ return_class: tier, sort_by: 'return_score', sort_dir: 'desc', limit: 20, purchase_mode: modeVal });
   }, [activeTierFilter, doSearch]);
 
-  const handleNlSearch = useCallback((e) => {
+  const handleNlSearch = useCallback(async (e) => {
     if (e.key !== 'Enter' || !nlQuery.trim()) return;
-    const tokens = parseNLQuery(nlQuery);
-    setNlTokens(tokens);
-    if (tokens.length > 0) {
-      const params = tokensToSearchParams(tokens);
-      const modeVal = purchaseMode === 'Regular' ? 1 : 2;
-      doSearch({ ...params, purchase_mode: modeVal });
-      setSearch('');
-      setActiveTierFilter(null);
+    // Use backend authoritative NL search
+    setSearching(true);
+    setSearch('');
+    setActiveTierFilter(null);
+    try {
+      const res = await searchFundsNL(nlQuery.trim());
+      const data = res.data || res;
+      const funds = data.funds || [];
+      setResults(funds);
+      // Show parsed tokens for visual feedback
+      const tokens = parseNLQuery(nlQuery);
+      setNlTokens(tokens.length > 0 ? tokens : [{ type: 'query', label: nlQuery.trim(), value: nlQuery.trim(), color: 'slate' }]);
+    } catch {
+      // Fallback to client-side parser + GET /funds
+      const tokens = parseNLQuery(nlQuery);
+      setNlTokens(tokens);
+      if (tokens.length > 0) {
+        const params = tokensToSearchParams(tokens);
+        const modeVal = purchaseMode === 'Regular' ? 1 : 2;
+        doSearch({ ...params, purchase_mode: modeVal });
+      } else {
+        setResults([]);
+      }
+    } finally {
+      setSearching(false);
     }
   }, [nlQuery, doSearch, purchaseMode]);
 
@@ -105,8 +123,42 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
       doSearch({ ...params, purchase_mode: modeVal });
     } else {
       setResults([]);
+      setNlQuery('');
     }
   }, [nlTokens, doSearch, purchaseMode]);
+
+  const clearNlSearch = useCallback(() => {
+    setNlTokens([]);
+    setNlQuery('');
+    setResults([]);
+  }, []);
+
+  // Auto-trigger NL search when template provides an initial query
+  const initialSearchDone = useRef(false);
+  useEffect(() => {
+    if (initialNlQuery && !initialSearchDone.current) {
+      initialSearchDone.current = true;
+      setNlQuery(initialNlQuery);
+      setSearching(true);
+      searchFundsNL(initialNlQuery)
+        .then((res) => {
+          const data = res.data || res;
+          setResults(data.funds || []);
+          const tokens = parseNLQuery(initialNlQuery);
+          setNlTokens(tokens.length > 0 ? tokens : [{ type: 'query', label: initialNlQuery, value: initialNlQuery, color: 'slate' }]);
+        })
+        .catch(() => {
+          // Fallback to client-side
+          const tokens = parseNLQuery(initialNlQuery);
+          setNlTokens(tokens);
+          if (tokens.length > 0) {
+            const params = tokensToSearchParams(tokens);
+            doSearch(params);
+          }
+        })
+        .finally(() => setSearching(false));
+    }
+  }, [initialNlQuery, doSearch]);
 
   const totalAlloc = Object.values(allocations).reduce((s, v) => s + (v || 0), 0);
   const allocPct = Math.min(100, totalAlloc);
@@ -134,7 +186,7 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
           )}
         </div>
         {nlTokens.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {nlTokens.map((token, idx) => {
               const colors = TOKEN_COLORS[token.color] || TOKEN_COLORS.slate;
               return (
@@ -155,6 +207,13 @@ export default function FundSelector({ funds, allocations, onAddFund, onRemoveFu
                 </span>
               );
             })}
+            <button
+              type="button"
+              onClick={clearNlSearch}
+              className="px-2 py-1 text-[10px] font-medium text-slate-400 hover:text-red-500 transition-colors"
+            >
+              Clear all
+            </button>
           </div>
         )}
       </div>

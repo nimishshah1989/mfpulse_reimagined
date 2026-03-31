@@ -15,6 +15,7 @@ const QUICK_START_TEMPLATES = [
     ],
     iconBg: 'bg-blue-50',
     defaults: { sipAmount: 10000, lumpsumAmount: 0, mode: 'sip_topups', templateName: 'Conservative Growth' },
+    nlQuery: 'low risk large cap consistent funds',
   },
   {
     key: 'alpha',
@@ -27,6 +28,7 @@ const QUICK_START_TEMPLATES = [
     ],
     iconBg: 'bg-teal-50',
     defaults: { sipAmount: 10000, lumpsumAmount: 200000, mode: 'sip_topups', templateName: 'Alpha Hunters' },
+    nlQuery: 'top 10 alpha machine funds',
   },
   {
     key: 'sector',
@@ -39,6 +41,7 @@ const QUICK_START_TEMPLATES = [
     ],
     iconBg: 'bg-amber-50',
     defaults: { sipAmount: 10000, lumpsumAmount: 200000, mode: 'sip_topups', templateName: 'Sector Rotation' },
+    nlQuery: 'top 10 sectoral thematic funds by return',
   },
   {
     key: 'allweather',
@@ -51,6 +54,7 @@ const QUICK_START_TEMPLATES = [
     ],
     iconBg: 'bg-purple-50',
     defaults: { sipAmount: 15000, lumpsumAmount: 300000, mode: 'sip_topups', templateName: 'All-Weather' },
+    nlQuery: 'fortress rock solid resilient funds',
   },
 ];
 
@@ -75,7 +79,7 @@ function QuickStartTemplates({ onSelectTemplate }) {
           <button
             key={t.key}
             type="button"
-            onClick={() => onSelectTemplate(t.defaults)}
+            onClick={() => onSelectTemplate({ ...t.defaults, nlQuery: t.nlQuery })}
             className="bg-white rounded-xl border border-slate-200 p-4 text-left cursor-pointer hover:border-teal-300 hover:shadow-md transition-all group"
           >
             <div className="flex items-center gap-2 mb-2">

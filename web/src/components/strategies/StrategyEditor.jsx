@@ -28,28 +28,28 @@ const SMART_PRESETS = [
     key: 'top_alpha',
     label: 'Top 5 by Alpha',
     description: 'Highest alpha-generating funds',
-    params: { sort: 'alpha_score', order: 'desc', limit: 5 },
+    params: { sort_by: 'alpha_score', sort_dir: 'desc', limit: 5 },
     color: 'emerald',
   },
   {
     key: 'large_cap_leaders',
     label: 'Large Cap Leaders',
     description: 'Large cap + LEADER return class',
-    params: { broad_category: 'Equity', search: 'large cap', sort: 'return_score', order: 'desc', limit: 5 },
+    params: { category: 'Large Cap', sort_by: 'return_score', sort_dir: 'desc', limit: 5 },
     color: 'teal',
   },
   {
     key: 'low_risk_consistent',
     label: 'Low-Risk Consistent',
     description: 'LOW_RISK + ROCK_SOLID/CONSISTENT',
-    params: { sort: 'consistency_score', order: 'desc', limit: 5 },
+    params: { sort_by: 'consistency_score', sort_dir: 'desc', limit: 5 },
     color: 'blue',
   },
   {
     key: 'best_sharpe',
     label: 'Best Risk-Adjusted',
     description: 'Top efficiency (Sharpe ratio)',
-    params: { sort: 'efficiency_score', order: 'desc', limit: 5 },
+    params: { sort_by: 'efficiency_score', sort_dir: 'desc', limit: 5 },
     color: 'violet',
   },
 ];
@@ -94,6 +94,7 @@ export default function StrategyEditor({
     if (initialMode.mode) setMode(initialMode.mode);
     if (initialMode.sipAmount != null) setConfig((c) => ({ ...c, sipAmount: initialMode.sipAmount }));
     if (initialMode.lumpsumAmount != null) setConfig((c) => ({ ...c, lumpsumAmount: initialMode.lumpsumAmount }));
+    if (initialMode.templateName) setStrategyName(initialMode.templateName);
   }, [initialMode]);
 
   // Hydrate from editing strategy
@@ -147,14 +148,14 @@ export default function StrategyEditor({
     setSimError(null);
 
     try {
+      // Compare endpoint expects single mstar_id — use highest-allocation fund
+      const sortedFunds = [...state.funds].sort(
+        (a, b) => (state.allocations[b.mstar_id] || 0) - (state.allocations[a.mstar_id] || 0)
+      );
+      const primaryFund = sortedFunds[0];
       const payload = {
-        funds: state.funds.map((f) => ({
-          mstar_id: f.mstar_id,
-          allocation: state.allocations[f.mstar_id] || 0,
-        })),
+        mstar_id: primaryFund.mstar_id,
         sip_amount: config.sipAmount,
-        sip_day: config.sipDay,
-        lumpsum_amount: config.lumpsumAmount,
         start_date: computeStartDate(period),
         end_date: new Date().toISOString().split('T')[0],
         signal_rules: mode !== 'sip_topups' || rules.length === 0 ? [] : rules,
@@ -416,6 +417,7 @@ export default function StrategyEditor({
                 onRemoveFund={handleRemoveFund}
                 onSetAllocation={handleSetAllocation}
                 totalInvestment={config.sipAmount + config.lumpsumAmount}
+                initialNlQuery={initialMode?.nlQuery || null}
               />
             </div>
           </div>

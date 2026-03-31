@@ -4,20 +4,34 @@
  */
 
 const CATEGORIES = {
-  'large cap': 'Equity Large Cap',
-  'flexi cap': 'Equity Flexi Cap',
-  'mid cap': 'Equity Mid Cap',
-  'small cap': 'Equity Small Cap',
+  'large cap': 'Large Cap',
+  'largecap': 'Large Cap',
+  'flexi cap': 'Flexi Cap',
+  'flexicap': 'Flexi Cap',
+  'mid cap': 'Mid Cap',
+  'midcap': 'Mid Cap',
+  'small cap': 'Small Cap',
+  'smallcap': 'Small Cap',
+  'small mid cap': 'Small Cap',
   'elss': 'ELSS',
+  'tax sav': 'ELSS',
   'balanced': 'Balanced Advantage',
-  'multi cap': 'Equity Multi Cap',
-  'value': 'Equity Value',
-  'contra': 'Equity Contra',
-  'focused': 'Equity Focused',
-  'dividend yield': 'Equity Dividend Yield',
-  'sectoral': 'Equity Sectoral',
-  'thematic': 'Equity Thematic',
-  'index': 'Equity Index',
+  'multi cap': 'Multi Cap',
+  'multicap': 'Multi Cap',
+  'large & mid': 'Large & Mid Cap',
+  'large and mid': 'Large & Mid Cap',
+  'value': 'Value',
+  'contra': 'Contra',
+  'focused': 'Focused Fund',
+  'dividend yield': 'Dividend Yield',
+  'sectoral': 'Sector',
+  'thematic': 'Thematic',
+  'index': 'Index Funds',
+  'debt': 'Debt',
+  'liquid': 'Liquid',
+  'gilt': 'Gilt',
+  'hybrid': 'Hybrid',
+  'equity': 'Equity',
 };
 
 const TIERS = {
@@ -103,13 +117,13 @@ export function parseNLQuery(query) {
   // Sort detection
   if (q.includes('top') || q.includes('best')) {
     if (q.includes('alpha')) {
-      tokens.push({ type: 'sort', label: 'Sort: Alpha', value: { sort: 'alpha_score', order: 'desc' }, color: 'indigo' });
+      tokens.push({ type: 'sort', label: 'Sort: Alpha', value: { sort_by: 'alpha_score', sort_dir: 'desc' }, color: 'indigo' });
     } else if (q.includes('return')) {
-      tokens.push({ type: 'sort', label: 'Sort: Return', value: { sort: 'return_score', order: 'desc' }, color: 'indigo' });
+      tokens.push({ type: 'sort', label: 'Sort: Return', value: { sort_by: 'return_score', sort_dir: 'desc' }, color: 'indigo' });
     } else if (q.includes('sharpe')) {
-      tokens.push({ type: 'sort', label: 'Sort: Sharpe', value: { sort: 'efficiency_score', order: 'desc' }, color: 'indigo' });
+      tokens.push({ type: 'sort', label: 'Sort: Sharpe', value: { sort_by: 'efficiency_score', sort_dir: 'desc' }, color: 'indigo' });
     } else {
-      tokens.push({ type: 'sort', label: 'Sort: Return', value: { sort: 'return_score', order: 'desc' }, color: 'indigo' });
+      tokens.push({ type: 'sort', label: 'Sort: Return', value: { sort_by: 'return_score', sort_dir: 'desc' }, color: 'indigo' });
     }
   }
 
@@ -128,7 +142,7 @@ export function parseNLQuery(query) {
 export function tokensToSearchParams(tokens) {
   const params = {};
   for (const token of tokens) {
-    if (token.type === 'category') params.category_name = token.value;
+    if (token.type === 'category') params.category = token.value;
     if (token.type === 'plan') params.purchase_mode = token.value === 'Direct' ? 2 : 1;
     if (token.type === 'tier') {
       params[token.value.class] = token.value.value;
