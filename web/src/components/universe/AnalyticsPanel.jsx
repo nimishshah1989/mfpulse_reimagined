@@ -606,17 +606,6 @@ function CapStyleCard({ funds }) {
                         {cell.avg != null ? formatPct(cell.avg) : '--'}
                       </span>
                     </button>
-                    {isExpanded && (
-                      <div className="mt-2 text-left">
-                        <FundListPanel
-                          funds={cell.funds}
-                          sortKey="return_1y"
-                          returnPeriod="1y"
-                          maxItems={8}
-                          showRank={true}
-                        />
-                      </div>
-                    )}
                   </td>
                 );
               })}
@@ -624,6 +613,23 @@ function CapStyleCard({ funds }) {
           ))}
         </tbody>
       </table>
+
+      {/* Expanded fund list — rendered BELOW the table to avoid cell overlap */}
+      {expandedCell && grid[expandedCell]?.funds.length > 0 && (
+        <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-semibold text-slate-700">{expandedCell.replace('-', ' ')} — {grid[expandedCell].funds.length} funds</p>
+            <button type="button" onClick={() => setExpandedCell(null)} className="text-[10px] text-slate-400 hover:text-slate-600">Close</button>
+          </div>
+          <FundListPanel
+            funds={grid[expandedCell].funds}
+            sortKey="return_1y"
+            returnPeriod="1y"
+            maxItems={8}
+            showRank={true}
+          />
+        </div>
+      )}
 
       <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
         {(() => {

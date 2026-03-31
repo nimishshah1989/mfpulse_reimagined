@@ -196,21 +196,23 @@ export default function ConditionBuilder({
         </div>
       </div>
 
-      {/* Entry Rules */}
+      {/* Entry Rules — grid layout for compact view */}
       <p className="text-xs font-semibold text-slate-600">Entry Rules</p>
-      {rules.map((rule, ruleIdx) => (
-        <RuleCard
-          key={ruleIdx}
-          rule={rule}
-          ruleIdx={ruleIdx}
-          onUpdateRule={updateRule}
-          onRemoveRule={removeRule}
-          onUpdateCondition={updateCondition}
-          onAddCondition={addCondition}
-          onRemoveCondition={removeCondition}
-          ruleType="entry"
-        />
-      ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {rules.map((rule, ruleIdx) => (
+          <RuleCard
+            key={ruleIdx}
+            rule={rule}
+            ruleIdx={ruleIdx}
+            onUpdateRule={updateRule}
+            onRemoveRule={removeRule}
+            onUpdateCondition={updateCondition}
+            onAddCondition={addCondition}
+            onRemoveCondition={removeCondition}
+            ruleType="entry"
+          />
+        ))}
+      </div>
 
       <button
         type="button"

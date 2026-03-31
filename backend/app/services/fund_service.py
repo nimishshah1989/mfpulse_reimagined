@@ -434,8 +434,8 @@ class FundService:
                     Decimal("0.01"), rounding=ROUND_HALF_UP,
                 )
                 normalized.append({
-                    "date": r["nav_date"],
-                    "value": norm_val,
+                    "date": str(r["nav_date"]),
+                    "value": float(norm_val),
                 })
 
             funds_result.append({
@@ -477,10 +477,11 @@ class FundService:
                 "fund_name": fund_names.get(mid, mid),
                 "data": [
                     {
-                        "date": e["as_of_date"],
-                        "std_dev_1y": e["std_dev_1y"],
+                        "date": str(e["as_of_date"]),
+                        "value": float(e["std_dev_1y"]) if e["std_dev_1y"] is not None else None,
                     }
                     for e in entries
+                    if e.get("std_dev_1y") is not None
                 ],
             })
 
