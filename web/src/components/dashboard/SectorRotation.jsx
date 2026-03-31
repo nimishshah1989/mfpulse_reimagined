@@ -231,14 +231,15 @@ function SectorTable({ sectors, onSectorClick }) {
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-[10px] uppercase tracking-wider text-slate-500 border-b border-slate-200">
-            <th className="text-left py-2 px-2 font-semibold">Sector</th>
-            <th className="text-left py-2 px-2 font-semibold">Zone</th>
-            <th className="text-right py-2 px-1 font-semibold">RS</th>
-            <th className="text-right py-2 px-1 font-semibold">1M Mom</th>
-            <th className="text-right py-2 px-1 font-semibold">3M Mom</th>
-            <th className="text-right py-2 px-1 font-semibold"># Funds</th>
-            <th className="py-2 px-2 font-semibold" style={{ minWidth: 100 }}>Fund Weight</th>
+          <tr className="text-[9px] uppercase tracking-wider text-slate-500 border-b border-slate-200">
+            <th className="text-left py-1.5 px-1.5 font-semibold">Sector</th>
+            <th className="text-left py-1.5 px-1 font-semibold">Zone</th>
+            <th className="text-right py-1.5 px-1 font-semibold">RS</th>
+            <th className="text-right py-1.5 px-1 font-semibold">1M</th>
+            <th className="text-right py-1.5 px-1 font-semibold">3M</th>
+            <th className="text-right py-1.5 px-1 font-semibold">1Y Ret</th>
+            <th className="text-right py-1.5 px-1 font-semibold">#</th>
+            <th className="py-1.5 px-1 font-semibold" style={{ minWidth: 80 }}>Weight</th>
           </tr>
         </thead>
         <tbody>
@@ -252,28 +253,34 @@ function SectorTable({ sectors, onSectorClick }) {
             const wt = Number(s.avg_weight_pct) || 0;
             const wtBarPct = (wt / maxWt) * 100;
 
+            const wRet = s.weighted_return;
+            const retColor = wRet == null ? 'text-slate-400' : wRet >= 0 ? 'text-emerald-600' : 'text-red-500';
+
             return (
               <tr key={getName(s) || i}
                 className="border-b border-slate-50 hover:bg-teal-50/50 transition-colors cursor-pointer"
                 onClick={() => onSectorClick?.(getName(s))}>
-                <td className="py-2 px-2 font-medium text-teal-700 text-[12px] hover:underline">{getName(s)}</td>
-                <td className="py-2 px-2">
-                  <span className={`inline-block text-[9px] font-semibold px-2 py-0.5 rounded ${config.badge}`}>{quadrant}</span>
+                <td className="py-1.5 px-1.5 font-medium text-teal-700 text-[11px] hover:underline">{getName(s)}</td>
+                <td className="py-1.5 px-1">
+                  <span className={`inline-block text-[8px] font-semibold px-1.5 py-0.5 rounded ${config.badge}`}>{quadrant}</span>
                 </td>
-                <td className="py-2 px-1 text-right font-mono tabular-nums text-slate-700 text-[12px] font-semibold">
+                <td className="py-1.5 px-1 text-right font-mono tabular-nums text-slate-700 text-[11px] font-semibold">
                   {s.rs_score != null ? Number(s.rs_score).toFixed(0) : '--'}
                 </td>
-                <td className={`py-2 px-1 text-right font-mono tabular-nums text-[11px] ${momColor(mom1)}`}>{fmtMom(mom1)}</td>
-                <td className={`py-2 px-1 text-right font-mono tabular-nums text-[11px] ${momColor(mom3)}`}>{fmtMom(mom3)}</td>
-                <td className="py-2 px-1 text-right font-mono tabular-nums text-slate-600 text-[11px]">
+                <td className={`py-1.5 px-1 text-right font-mono tabular-nums text-[10px] ${momColor(mom1)}`}>{fmtMom(mom1)}</td>
+                <td className={`py-1.5 px-1 text-right font-mono tabular-nums text-[10px] ${momColor(mom3)}`}>{fmtMom(mom3)}</td>
+                <td className={`py-1.5 px-1 text-right font-mono tabular-nums text-[10px] font-semibold ${retColor}`}>
+                  {wRet != null ? `${Number(wRet) >= 0 ? '+' : ''}${Number(wRet).toFixed(1)}%` : '--'}
+                </td>
+                <td className="py-1.5 px-1 text-right font-mono tabular-nums text-slate-600 text-[10px]">
                   {s.fund_count || '--'}
                 </td>
-                <td className="py-2 px-2">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                <td className="py-1.5 px-1">
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                       <div className="h-full rounded-full" style={{ width: `${wtBarPct}%`, backgroundColor: config.bar }} />
                     </div>
-                    <span className="font-mono tabular-nums text-[11px] text-slate-700 font-semibold w-[36px] text-right">
+                    <span className="font-mono tabular-nums text-[10px] text-slate-700 font-semibold w-[32px] text-right">
                       {wt > 0 ? `${wt.toFixed(1)}%` : '--'}
                     </span>
                   </div>
