@@ -290,6 +290,12 @@ if _frontend_dir.is_dir():
                 if fund360_page.is_file():
                     return FileResponse(str(fund360_page))
 
+            # /portfolio/<id> → serve portfolio/[id] page (client-side routing)
+            if clean.startswith("portfolio/") and clean != "portfolio":
+                portfolio_page = _frontend_dir / "portfolio" / "[id]" / "index.html"
+                if portfolio_page.is_file():
+                    return FileResponse(str(portfolio_page))
+
             # Page directory (/fund360 -> /fund360/index.html)
             if clean:
                 page_index = _frontend_dir / clean / "index.html"
