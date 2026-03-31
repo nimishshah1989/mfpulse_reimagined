@@ -46,15 +46,24 @@ TIER_KEYWORDS: dict[str, tuple[str, str]] = {
 }
 
 CATEGORY_PATTERNS: list[tuple[re.Pattern, str]] = [
-    (re.compile(r"small\s*cap", re.I), "Small Cap"),
-    (re.compile(r"large\s*cap", re.I), "Large Cap"),
-    (re.compile(r"mid\s*cap", re.I), "Mid Cap"),
-    (re.compile(r"flexi", re.I), "Flexi Cap"),
-    (re.compile(r"multi\s*cap", re.I), "Multi Cap"),
-    (re.compile(r"\belss\b|\btax\b", re.I), "ELSS"),
+    (re.compile(r"small[\s-]*cap", re.I), "Small"),
+    (re.compile(r"large[\s-]*cap", re.I), "Large"),
+    (re.compile(r"mid[\s-]*cap", re.I), "Mid"),
+    (re.compile(r"flexi", re.I), "Flexi"),
+    (re.compile(r"multi[\s-]*cap", re.I), "Multi"),
+    (re.compile(r"large\s*(and|&)\s*mid", re.I), "Large & Mid"),
+    (re.compile(r"\belss\b|\btax\s*sav", re.I), "ELSS"),
     (re.compile(r"\bindex\b|\bpassive\b", re.I), "Index"),
     (re.compile(r"\bdebt\b|\bbond\b", re.I), "Debt"),
     (re.compile(r"\bhybrid\b|\bbalanced\b", re.I), "Hybrid"),
+    (re.compile(r"\bvalue\b", re.I), "Value"),
+    (re.compile(r"\bcontra\b", re.I), "Contra"),
+    (re.compile(r"\bfocused\b", re.I), "Focused"),
+    (re.compile(r"\bsector", re.I), "Sector"),
+    (re.compile(r"\bthemat", re.I), "Thematic"),
+    (re.compile(r"\bgilt\b", re.I), "Gilt"),
+    (re.compile(r"\bliquid\b", re.I), "Liquid"),
+    (re.compile(r"\bdividend\s*yield", re.I), "Dividend Yield"),
 ]
 
 NUMERIC_PATTERN = re.compile(
