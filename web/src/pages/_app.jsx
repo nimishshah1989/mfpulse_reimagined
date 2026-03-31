@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router';
 import AppShell from '../components/layout/AppShell';
 import ErrorBoundary from '../components/shared/ErrorBoundary';
+import { FilterProvider } from '../contexts/FilterContext';
 import '../styles/globals.css';
 
 const PATH_TO_TAB = {
@@ -27,10 +28,12 @@ export default function App({ Component, pageProps }) {
   };
 
   return (
-    <AppShell activeTab={activeTab} onTabChange={handleTabChange}>
-      <ErrorBoundary key={activeTab}>
-        <Component {...pageProps} />
-      </ErrorBoundary>
-    </AppShell>
+    <FilterProvider>
+      <AppShell activeTab={activeTab} onTabChange={handleTabChange}>
+        <ErrorBoundary key={activeTab}>
+          <Component {...pageProps} />
+        </ErrorBoundary>
+      </AppShell>
+    </FilterProvider>
   );
 }

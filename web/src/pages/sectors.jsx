@@ -31,7 +31,6 @@ const CompassChart = dynamic(
 
 import MarketContextPanel from '../components/sectors/MarketContextPanel';
 import SectorScoreCards from '../components/sectors/SectorScoreCards';
-import SectorRiskReturn from '../components/sectors/SectorRiskReturn';
 import MoneyFlowChart from '../components/sectors/MoneyFlowChart';
 import RotationHeatmap from '../components/sectors/RotationHeatmap';
 import FundExposureMatrix from '../components/sectors/FundExposureMatrix';

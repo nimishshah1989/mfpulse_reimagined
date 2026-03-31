@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
+import { useFilters } from '../contexts/FilterContext';
 import {
   fetchMarketRegime,
   fetchSentiment,
@@ -22,37 +23,68 @@ import TopFundsByLens from '../components/dashboard/TopFundsByLens';
 import CategoryHeatmap from '../components/dashboard/CategoryHeatmap';
 import LensFingerprint from '../components/dashboard/LensFingerprint';
 
-const EQUITY_BROADS = new Set(['Equity', 'Allocation']);
-const MIN_AUM_CR = 1000; // Crores
-const MIN_AUM_RAW = MIN_AUM_CR * 1e7; // Raw rupees
-
-function FilterBar({ filters, onChange, totalCount, filteredCount }) {
-  const toggles = [
-    { key: 'regularOnly', label: 'Regular Plans', desc: 'Exclude Direct' },
-    { key: 'equityOnly', label: 'Equity Only', desc: 'Exclude Debt/Liquid' },
-    { key: 'minAum', label: `AUM > ${MIN_AUM_CR} Cr`, desc: 'Large funds only' },
-  ];
+function UniversalFilterBar({ totalCount, filteredCount }) {
+  const { filters, setFilter, resetFilters, hasActiveFilters, AUM_OPTIONS, PLAN_OPTIONS, FUND_TYPE_OPTIONS } = useFilters();
 
   return (
-    <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3">
-      <span className="text-xs font-semibold text-slate-700 mr-1">Filters:</span>
-      {toggles.map(({ key, label }) => {
-        const active = filters[key];
-        return (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onChange({ ...filters, [key]: !active })}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
-              active
-                ? 'bg-teal-50 text-teal-700 border-teal-300 shadow-sm'
-                : 'bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-600'
-            }`}
-          >
-            {active ? '\u2713 ' : ''}{label}
-          </button>
-        );
-      })}
+    <div className="flex flex-wrap items-center gap-2.5 bg-white rounded-xl border border-slate-200 px-4 py-3">
+      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Global Filters</span>
+      <span className="text-[9px] text-slate-400 italic">(applies across all pages)</span>
+      <div className="w-px h-5 bg-slate-200 mx-1" />
+
+      {/* Plan Type */}
+      {PLAN_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => setFilter('planType', opt.value)}
+          className={`px-2.5 py-1.5 text-[11px] font-semibold rounded-lg border transition-all ${
+            filters.planType === opt.value
+              ? 'bg-teal-600 text-white border-teal-600'
+              : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+
+      <div className="w-px h-5 bg-slate-200" />
+
+      {/* Fund Type */}
+      {FUND_TYPE_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => setFilter('fundType', opt.value)}
+          className={`px-2.5 py-1.5 text-[11px] font-semibold rounded-lg border transition-all ${
+            filters.fundType === opt.value
+              ? 'bg-teal-600 text-white border-teal-600'
+              : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+
+      <div className="w-px h-5 bg-slate-200" />
+
+      {/* AUM Size */}
+      <select
+        value={filters.minAum ?? ''}
+        onChange={(e) => setFilter('minAum', e.target.value ? Number(e.target.value) : null)}
+        className="px-2.5 py-1.5 text-[11px] font-medium border border-slate-200 rounded-lg bg-white"
+      >
+        {AUM_OPTIONS.map((opt) => (
+          <option key={opt.label} value={opt.value ?? ''}>{opt.label}</option>
+        ))}
+      </select>
+
+      {hasActiveFilters && (
+        <button type="button" onClick={resetFilters} className="text-[10px] text-red-500 font-semibold hover:bg-red-50 px-2 py-1 rounded">
+          Clear All
+        </button>
+      )}
+
       <span className="text-[11px] text-slate-400 ml-auto tabular-nums">
         {filteredCount != null && totalCount != null
           ? `${filteredCount.toLocaleString('en-IN')} of ${totalCount.toLocaleString('en-IN')} funds`
@@ -60,35 +92,6 @@ function FilterBar({ filters, onChange, totalCount, filteredCount }) {
       </span>
     </div>
   );
-}
-
-function applyGlobalFilters(funds, filters) {
-  if (!funds || funds.length === 0) return [];
-  let result = funds;
-
-  if (filters.regularOnly) {
-    result = result.filter((f) => {
-      if (f.purchase_mode) return f.purchase_mode === 'Regular';
-      const name = (f.fund_name || '').toLowerCase();
-      return !name.includes('direct') && !name.includes('dir ') && !name.includes('dir-');
-    });
-  }
-
-  if (filters.equityOnly) {
-    result = result.filter((f) => EQUITY_BROADS.has(f.broad_category));
-  }
-
-  if (filters.minAum) {
-    result = result.filter((f) => f.aum != null && Number(f.aum) >= MIN_AUM_RAW);
-  }
-
-  // Exclude IDCW payout plans — they're dividend variants with missing returns
-  result = result.filter((f) => !(f.fund_name || '').includes('IDCW'));
-
-  // Exclude segregated portfolios
-  result = result.filter((f) => !(f.fund_name || '').toLowerCase().includes('segregated'));
-
-  return result;
 }
 
 export default function DashboardPage() {
@@ -107,17 +110,15 @@ export default function DashboardPage() {
   const [universe, setUniverse] = useState(null);
   const [archetypes, setArchetypes] = useState([]);
 
-  // Global filters — all ON by default
-  const [filters, setFilters] = useState({
-    regularOnly: true,
-    equityOnly: true,
-    minAum: true,
-  });
+  const { applyFilters } = useFilters();
 
-  // Apply global filters to universe + inject derived alpha
+  // Apply universal filters to universe + inject derived alpha
   const filteredUniverse = useMemo(() => {
     if (!universe) return null;
-    const filtered = applyGlobalFilters(universe, filters);
+    let filtered = applyFilters(universe);
+    // Exclude IDCW + segregated (always)
+    filtered = filtered.filter((f) => !(f.fund_name || '').includes('IDCW'));
+    filtered = filtered.filter((f) => !(f.fund_name || '').toLowerCase().includes('segregated'));
 
     // Compute category average return_1y for derived alpha
     const catReturns = {};
@@ -145,12 +146,12 @@ export default function DashboardPage() {
   // Also filter the matrix data
   const filteredMatrix = useMemo(() => {
     if (!matrixData || matrixData.length === 0) return [];
-    return applyGlobalFilters(matrixData, filters);
-  }, [matrixData, filters]);
+    return applyFilters(matrixData);
+  }, [matrixData, applyFilters]);
 
   // When any global filter is active, force client-side archetype computation
-  const isFiltered = filters.regularOnly || filters.equityOnly || filters.minAum;
-  const effectiveArchetypes = isFiltered ? [] : archetypes;
+  const { hasActiveFilters } = useFilters();
+  const effectiveArchetypes = hasActiveFilters ? [] : archetypes;
 
   useEffect(() => {
     async function loadAll() {
@@ -212,10 +213,8 @@ export default function DashboardPage() {
       {/* Search Strip */}
       <DashboardSearchStrip universe={universe} />
 
-      {/* Global Filters */}
-      <FilterBar
-        filters={filters}
-        onChange={setFilters}
+      {/* Universal Filters — applies across all pages */}
+      <UniversalFilterBar
         totalCount={universe?.length}
         filteredCount={filteredUniverse?.length}
       />

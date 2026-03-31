@@ -17,7 +17,6 @@ import EmptyState from '../components/shared/EmptyState';
 import InfoBulb from '../components/shared/InfoBulb';
 import FundSearch from '../components/fund360/FundSearch';
 import HeroSection from '../components/fund360/HeroSection';
-import FundManagerStrategy from '../components/fund360/FundManagerStrategy';
 import NarrativeCard from '../components/fund360/NarrativeCard';
 import PerformanceChart from '../components/fund360/PerformanceChart';
 import ReturnsBars from '../components/fund360/ReturnsBars';
