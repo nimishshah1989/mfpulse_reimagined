@@ -208,8 +208,8 @@ export default function UniverseInsights({ funds, onCategoryClick }) {
         })()}
       </div>
 
-      {/* ── NEW: Consistency Champions ── */}
-      <div className="glass-card p-4">
+      {/* ── Consistency Champions ── */}
+      <div className="glass-card p-4 hover:border-teal-200 transition-colors">
         <p className="text-[11px] font-bold text-slate-700 mb-2">Consistency Champions</p>
         <p className="text-[9px] text-slate-400 mb-1.5">Score 75+ — most reliable performers</p>
         <div className="space-y-1.5">
@@ -222,8 +222,8 @@ export default function UniverseInsights({ funds, onCategoryClick }) {
         </div>
       </div>
 
-      {/* ── NEW: AUM Leaders ── */}
-      <div className="glass-card p-4">
+      {/* ── AUM Leaders ── */}
+      <div className="glass-card p-4 hover:border-teal-200 transition-colors">
         <p className="text-[11px] font-bold text-slate-700 mb-2">AUM Leaders</p>
         <p className="text-[9px] text-slate-400 mb-1.5">Largest funds by assets under management</p>
         <div className="space-y-1.5">

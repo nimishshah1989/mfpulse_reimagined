@@ -430,7 +430,7 @@ function RiskEfficiencyCard({ funds }) {
   return (
     <div className="glass-card p-5">
       <p className="section-title mb-1">Risk-Efficiency Map</p>
-      <p className="text-[11px] text-slate-400 mb-4">Best risk-adjusted returns by category. Sharpe ratio = return per unit of risk.</p>
+      <p className="text-[11px] text-slate-500 mb-4">Risk-adjusted returns by fund type. Sharpe = return per unit of risk. Equity = pure equity funds. Allocation = hybrid/balanced funds (equity + debt mix).</p>
 
       <table className="w-full text-xs border-collapse">
         <thead>
@@ -686,7 +686,7 @@ function ValuationPulseCard({ funds }) {
   return (
     <div className="glass-card p-5">
       <p className="section-title mb-1">Valuation Pulse</p>
-      <p className="text-[11px] text-slate-400 mb-4">Are categories cheap or expensive? P/E, P/B from portfolio holdings data.</p>
+      <p className="text-[11px] text-slate-500 mb-4">Are fund types cheap or expensive? P/E = Price/Earnings (lower = cheaper). P/B = Price/Book. Div Yield = dividend income %. Turnover = how often the fund trades. Equity = pure equity. Allocation = hybrid/balanced funds.</p>
 
       {catVals.length === 0 ? (
         <p className="text-xs text-slate-400">Valuation data not yet available.</p>
