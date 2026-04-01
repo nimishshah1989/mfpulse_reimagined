@@ -143,7 +143,7 @@ function SearchableMultiSelect({ label, options, selected, onChange, countMap })
                   </span>
                   <span className="truncate flex-1 text-left">{item}</span>
                   {count > 0 && (
-                    <span className="font-mono text-[10px] text-slate-400">{count}</span>
+                    <span className="font-mono text-[10px] text-slate-400">{Number(count).toLocaleString('en-IN')}</span>
                   )}
                 </button>
               );

@@ -136,7 +136,7 @@ function BucketCard({ bucket, count, topFund, onClick, onFundClick }) {
 
       {/* Count */}
       <div className="flex items-baseline gap-1 mb-2">
-        <span className={`text-xl font-extrabold ${bucket.countColor} tabular-nums`}>{count}</span>
+        <span className={`text-xl font-extrabold ${bucket.countColor} tabular-nums`}>{Number(count).toLocaleString('en-IN')}</span>
         <span className="text-[10px] text-slate-400">funds</span>
       </div>
 

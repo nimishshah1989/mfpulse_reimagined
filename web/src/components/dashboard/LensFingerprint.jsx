@@ -49,7 +49,7 @@ function ArchetypeCard({ archetype, isActive, onClick }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <span style={{ fontSize: 11, fontWeight: 600 }}>{meta.icon} {archetype.name}</span>
         <span style={{ textAlign: 'right' }}>
-          <span style={{ fontSize: 18, fontWeight: 800 }}>{archetype.count}</span>
+          <span style={{ fontSize: 18, fontWeight: 800 }}>{Number(archetype.count).toLocaleString('en-IN')}</span>
           <span style={{ fontSize: 10, color: '#64748b', marginLeft: 4 }}>{archetype.percentage?.toFixed(1)}%</span>
         </span>
       </div>

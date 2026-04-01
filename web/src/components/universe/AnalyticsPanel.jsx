@@ -89,6 +89,7 @@ function ReturnDistributionCard({ funds }) {
 
     return ranges.map((r) => {
       const matched = funds.filter((f) => {
+        if (f[returnKey] == null) return false;
         const v = Number(f[returnKey]);
         if (isNaN(v)) return false;
         return v >= r.min && v < r.max;
@@ -98,7 +99,7 @@ function ReturnDistributionCard({ funds }) {
   }, [funds, returnKey]);
 
   const maxCount = Math.max(...buckets.map((b) => b.count), 1);
-  const total = funds.length;
+  const total = buckets.reduce((s, b) => s + b.count, 0) || 1;
 
   // Commentary
   const topBucket = buckets.reduce((a, b) => (a.count > b.count ? a : b), buckets[0]);
@@ -240,7 +241,7 @@ function AMCLandscapeCard({ funds }) {
                   <span className={`text-[10px] font-bold tabular-nums w-[40px] text-right shrink-0 ${returnColorClass(a.avgReturn)}`}>
                     {formatPct(a.avgReturn)}
                   </span>
-                  <span className="text-[9px] text-slate-400 w-[25px] text-right shrink-0">{a.count}</span>
+                  <span className="text-[9px] text-slate-400 w-[25px] text-right shrink-0">{a.count.toLocaleString('en-IN')}</span>
                   <svg
                     className={`w-3 h-3 text-slate-300 group-hover:text-teal-500 transition-all ${isExpanded ? 'rotate-90' : ''}`}
                     fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}

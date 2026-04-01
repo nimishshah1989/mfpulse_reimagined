@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef, useTransition } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
-import { fetchUniverseData } from '../lib/api';
+import { fetchUniverseData, searchFundsNL } from '../lib/api';
 import { cachedFetch } from '../lib/cache';
 import { formatPct, formatAUM } from '../lib/format';
 import { useFilters } from '../contexts/FilterContext';
@@ -21,7 +21,6 @@ const AnalyticsPanel = dynamic(
   { ssr: false, loading: () => <SkeletonLoader variant="chart" className="w-full h-64" /> }
 );
 import { parseNLQuery, applyNLFilters } from '../lib/nl-search';
-import WeeklyIntelligence from '../components/universe/WeeklyIntelligence';
 
 const ComparePanel = dynamic(
   () => import('../components/universe/ComparePanel'),
@@ -90,6 +89,8 @@ export default function UniversePage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [nlFilters, setNLFilters] = useState(null);
+  const [nlMatchedIds, setNLMatchedIds] = useState(null);
+  const nlDebounceRef = useRef(null);
 
   // Compare: selected fund IDs
   const [compareFunds, setCompareFunds] = useState([]);
@@ -132,8 +133,34 @@ export default function UniversePage() {
 
   const handleSearch = useCallback((query) => {
     setSearchQuery(query);
+
+    // Always set client-side parsed filters for badge display
     const parsed = parseNLQuery(query);
     setNLFilters(parsed);
+
+    // Clear any pending debounce
+    if (nlDebounceRef.current) clearTimeout(nlDebounceRef.current);
+
+    if (!query || query.trim().length < 2) {
+      setNLMatchedIds(null);
+      return;
+    }
+
+    // Debounce 300ms then call backend NL search
+    nlDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await searchFundsNL(query.trim());
+        if (res?.data?.funds) {
+          const ids = new Set(res.data.funds.map((f) => f.mstar_id));
+          setNLMatchedIds(ids);
+        } else {
+          setNLMatchedIds(null);
+        }
+      } catch {
+        // Backend failed — fall back to client-side NL filtering
+        setNLMatchedIds(null);
+      }
+    }, 300);
   }, []);
 
   // Comprehensive URL param parsing for cross-page linking
@@ -217,8 +244,10 @@ export default function UniversePage() {
       }
     }
 
-    // NL search filter
-    if (nlFilters) {
+    // NL search filter — prefer backend matched IDs, fall back to client-side
+    if (nlMatchedIds && nlMatchedIds.size > 0) {
+      result = result.filter((f) => nlMatchedIds.has(f.mstar_id));
+    } else if (nlFilters && !nlMatchedIds) {
       result = applyNLFilters(result, nlFilters);
     }
 
@@ -242,7 +271,7 @@ export default function UniversePage() {
     }
 
     return result;
-  }, [globallyFiltered, filters, activePreset, nlFilters, router.isReady, router.query]);
+  }, [globallyFiltered, filters, activePreset, nlFilters, nlMatchedIds, router.isReady, router.query]);
 
   // Tag funds with tier display for selected tier highlighting
   const taggedFunds = useMemo(() => {
@@ -342,6 +371,7 @@ export default function UniversePage() {
     setActivePreset(null);
     setSearchQuery('');
     setNLFilters(null);
+    setNLMatchedIds(null);
   }, []);
 
   // Compare handlers
@@ -467,7 +497,7 @@ export default function UniversePage() {
         }
         onRemovePreset={() => setActivePreset(null)}
         onRemoveTier={() => setSelectedTier(null)}
-        onRemoveSearch={() => { setSearchQuery(''); setNLFilters(null); }}
+        onRemoveSearch={() => { setSearchQuery(''); setNLFilters(null); setNLMatchedIds(null); }}
         onClearAll={handleResetFilters}
       />
 
@@ -673,10 +703,7 @@ export default function UniversePage() {
            ANALYTICS SECTION
            ═══════════════════════════════════════ */}
       {activeSection === 'analytics' && (
-        <>
-          <WeeklyIntelligence />
-          <AnalyticsPanel funds={taggedFunds} />
-        </>
+        <AnalyticsPanel funds={taggedFunds} />
       )}
 
       {/* ═══════════════════════════════════════

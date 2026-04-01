@@ -35,7 +35,7 @@ function CategoryTile({ category, count, avgReturn, large, onClick }) {
         <p className={`text-2xl font-bold ${colors.text} tabular-nums mt-1`}>
           {avgReturn != null ? formatPct(avgReturn) : '--'}
         </p>
-        <p className={`text-[10px] ${colors.text} mt-0.5`}>{count} funds</p>
+        <p className={`text-[10px] ${colors.text} mt-0.5`}>{Number(count).toLocaleString('en-IN')} funds</p>
       </div>
     );
   }
@@ -50,7 +50,7 @@ function CategoryTile({ category, count, avgReturn, large, onClick }) {
         <p className={`text-lg font-bold ${colors.text} tabular-nums`}>
           {avgReturn != null ? formatPct(avgReturn) : '--'}
         </p>
-        <p className={`text-[10px] ${colors.text}`}>{count} funds</p>
+        <p className={`text-[10px] ${colors.text}`}>{Number(count).toLocaleString('en-IN')} funds</p>
       </div>
     );
   }
@@ -64,7 +64,7 @@ function CategoryTile({ category, count, avgReturn, large, onClick }) {
       <p className={`text-sm font-bold ${colors.text} tabular-nums`}>
         {avgReturn != null ? formatPct(avgReturn) : '--'}
       </p>
-      <p className="text-[10px] text-slate-500">{count} funds</p>
+      <p className="text-[10px] text-slate-500">{Number(count).toLocaleString('en-IN')} funds</p>
     </div>
   );
 }

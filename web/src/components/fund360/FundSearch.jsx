@@ -324,11 +324,11 @@ export default function FundSearch({ onSelect }) {
           </div>
           <div className="text-center flex-1">
             <p className="text-[9px] text-slate-400 uppercase tracking-wider">Leaders</p>
-            <p className="text-lg font-extrabold font-mono tabular-nums text-emerald-600 mt-0.5">{universeStats.leaders}</p>
+            <p className="text-lg font-extrabold font-mono tabular-nums text-emerald-600 mt-0.5">{universeStats.leaders.toLocaleString('en-IN')}</p>
           </div>
           <div className="text-center flex-1">
             <p className="text-[9px] text-slate-400 uppercase tracking-wider">Avoid Zone</p>
-            <p className="text-lg font-extrabold font-mono tabular-nums text-red-600 mt-0.5">{universeStats.avoidZone}</p>
+            <p className="text-lg font-extrabold font-mono tabular-nums text-red-600 mt-0.5">{universeStats.avoidZone.toLocaleString('en-IN')}</p>
           </div>
           <div className="text-center flex-1">
             <p className="text-[9px] text-slate-400 uppercase tracking-wider">Total AUM</p>

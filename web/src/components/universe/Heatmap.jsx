@@ -242,7 +242,7 @@ function HeatmapTooltip({ tooltip, colorLens }) {
         {category}
       </div>
       <div className="text-xs text-slate-500 mt-0.5">
-        {count} funds scoring {quintile.label} on {LENS_LABELS[colorLens]}
+        {Number(count).toLocaleString('en-IN')} funds scoring {quintile.label} on {LENS_LABELS[colorLens]}
       </div>
       {top3.length > 0 && (
         <div className="mt-2 space-y-1">
