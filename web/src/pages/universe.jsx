@@ -686,14 +686,15 @@ export default function UniversePage() {
                 ) : null}
               </div>
               {viewMode === 'scatter' && (
-                <details className="mt-3 glass-card px-4 py-2.5 text-xs text-slate-400">
-                  <summary className="cursor-pointer hover:text-slate-600 font-medium">Chart Guide</summary>
+                <details className="mt-3 glass-card px-4 py-2.5 text-xs text-slate-500" open>
+                  <summary className="cursor-pointer hover:text-slate-600 font-medium">How to read this chart</summary>
                   <ul className="mt-1.5 space-y-1 pl-4 list-disc text-[11px]">
-                    <li>Click a bubble to see fund details</li>
-                    <li>Double-click to open Fund 360 view</li>
-                    <li>Scroll to zoom in/out</li>
-                    <li>Drag to pan across the chart</li>
-                    <li>Click tier labels (left) to spotlight a group</li>
+                    <li><strong>X-axis:</strong> Risk Score (0-100, selected above). Higher = riskier.</li>
+                    <li><strong>Y-axis:</strong> 1Y Return %. Higher = better performance.</li>
+                    <li><strong>Bubble size:</strong> AUM — bigger circles = larger funds.</li>
+                    <li><strong>Bubble color:</strong> Lens score (selected as Color above). Green = high, Red = low.</li>
+                    <li>Top-left = sweet spot (high return, low risk). Bottom-right = avoid (low return, high risk).</li>
+                    <li>Click bubble for details. Double-click for Fund 360. Scroll to zoom. Drag to pan.</li>
                   </ul>
                 </details>
               )}

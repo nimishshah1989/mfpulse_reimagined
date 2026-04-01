@@ -111,6 +111,10 @@ export default function Heatmap({
 
   return (
     <div className="relative overflow-x-auto">
+      <p className="text-[10px] text-slate-500 mb-2 leading-relaxed">
+        Rows = SEBI categories. Columns = {LENS_LABELS[colorLens] || 'Score'} quintiles (0-100).
+        Cell color intensity = fund concentration. Hover for top funds in each cell.
+      </p>
       <table className="w-full border-collapse text-xs">
         <thead>
           <tr>

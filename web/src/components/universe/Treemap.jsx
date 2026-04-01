@@ -147,6 +147,10 @@ export default function Treemap({
 
   return (
     <div className="relative">
+      <p className="text-[10px] text-slate-500 mb-2 leading-relaxed">
+        Rectangle size = AUM (bigger = more assets). Color = {LENS_LABELS[colorLens] || 'Score'} (green = high, red = low).
+        Click a category block to zoom in. Double-click a fund to open its detail page.
+      </p>
       {/* Breadcrumb */}
       {zoomedCategory && (
         <div className="mb-2">
