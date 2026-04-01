@@ -185,6 +185,21 @@ export default function FundExposureMatrix({ funds, sectorData, sectorExposures,
               );
             })}
           </tbody>
+          <tfoot>
+            <tr className="border-t border-slate-100">
+              <td className="pt-2" />
+              {sectorColumns.map((name) => {
+                const sector = sectorData.find((s) => s.sector_name === name);
+                const qColor = QUADRANT_COLORS[sector?.quadrant]?.circle || '#94a3b8';
+                return (
+                  <td key={name} className="pt-2 text-center">
+                    <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: qColor }} />
+                  </td>
+                );
+              })}
+              <td className="pt-2" />
+            </tr>
+          </tfoot>
         </table>
       </div>
 
@@ -212,20 +227,6 @@ export default function FundExposureMatrix({ funds, sectorData, sectorExposures,
           </div>
         </div>
       )}
-
-      {/* Quadrant dots */}
-      <div className="flex gap-0 mt-2 pt-2 border-t border-slate-100">
-        <div className="w-32 mr-4" />
-        {sectorColumns.map((name) => {
-          const sector = sectorData.find((s) => s.sector_name === name);
-          const qColor = QUADRANT_COLORS[sector?.quadrant]?.circle || '#94a3b8';
-          return (
-            <div key={name} className="flex-1 text-center">
-              <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: qColor }} />
-            </div>
-          );
-        })}
-      </div>
 
       {/* Legend */}
       <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">

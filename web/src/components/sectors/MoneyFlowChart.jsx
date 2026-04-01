@@ -14,42 +14,51 @@ import { QUADRANT_COLORS } from '../../lib/sectors';
 import { formatAUMRaw } from '../../lib/format';
 import InfoBulb from '../shared/InfoBulb';
 
+const SECTOR_ABBREV = {
+  'Communication Services': 'Comm Services',
+  'Consumer Cyclical': 'Cons Cyclical',
+  'Consumer Defensive': 'Cons Defensive',
+  'Financial Services': 'Financials',
+  'Basic Materials': 'Materials',
+};
+
 function FlowBar({ sector, maxAbs, onClick }) {
   const flow = sector.flow;
   const pct = maxAbs > 0 ? Math.abs(flow) / maxAbs : 0;
-  const barWidth = Math.max(2, pct * 100);
+  const barWidth = Math.max(3, pct * 100);
   const isInflow = flow >= 0;
   const q = sector.quadrant || 'Lagging';
   const qColor = QUADRANT_COLORS[q]?.circle || '#94a3b8';
+  const displayName = SECTOR_ABBREV[sector.sector_name] || sector.sector_name;
 
   return (
     <button
       type="button"
       onClick={() => onClick?.(sector)}
-      className="flex items-center gap-2 py-1.5 hover:bg-slate-50 rounded transition-colors group w-full text-left"
+      className="flex items-center gap-2 py-2 hover:bg-slate-50 rounded-md transition-colors group w-full text-left"
     >
-      <div className="w-28 flex-shrink-0 flex items-center gap-1.5">
+      <div className="w-[110px] flex-shrink-0 flex items-center gap-1.5">
         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: qColor }} />
-        <span className="text-[11px] font-medium text-slate-700 truncate">{sector.sector_name}</span>
+        <span className="text-[11px] font-medium text-slate-700 truncate" title={sector.sector_name}>{displayName}</span>
       </div>
       <div className="flex-1 flex items-center">
         <div className="flex-1 flex justify-end">
           {!isInflow && (
-            <div className="h-4 rounded-l transition-all"
-              style={{ width: `${barWidth}%`, backgroundColor: 'rgba(220, 38, 38, 0.7)' }}
+            <div className="h-5 rounded-l-sm transition-all"
+              style={{ width: `${barWidth}%`, backgroundColor: '#dc2626' }}
             />
           )}
         </div>
-        <div className="w-px h-5 bg-slate-300 flex-shrink-0" />
+        <div className="w-px h-6 bg-slate-300 flex-shrink-0" />
         <div className="flex-1">
           {isInflow && (
-            <div className="h-4 rounded-r transition-all"
-              style={{ width: `${barWidth}%`, backgroundColor: 'rgba(5, 150, 105, 0.7)' }}
+            <div className="h-5 rounded-r-sm transition-all"
+              style={{ width: `${barWidth}%`, backgroundColor: '#059669' }}
             />
           )}
         </div>
       </div>
-      <span className={`w-20 text-right text-[10px] font-bold tabular-nums flex-shrink-0 ${isInflow ? 'text-emerald-600' : 'text-red-500'}`}>
+      <span className={`w-24 text-right text-[11px] font-bold tabular-nums flex-shrink-0 ${isInflow ? 'text-emerald-700' : 'text-red-600'}`}>
         {isInflow ? '+' : ''}{formatAUMRaw(flow)}
       </span>
     </button>
@@ -144,13 +153,13 @@ export default function MoneyFlowChart({ sectorData, onSectorClick }) {
           </p>
         </div>
         <div className="flex items-center gap-3 text-[10px]">
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-2 rounded bg-emerald-500/70" />
-            <span className="text-slate-500">Inflow</span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-4 h-2.5 rounded-sm bg-emerald-600" />
+            <span className="text-slate-600 font-medium">Inflow</span>
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-2 rounded bg-red-500/70" />
-            <span className="text-slate-500">Outflow</span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-4 h-2.5 rounded-sm bg-red-600" />
+            <span className="text-slate-600 font-medium">Outflow</span>
           </span>
         </div>
       </div>

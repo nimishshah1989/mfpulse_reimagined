@@ -14,7 +14,7 @@ export default function MetricCards({ universe }) {
     const withExpense = universe.filter(
       (f) => f.net_expense_ratio != null && f.return_1y != null
     );
-    if (withExpense.length < 10) return null;
+    if (withExpense.length < 2) return null;
 
     // Split into cheap (bottom 25%) and expensive (top 25%)
     const sorted = [...withExpense].sort(
@@ -47,8 +47,10 @@ export default function MetricCards({ universe }) {
   return (
     <button
       type="button"
+      role="link"
+      aria-label="View expense vs performance rankings in Universe screener"
       onClick={() => router.push('/universe?sort=net_expense_ratio')}
-      className="bg-white rounded-xl border border-slate-200 p-5 text-left hover:shadow-md hover:border-teal-300 transition-all cursor-pointer w-full"
+      className="bg-white rounded-xl border border-slate-200 p-5 text-left hover:shadow-md hover:border-teal-300 transition-all cursor-pointer w-full block"
     >
       <p className="section-title mb-3">Expense vs Performance</p>
       <div className="grid grid-cols-2 gap-4 mb-3">

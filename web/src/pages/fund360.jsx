@@ -17,7 +17,7 @@ import EmptyState from '../components/shared/EmptyState';
 import InfoBulb from '../components/shared/InfoBulb';
 import FundSearch from '../components/fund360/FundSearch';
 import HeroSection from '../components/fund360/HeroSection';
-import NarrativeCard from '../components/fund360/NarrativeCard';
+
 import PerformanceChart from '../components/fund360/PerformanceChart';
 import ReturnsBars from '../components/fund360/ReturnsBars';
 import LensCard from '../components/fund360/LensCard';
@@ -29,7 +29,7 @@ import RiskProfile from '../components/fund360/RiskProfile';
 import PeerPositioning from '../components/fund360/PeerPositioning';
 import CompareMode from '../components/fund360/CompareMode';
 import RadarChart from '../components/fund360/RadarChart';
-import IntelligenceCards from '../components/fund360/IntelligenceCards';
+
 import PeerScatter from '../components/fund360/PeerScatter';
 import PortfolioMetrics from '../components/fund360/PortfolioMetrics';
 import CreditQuality from '../components/fund360/CreditQuality';
@@ -262,23 +262,11 @@ export default function Fund360Page() {
         onCompare={() => setCompareOpen(true)}
       />
 
-      {/* SECTION 2: Intelligence Signals — 3 actionable cards up front */}
-      <SectionCard
-        title="Intelligence Signals"
-        subtitle="Three things to know before making a decision on this fund"
-      >
-        <IntelligenceCards mstarId={mstarId} />
-      </SectionCard>
-
       {/* SECTION 4: Six-Lens Radar + Lens Breakdown */}
       {lensScores && (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {/* Narrative / Radar (2 cols) */}
           <div className="lg:col-span-2 space-y-4">
-            <NarrativeCard
-              mstarId={mstarId}
-              headlineTag={lensScores?.headline_tag}
-            />
             <SectionCard title="Six-Lens Classification" subtitle="Each lens is an independent 0-100 percentile rank within this category">
               <RadarChart
                 funds={[{
@@ -348,6 +336,7 @@ export default function Fund360Page() {
           initialData={navData}
           fundReturns={fundReturns}
           riskStats={combinedRiskStats}
+          categoryReturns={categoryReturns}
         />
       </SectionCard>
 

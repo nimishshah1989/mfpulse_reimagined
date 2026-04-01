@@ -11,6 +11,16 @@ import {
   ConfigPanel, SignalConditions,
 } from '../components/strategies/StrategyParts';
 
+function toDateStr(d) {
+  return d.toISOString().split('T')[0];
+}
+
+function fiveYearsAgo() {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 5);
+  return toDateStr(d);
+}
+
 export default function StrategiesPage() {
   const [state, dispatch] = useReducer(strategyReducer, initialState);
   const [sipAmount, setSipAmount] = useState(10000);
@@ -18,6 +28,9 @@ export default function StrategiesPage() {
   const [maxPctPerEvent, setMaxPctPerEvent] = useState(25);
   const [cooldownDays, setCooldownDays] = useState(30);
   const [period, setPeriod] = useState('5Y');
+  const [startDate, setStartDate] = useState(fiveYearsAgo);
+  const [endDate, setEndDate] = useState(() => toDateStr(new Date()));
+  const [tillPresent, setTillPresent] = useState(true);
   const [rules, setRules] = useState([]);
   const [results, setResults] = useState(null);
   const [simulating, setSimulating] = useState(false);
@@ -29,6 +42,16 @@ export default function StrategiesPage() {
   useEffect(() => {
     if (!lumpsumUserEdited) setLumpsumBudget(sipAmount * 12);
   }, [sipAmount, lumpsumUserEdited]);
+
+  // Sync period preset with startDate
+  useEffect(() => {
+    setStartDate(computeStartDate(period));
+  }, [period]);
+
+  // Keep endDate as today when tillPresent is on
+  useEffect(() => {
+    if (tillPresent) setEndDate(toDateStr(new Date()));
+  }, [tillPresent]);
 
   // Check MarketPulse + load default rules
   useEffect(() => {
@@ -76,8 +99,8 @@ export default function StrategiesPage() {
       const payload = {
         mstar_id: primary.mstar_id,
         sip_amount: sipAmount,
-        start_date: computeStartDate(period),
-        end_date: new Date().toISOString().split('T')[0],
+        start_date: startDate,
+        end_date: tillPresent ? toDateStr(new Date()) : endDate,
         signal_rules: rules.length > 0 ? rules : [],
       };
       const res = await compareModes(payload);
@@ -100,7 +123,7 @@ export default function StrategiesPage() {
     } finally {
       setSimulating(false);
     }
-  }, [state.funds, state.allocations, sipAmount, period, rules]);
+  }, [state.funds, state.allocations, sipAmount, startDate, endDate, tillPresent, rules]);
 
   const handleSave = useCallback(async () => {
     const data = {
@@ -143,7 +166,7 @@ export default function StrategiesPage() {
         />
       </Section>
 
-      <Section title="Configuration" subtitle="Investment amounts and deployment rules">
+      <Section title="Configuration" subtitle="Investment amounts, deployment rules, and backtest period">
         <ConfigPanel
           sipAmount={sipAmount}
           onSipChange={(v) => { setSipAmount(v); setLumpsumUserEdited(false); }}
@@ -156,6 +179,39 @@ export default function StrategiesPage() {
           period={period}
           onPeriodChange={setPeriod}
         />
+        {/* Date range */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t border-slate-100 mt-3">
+          <div>
+            <label className="text-[10px] text-slate-500 font-medium block mb-1.5">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full border border-slate-200 rounded-lg py-2 px-3 text-sm font-mono tabular-nums focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate-500 font-medium block mb-1.5">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => { setEndDate(e.target.value); setTillPresent(false); }}
+              disabled={tillPresent}
+              className="w-full border border-slate-200 rounded-lg py-2 px-3 text-sm font-mono tabular-nums focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none disabled:bg-slate-50 disabled:text-slate-400"
+            />
+          </div>
+          <div className="flex items-end pb-1">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={tillPresent}
+                onChange={(e) => setTillPresent(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+              />
+              <span className="text-xs text-slate-600 font-medium">Till Present</span>
+            </label>
+          </div>
+        </div>
       </Section>
 
       <Section
@@ -187,7 +243,7 @@ export default function StrategiesPage() {
             {state.funds.length > 0 && !results && !simulating && (
               <p className="text-xs text-slate-400">
                 {state.funds.length} fund{state.funds.length > 1 ? 's' : ''},{' '}
-                {totalAlloc.toFixed(0)}% allocated, {period} backtest
+                {totalAlloc.toFixed(0)}% allocated, {startDate} to {tillPresent ? 'present' : endDate}
               </p>
             )}
           </div>

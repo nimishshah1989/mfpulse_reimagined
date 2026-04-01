@@ -96,7 +96,7 @@ export default function ScreenerTable({
 }) {
   const router = useRouter();
   const [activeGroups, setActiveGroups] = useState(new Set(['returns', 'risk', 'lens']));
-  const [sortKey, setSortKey] = useState('return_1y');
+  const [sortKey, setSortKey] = useState('aum');
   const [sortDir, setSortDir] = useState('desc');
   const [page, setPage] = useState(0);
 
