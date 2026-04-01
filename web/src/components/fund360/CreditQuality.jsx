@@ -1,3 +1,4 @@
+import InfoIcon from '../shared/InfoIcon';
 import { useState, useEffect } from 'react';
 
 const QUALITY_GRADES = [

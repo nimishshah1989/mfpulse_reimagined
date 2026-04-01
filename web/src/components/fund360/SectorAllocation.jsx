@@ -1,3 +1,4 @@
+import InfoIcon from '../shared/InfoIcon';
 const PALETTE = [
   '#0d9488', '#0ea5e9', '#8b5cf6', '#f59e0b', '#ef4444',
   '#94a3b8', '#059669', '#7c3aed', '#db2777', '#ea580c',

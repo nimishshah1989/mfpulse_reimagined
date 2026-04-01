@@ -1,3 +1,4 @@
+import InfoIcon from '../shared/InfoIcon';
 import { useState } from 'react';
 
 const SECTOR_COLORS = {
@@ -69,7 +70,7 @@ export default function HoldingsTable({ holdings, sectorQuadrants }) {
       >
         <div className="flex items-center gap-3">
           <span className="text-[13px] font-bold text-slate-700">
-            Top {holdings.length} Holdings
+            Top {holdings.length} Holdings <InfoIcon tip="Largest stock/bond holdings by portfolio weight. Higher concentration = more conviction but more risk." />
           </span>
           {hasWeightData && totalWeight > 0 && (
             <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500">

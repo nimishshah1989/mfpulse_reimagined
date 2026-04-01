@@ -407,13 +407,13 @@ export default function Fund360Page() {
 
         {/* Right: Sector + Asset + Credit stacked */}
         <div className="space-y-4">
-          <SectionCard title="Sector Allocation">
+          <SectionCard title="Sector Allocation" subtitle="How the fund's equity is distributed across Morningstar sectors">
             <SectorAllocation sectors={sectors} sectorQuadrants={sectorQuadrants} />
           </SectionCard>
-          <SectionCard title="Asset Allocation">
+          <SectionCard title="Asset Allocation" subtitle="Equity vs debt vs cash split — shows how defensively the fund is positioned">
             <AssetAllocation mstarId={mstarId} />
           </SectionCard>
-          <SectionCard title="Credit Quality">
+          <SectionCard title="Credit Quality" subtitle="Bond portfolio quality — AAA is safest, lower ratings carry default risk">
             <CreditQuality
               creditQuality={fundDetail.credit_quality}
               categoryName={fundDetail.category_name}
