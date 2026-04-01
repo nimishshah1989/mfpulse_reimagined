@@ -53,13 +53,17 @@ class FundRepository:
         if purchase_mode is not None:
             query = query.filter(FundMaster.purchase_mode == purchase_mode)
         if search:
-            pattern = f"%{search}%"
-            query = query.filter(
-                or_(
-                    FundMaster.fund_name.ilike(pattern),
-                    FundMaster.legal_name.ilike(pattern),
+            # Split into words — each word must match somewhere in fund_name OR legal_name
+            words = [w.strip() for w in search.split() if len(w.strip()) >= 2]
+            for w in words:
+                escaped = w.replace('%', r'\%').replace('_', r'\_')
+                pattern = f"%{escaped}%"
+                query = query.filter(
+                    or_(
+                        FundMaster.fund_name.ilike(pattern, escape='\\'),
+                        FundMaster.legal_name.ilike(pattern, escape='\\'),
+                    )
                 )
-            )
 
         # Filter by minimum NAV history depth
         if min_nav_count > 0:

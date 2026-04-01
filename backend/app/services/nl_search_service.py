@@ -114,6 +114,7 @@ class NLSearchService:
             "categories": [],
             "tier_filters": [],
             "numeric_filters": [],
+            "sector_exposure_filters": [],  # e.g., {"sector": "Technology", "operator": "lt", "value": 20.0}
             "sort_by": None,
             "raw": query,
         }
@@ -145,18 +146,49 @@ class NLSearchService:
         }
         sector_field_names |= _sector_trigger_words
 
+        # Build reverse map: trigger word → canonical sector name
+        _trigger_to_sector: dict[str, str] = {}
+        for sector_name, pat in SECTOR_KEYWORDS.items():
+            for tw in _sector_trigger_words:
+                if pat.search(tw):
+                    _trigger_to_sector[tw] = sector_name
+        # Also map multi-word sector names
+        _trigger_to_sector.update({
+            "financial services": "Financial Services",
+            "financial": "Financial Services",
+            "consumer cyclical": "Consumer Cyclical",
+            "consumer defensive": "Consumer Defensive",
+            "basic materials": "Basic Materials",
+            "real estate": "Real Estate",
+            "communication services": "Communication Services",
+        })
+
         for match in NUMERIC_PATTERN.finditer(lower):
-            field_raw = match.group(1).strip().split()[-1]  # "funds with sharpe" → "sharpe"
-            # Skip if the field name matches a sector keyword — these are sector
-            # exposure queries, not numeric lens/metric filters
-            if field_raw.lower() in sector_field_names:
-                continue
+            full_field = match.group(1).strip()
+            last_word = full_field.split()[-1]
             operator, value = match.group(2), match.group(3)
-            mapped = FIELD_MAP.get(field_raw, field_raw)
             op = "gt" if operator in (">", "above", "over") else "lt"
-            result["numeric_filters"].append({
-                "field": mapped, "operator": op, "value": float(value),
-            })
+
+            # Check if this is a sector exposure filter
+            # Match "technology >20%" or "financial services >30%" or "technology exposure <20%"
+            sector_match = None
+            clean_field = full_field.replace("exposure", "").replace("sector", "").strip()
+            for trigger, sector_name in _trigger_to_sector.items():
+                if trigger in clean_field:
+                    sector_match = sector_name
+                    break
+            if not sector_match and last_word.lower() in sector_field_names:
+                sector_match = _trigger_to_sector.get(last_word.lower())
+
+            if sector_match:
+                result["sector_exposure_filters"].append({
+                    "sector": sector_match, "operator": op, "value": float(value),
+                })
+            else:
+                mapped = FIELD_MAP.get(last_word, last_word)
+                result["numeric_filters"].append({
+                    "field": mapped, "operator": op, "value": float(value),
+                })
 
         # Detect high/top qualifiers for lens scores (word-boundary match)
         high_keywords = ["high", "strong", "good", "top", "best"]
@@ -176,7 +208,8 @@ class NLSearchService:
 
         has_filters = bool(
             result["sectors"] or result["categories"] or
-            result["tier_filters"] or result["numeric_filters"]
+            result["tier_filters"] or result["numeric_filters"] or
+            result["sector_exposure_filters"]
         )
         # Fallback: if no structured filters matched, treat as fund/AMC name search
         if not has_filters:
@@ -240,6 +273,23 @@ class NLSearchService:
             query = query.filter(FundMaster.mstar_id.in_(
                 self.db.query(sector_sq.c.mstar_id)
             ))
+
+        # Sector exposure percentage filters (e.g., "technology <20%", "financial services >30%")
+        if parsed.get("sector_exposure_filters"):
+            from app.models.db.sector_exposure import FundSectorExposure
+            for sef in parsed["sector_exposure_filters"]:
+                exposure_sq = (
+                    self.db.query(FundSectorExposure.mstar_id)
+                    .filter(FundSectorExposure.sector_name == sef["sector"])
+                )
+                if sef["operator"] == "gt":
+                    exposure_sq = exposure_sq.filter(FundSectorExposure.net_pct >= sef["value"])
+                else:
+                    exposure_sq = exposure_sq.filter(FundSectorExposure.net_pct <= sef["value"])
+                exposure_sq = exposure_sq.distinct().subquery()
+                query = query.filter(FundMaster.mstar_id.in_(
+                    self.db.query(exposure_sq.c.mstar_id)
+                ))
 
         # Category filter — separate broad_category markers from real category names
         broad_cats = [c for c in parsed["categories"] if c.startswith("_BROAD_")]
