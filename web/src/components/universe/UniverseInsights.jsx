@@ -175,26 +175,37 @@ export default function UniverseInsights({ funds, onCategoryClick }) {
         </div>
       </div>
 
-      {/* ── NEW: Expense Analysis ── */}
+      {/* ── Expense vs Performance ── */}
       <div className="glass-card p-4">
-        <p className="text-[11px] font-bold text-slate-700 mb-2">Expense Analysis</p>
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span className="text-[10px] text-slate-500">Avg Expense Ratio</span>
-            <span className="text-[11px] font-bold tabular-nums text-slate-700">{expenseData.avgExpense.toFixed(2)}%</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-[10px] text-slate-500">Expensive (&gt;2%)</span>
-            <span className="text-[11px] font-bold tabular-nums text-amber-600">{expenseData.expensive} funds</span>
-          </div>
-          {expenseData.cheapest && (
-            <div className="pt-1 border-t border-slate-100">
-              <p className="text-[9px] text-slate-400 mb-0.5">Cheapest Fund</p>
-              <p className="text-[10px] font-semibold text-teal-700 truncate">{expenseData.cheapest.fund_name}</p>
-              <p className="text-[10px] font-bold tabular-nums text-slate-700">{Number(expenseData.cheapest.net_expense_ratio).toFixed(2)}%</p>
+        <p className="text-[11px] font-bold text-slate-700 mb-2">Expense vs Performance</p>
+        <p className="text-[9px] text-slate-400 mb-2">Do cheap funds outperform expensive ones?</p>
+        {(() => {
+          const withExp = funds.filter((f) => f.net_expense_ratio != null && f.return_1y != null);
+          if (withExp.length < 10) return <p className="text-[10px] text-slate-400">Insufficient data</p>;
+          const sorted = [...withExp].sort((a, b) => Number(a.net_expense_ratio) - Number(b.net_expense_ratio));
+          const cheapQuarter = sorted.slice(0, Math.floor(sorted.length / 4));
+          const expensiveQuarter = sorted.slice(-Math.floor(sorted.length / 4));
+          const cheapAvgRet = cheapQuarter.reduce((s, f) => s + Number(f.return_1y), 0) / cheapQuarter.length;
+          const expAvgRet = expensiveQuarter.reduce((s, f) => s + Number(f.return_1y), 0) / expensiveQuarter.length;
+          const cheapAvgExp = cheapQuarter.reduce((s, f) => s + Number(f.net_expense_ratio), 0) / cheapQuarter.length;
+          const expAvgExp = expensiveQuarter.reduce((s, f) => s + Number(f.net_expense_ratio), 0) / expensiveQuarter.length;
+          const cheapWins = cheapAvgRet > expAvgRet;
+          return (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] text-slate-500">Cheapest 25% (avg {cheapAvgExp.toFixed(1)}%)</span>
+                <span className={`text-[11px] font-bold tabular-nums ${cheapAvgRet >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatPct(cheapAvgRet)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] text-slate-500">Priciest 25% (avg {expAvgExp.toFixed(1)}%)</span>
+                <span className={`text-[11px] font-bold tabular-nums ${expAvgRet >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatPct(expAvgRet)}</span>
+              </div>
+              <p className={`text-[9px] font-semibold mt-1 ${cheapWins ? 'text-teal-700' : 'text-amber-700'}`}>
+                {cheapWins ? 'Cheap funds outperform — cost matters.' : 'Expensive funds outperform — active management adding value.'}
+              </p>
             </div>
-          )}
-        </div>
+          );
+        })()}
       </div>
 
       {/* ── NEW: Consistency Champions ── */}

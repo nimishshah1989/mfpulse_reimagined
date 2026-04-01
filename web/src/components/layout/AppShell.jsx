@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { fetchMarketRegime } from '../../lib/api';
 
 const UniversalSearch = dynamic(() => import('../shared/UniversalSearch'), { ssr: false });
 
@@ -18,38 +17,38 @@ const SECONDARY_ITEMS = [
 ];
 
 function MarketStatusBadge() {
-  const [market, setMarket] = useState(null);
-
-  const loadMarket = useCallback(async () => {
-    try {
-      const res = await fetchMarketRegime();
-      setMarket(res.data);
-    } catch {
-      setMarket({ market_open: false });
-    }
-  }, []);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    loadMarket();
-    const interval = setInterval(loadMarket, 60000);
+    function checkMarketHours() {
+      // IST = UTC+5:30. Indian markets: Mon-Fri, 9:15 AM - 3:30 PM IST
+      const now = new Date();
+      const utcH = now.getUTCHours();
+      const utcM = now.getUTCMinutes();
+      const istMinutes = (utcH * 60 + utcM) + 330; // UTC + 5:30
+      const day = now.getUTCDay();
+      const isWeekday = day >= 1 && day <= 5;
+      const isMarketHours = istMinutes >= 555 && istMinutes <= 930; // 9:15 to 15:30 IST
+      setIsOpen(isWeekday && isMarketHours);
+    }
+    checkMarketHours();
+    const interval = setInterval(checkMarketHours, 60000);
     return () => clearInterval(interval);
-  }, [loadMarket]);
-
-  if (!market) return null;
+  }, []);
 
   return (
     <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${
-      market.market_open
+      isOpen
         ? 'bg-emerald-500/10 border-emerald-500/20'
         : 'bg-slate-500/10 border-slate-500/20'
     }`}>
       <span className={`w-2 h-2 rounded-full ${
-        market.market_open ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+        isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
       }`} />
       <span className={`text-xs font-medium ${
-        market.market_open ? 'text-emerald-600' : 'text-slate-500'
+        isOpen ? 'text-emerald-600' : 'text-slate-500'
       }`}>
-        {market.market_open ? 'Market Live' : 'Market Closed'}
+        {isOpen ? 'Market Live' : 'Market Closed'}
       </span>
     </div>
   );
