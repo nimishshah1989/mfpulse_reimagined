@@ -243,8 +243,7 @@ export default function MarketContextPanel({
         )}
       </div>
 
-      {/* AI Sector Playbook */}
-      <SectorPlaybookBar />
+      {/* AI Sector Playbook removed per user feedback */}
     </section>
   );
 }
