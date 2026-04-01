@@ -222,7 +222,8 @@ class NLSearchService:
             words = [w for w in txt.split() if len(w) >= 2]
             if words:
                 for w in words:
-                    query = query.filter(FundMaster.fund_name.ilike(f"%{w}%"))
+                    escaped = w.replace('%', r'\%').replace('_', r'\_')
+                    query = query.filter(FundMaster.fund_name.ilike(f"%{escaped}%", escape='\\'))
 
         # Sector filter — filter by fund holdings sector exposure
         if parsed["sectors"]:

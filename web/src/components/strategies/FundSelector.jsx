@@ -22,7 +22,7 @@ export default function FundSelector({
   const [searching, setSearching] = useState(false);
   const debounceRef = useRef(null);
 
-  // Debounced search - Regular plans only, 5Y+ NAV history
+  // Debounced search - Regular plans only
   useEffect(() => {
     if (!search || search.length < 2) {
       setResults([]);
@@ -35,7 +35,6 @@ export default function FundSelector({
         const res = await fetchFunds({
           search,
           purchase_mode: 1,
-          min_nav_count: 1250,
           limit: 15,
         });
         setResults(res.data || []);

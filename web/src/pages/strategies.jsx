@@ -131,7 +131,7 @@ export default function StrategiesPage() {
       <PageHeader />
       {!mpOnline && <MarketPulseOfflineBanner />}
 
-      <Section title="Select Funds" subtitle="Regular plans only, 5Y+ NAV history">
+      <Section title="Select Funds" subtitle="Regular plans only">
         <FundSelector
           funds={state.funds}
           allocations={state.allocations}

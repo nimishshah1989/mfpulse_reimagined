@@ -390,7 +390,7 @@ class HoldingsRepository:
             "prospective_div_yield": snap.prospective_div_yield,
             "turnover_ratio": snap.turnover_ratio,
             "est_fund_net_flow": snap.est_fund_net_flow,
-            "est_fund_net_flow_ytd": float(snap.est_fund_net_flow_ytd) if snap.est_fund_net_flow_ytd is not None else None,
+            "est_fund_net_flow_ytd": str(snap.est_fund_net_flow_ytd) if snap.est_fund_net_flow_ytd is not None else None,
         }
 
     @staticmethod
@@ -411,6 +411,6 @@ class HoldingsRepository:
             "share_change": h.share_change,
             "ticker": h.ticker,
             "global_industry": h.global_industry,
-            "holding_ytd_return": float(h.holding_ytd_return) if h.holding_ytd_return is not None else None,
+            "holding_ytd_return": str(h.holding_ytd_return) if h.holding_ytd_return is not None else None,
             "first_bought_date": str(h.first_bought_date) if h.first_bought_date else None,
         }

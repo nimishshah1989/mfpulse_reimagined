@@ -22,6 +22,11 @@ router = APIRouter(prefix="/funds", tags=["funds"])
 # Keyed by filter params string so different filter combos get separate cached results
 _universe_cache: dict[str, dict] = {}
 _UNIVERSE_CACHE_TTL = 600  # seconds
+_MAX_CACHE_ENTRIES = 20  # Prevent unbounded memory growth
+
+VALID_BROAD_CATEGORIES = {"equity", "debt", "hybrid", "all"}
+VALID_AUM_VALUES = {None, 100, 500, 1000, 2000, 5000}
+VALID_AGE_VALUES = {None, 1, 3, 5}
 
 LENS_SORT_FIELDS = {
     "return_score", "risk_score", "consistency_score",
@@ -45,6 +50,14 @@ def get_universe_data(
 
     Cache priority: (1) PostgreSQL kv_cache (unfiltered only), (2) in-memory 10-min cache (per filter combo), (3) live query.
     """
+    # Validate inputs to prevent cache flooding
+    if broad_category and broad_category.lower() not in VALID_BROAD_CATEGORIES:
+        broad_category = None
+    if min_aum is not None and min_aum not in VALID_AUM_VALUES:
+        min_aum = None
+    if min_age_years is not None and min_age_years not in VALID_AGE_VALUES:
+        min_age_years = None
+
     has_filters = any(p is not None for p in (broad_category, min_aum, min_age_years))
 
     # L1: PostgreSQL pre-computed cache (fastest — only for unfiltered requests)
@@ -77,6 +90,10 @@ def get_universe_data(
             min_age_years=min_age_years,
         )
         _universe_cache[cache_key] = {"data": data, "ts": now}
+        # Evict oldest entries to prevent unbounded growth
+        while len(_universe_cache) > _MAX_CACHE_ENTRIES:
+            oldest = min(_universe_cache, key=lambda k: _universe_cache[k]["ts"])
+            del _universe_cache[oldest]
     return {
         "success": True,
         "data": data,
