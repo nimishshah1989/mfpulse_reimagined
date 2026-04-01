@@ -18,6 +18,7 @@ class NavDaily(Base, UUIDPrimaryKey):
     # nullable because Return Data API updates return columns without providing NAV
     nav: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 4), nullable=True)
     nav_change: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), nullable=True)
+    nav_change_pct: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 5), nullable=True)
 
     # Return columns
     return_1d: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 5), nullable=True)

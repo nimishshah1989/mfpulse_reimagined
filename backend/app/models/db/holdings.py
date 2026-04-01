@@ -48,6 +48,7 @@ class FundHoldingsSnapshot(Base, UUIDPrimaryKey):
     prospective_div_yield: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
     turnover_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), nullable=True)
     est_fund_net_flow: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 2), nullable=True)
+    est_fund_net_flow_ytd: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -81,6 +82,10 @@ class FundHoldingDetail(Base, UUIDPrimaryKey):
     maturity_date: Mapped[Optional[date]] = mapped_column(Date)
     credit_quality: Mapped[Optional[str]] = mapped_column(String(20))
     share_change: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 4), nullable=True)
+    ticker: Mapped[Optional[str]] = mapped_column(String(50))
+    global_industry: Mapped[Optional[str]] = mapped_column(String(100))
+    holding_ytd_return: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 5), nullable=True)
+    first_bought_date: Mapped[Optional[date]] = mapped_column(Date)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

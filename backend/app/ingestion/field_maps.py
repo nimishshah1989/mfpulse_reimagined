@@ -36,6 +36,7 @@ MASTER_FIELD_MAP: dict[str, str] = {
     "india_fund_risk_level": "fund_risk_level",
     # Benchmark
     "PrimaryProspectusBenchmarks": "primary_benchmark",
+    "IndexName": "primary_benchmark",
     # Strategy text
     "InvestmentStrategy": "investment_strategy",
     "InvestmentPhilosophy": "investment_philosophy",
@@ -138,6 +139,7 @@ NAV_FIELD_MAP: dict[str, str] = {
     "DayEndNAV": "nav",
     "DayEndNAVDate": "nav_date",
     "NAVChange": "nav_change",
+    "NAVChangePercentage": "nav_change_pct",
     "Return1Day": "return_1d",
     "Return1Week": "return_1w",
     "Return1Mth": "return_1m",
@@ -391,6 +393,7 @@ HOLDINGS_FIELD_MAP: dict[str, str] = {
     "ProspectiveDividendYield": "prospective_div_yield",
     "AnnualReportTurnoverRatio": "turnover_ratio",
     "EstFundLevelNetFlow": "est_fund_net_flow",
+    "EstFundLevelNetFlowYTDMoEnd": "est_fund_net_flow_ytd",
 }
 
 # Aliases for fields that appear under different names across APIs.
@@ -413,6 +416,10 @@ HOLDING_DETAIL_FIELD_MAP: dict[str, str] = {
     "HoldingDetail_MaturityDate": "maturity_date",
     "HoldingDetail_IndianCreditQualityClassification": "credit_quality",
     "HoldingDetail_ShareChange": "share_change",
+    "HoldingDetail_Ticker": "ticker",
+    "HoldingDetail_GlobalIndustry": "global_industry",
+    "HoldingDetail_HoldingYTDReturn": "holding_ytd_return",
+    "HoldingDetail_FirstBoughtDate": "first_bought_date",
 }
 
 # Nested XML element names → DB columns for <HoldingDetail> child elements.
@@ -431,6 +438,10 @@ HOLDING_DETAIL_NESTED_MAP: dict[str, str] = {
     "MaturityDate": "maturity_date",
     "IndianCreditQualityClassification": "credit_quality",
     "ShareChange": "share_change",
+    "Ticker": "ticker",
+    "GlobalIndustry": "global_industry",
+    "HoldingYTDReturn": "holding_ytd_return",
+    "FirstBoughtDate": "first_bought_date",
 }
 
 SECTOR_EXPOSURE_MAP: dict[str, str] = {
@@ -455,6 +466,10 @@ ASSET_ALLOCATION_MAP: dict[str, str] = {
     "IndiaLargeCapPct": "india_large_cap_pct",
     "IndiaMidCapPct": "india_mid_cap_pct",
     "IndiaSmallCapPct": "india_small_cap_pct",
+    # Net variants — some API responses use these instead of Pct
+    "IndiaLargeCapNet": "india_large_cap_pct",
+    "IndiaMidCapNet": "india_mid_cap_pct",
+    "IndiaSmallCapNet": "india_small_cap_pct",
 }
 
 CREDIT_QUALITY_MAP: dict[str, str] = {
@@ -471,18 +486,39 @@ CREDIT_QUALITY_MAP: dict[str, str] = {
 CATEGORY_RETURNS_FIELD_MAP: dict[str, str] = {
     "Categorycode": "category_code",
     "CategoryEndDate": "as_of_date",
+    # Short-tenor category returns
+    "CategoryReturn1Day": "cat_return_1d",
+    "CategoryReturn1Week": "cat_return_1w",
+    "CategoryReturn1Mth": "cat_return_1m",
+    "CategoryReturn3Mth": "cat_return_3m",
+    "CategoryReturn6Mth": "cat_return_6m",
+    "CategoryReturn1Yr": "cat_return_1y",
+    "ReturnYTD": "cat_return_ytd",
+    # Multi-year category returns
     "CategoryReturn2Yr": "cat_return_2y",
     "CategoryReturn3Yr": "cat_return_3y",
     "CategoryReturn4Yr": "cat_return_4y",
     "CategoryReturn5Yr": "cat_return_5y",
     "CategoryReturn7Yr": "cat_return_7y",
     "CategoryReturn10Yr": "cat_return_10y",
+    # Cumulative returns
     "CategoryCumulativeReturn2Yr": "cat_cumulative_2y",
     "CategoryCumulativeReturn3Yr": "cat_cumulative_3y",
     "CategoryCumulativeReturn4Yr": "cat_cumulative_4y",
     "CategoryCumulativeReturn5Yr": "cat_cumulative_5y",
     "CategoryCumulativeReturn7Yr": "cat_cumulative_7y",
     "CategoryCumulativeReturn10Yr": "cat_cumulative_10y",
+    # Calendar year category returns
+    "Year1": "cat_calendar_year_1y",
+    "Year2": "cat_calendar_year_2y",
+    "Year3": "cat_calendar_year_3y",
+    "Year4": "cat_calendar_year_4y",
+    "Year5": "cat_calendar_year_5y",
+    "Year6": "cat_calendar_year_6y",
+    "Year7": "cat_calendar_year_7y",
+    "Year8": "cat_calendar_year_8y",
+    "Year9": "cat_calendar_year_9y",
+    "Year10": "cat_calendar_year_10y",
 }
 
 # Map of feed type → (field_map, ORM model class name, key field in DB)
