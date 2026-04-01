@@ -141,9 +141,8 @@ export default function DashboardPage() {
     return applyFilters(matrixData);
   }, [matrixData, applyFilters]);
 
-  // When any global filter is active, force client-side archetype computation
-  const { hasActiveFilters } = useFilters();
-  const effectiveArchetypes = hasActiveFilters ? [] : archetypes;
+  // Always compute archetypes from filtered universe — pre-computed counts include all 13K funds
+  const effectiveArchetypes = [];
 
   useEffect(() => {
     async function loadAll() {

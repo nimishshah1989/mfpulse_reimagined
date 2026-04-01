@@ -76,7 +76,7 @@ export default function TopFundsByLens({ universe, onFundClick, loading }) {
 
       {/* Fund table with lens columns */}
       {topFunds.length > 0 ? (
-        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+        <div className="overflow-x-auto">
           <table className="w-full" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr className="border-b border-slate-200">

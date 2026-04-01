@@ -116,7 +116,9 @@ export default function UniversalSearch() {
       setSearching(true);
       try {
         const res = await searchFundsNL(query);
-        setResults(res.funds || res.data || []);
+        // Backend returns {success, data: {parsed, funds, count}}
+        const funds = res?.data?.funds || res?.funds || [];
+        setResults(Array.isArray(funds) ? funds : []);
       } catch {
         // Fallback to basic search on error
         try {
