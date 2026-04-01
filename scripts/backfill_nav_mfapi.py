@@ -86,7 +86,6 @@ def get_funds_to_backfill(db: Session, min_gap_pct: float = 0.0) -> list[dict]:
                 GROUP BY mstar_id
             ) nav ON nav.mstar_id = fm.mstar_id
             WHERE fm.amfi_code IS NOT NULL
-              AND fm.purchase_mode = 1
               AND fm.inception_date IS NOT NULL
               AND fm.inception_date < CURRENT_DATE
         )
