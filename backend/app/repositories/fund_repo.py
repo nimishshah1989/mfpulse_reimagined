@@ -352,21 +352,31 @@ class FundRepository:
         )
         if cat is None:
             return None
+        # Return with BOTH prefixed and unprefixed keys so frontend can read either
         return {
             "category_code": cat.category_code,
             "as_of_date": cat.as_of_date,
-            "cat_return_2y": cat.cat_return_2y,
-            "cat_return_3y": cat.cat_return_3y,
-            "cat_return_4y": cat.cat_return_4y,
-            "cat_return_5y": cat.cat_return_5y,
-            "cat_return_7y": cat.cat_return_7y,
-            "cat_return_10y": cat.cat_return_10y,
-            "cat_cumulative_2y": cat.cat_cumulative_2y,
-            "cat_cumulative_3y": cat.cat_cumulative_3y,
-            "cat_cumulative_4y": cat.cat_cumulative_4y,
-            "cat_cumulative_5y": cat.cat_cumulative_5y,
-            "cat_cumulative_7y": cat.cat_cumulative_7y,
-            "cat_cumulative_10y": cat.cat_cumulative_10y,
+            # Short-tenor (frontend reads return_1m, return_3m, etc.)
+            "return_1d": cat.cat_return_1d,
+            "return_1w": cat.cat_return_1w,
+            "return_1m": cat.cat_return_1m,
+            "return_3m": cat.cat_return_3m,
+            "return_6m": cat.cat_return_6m,
+            "return_ytd": cat.cat_return_ytd,
+            "return_1y": cat.cat_return_1y,
+            "return_2y": cat.cat_return_2y,
+            "return_3y": cat.cat_return_3y,
+            "return_4y": cat.cat_return_4y,
+            "return_5y": cat.cat_return_5y,
+            "return_7y": cat.cat_return_7y,
+            "return_10y": cat.cat_return_10y,
+            # Cumulatives
+            "cumulative_2y": cat.cat_cumulative_2y,
+            "cumulative_3y": cat.cat_cumulative_3y,
+            "cumulative_4y": cat.cat_cumulative_4y,
+            "cumulative_5y": cat.cat_cumulative_5y,
+            "cumulative_7y": cat.cat_cumulative_7y,
+            "cumulative_10y": cat.cat_cumulative_10y,
         }
 
     # --- Batch queries for universe enrichment ---

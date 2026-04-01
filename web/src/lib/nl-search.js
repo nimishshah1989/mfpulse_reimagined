@@ -135,8 +135,8 @@ export function parseNLQuery(query) {
       'alpha': 'alpha_score',
       'return': 'return_1y',
       'risk': 'risk_score',
-      'sharpe': 'sharpe_ratio',
-      'drawdown': 'max_drawdown',
+      'sharpe': 'sharpe_3y',
+      'drawdown': 'max_drawdown_3y',
       'expense': 'net_expense_ratio',
       'consistency': 'consistency_score',
       'efficiency': 'efficiency_score',
@@ -175,7 +175,11 @@ export function parseNLQuery(query) {
   result.keywords = words;
 
   const hasFilters = result.sectors.length + result.quadrants.length + result.lensFilters.length + result.numericFilters.length + result.categories.length + result.tierFilters.length > 0;
-  return hasFilters ? result : null;
+  // If no structured filters, treat as text search (fund/AMC name)
+  if (!hasFilters) {
+    result.textSearch = query.trim();
+  }
+  return result;
 }
 
 /**
@@ -185,6 +189,19 @@ export function applyNLFilters(funds, filters) {
   if (!filters || !funds) return funds;
 
   let result = [...funds];
+
+  // Text search fallback — match fund name / AMC name
+  if (filters.textSearch) {
+    const words = filters.textSearch.toLowerCase().split(/\s+/).filter((w) => w.length >= 2);
+    if (words.length > 0) {
+      result = result.filter((f) => {
+        const name = (f.fund_name || '').toLowerCase();
+        const amc = (f.amc_name || '').toLowerCase();
+        return words.every((w) => name.includes(w) || amc.includes(w));
+      });
+      return result; // Text search is exclusive — don't apply other filters
+    }
+  }
 
   // Category filter — case-insensitive, normalize hyphens/spaces for partial matching
   if (filters.categories.length > 0) {
@@ -236,6 +253,31 @@ export function applyNLFilters(funds, filters) {
         result = result.filter((f) => Number(f[lf.key]) <= 30);
       }
     }
+  }
+
+  // Sector filters — match funds whose category_name suggests sector exposure
+  if (filters.sectors?.length > 0) {
+    const sectorCatMap = {
+      'Technology': ['technology', 'it', 'digital'],
+      'Healthcare': ['healthcare', 'pharma'],
+      'Financial Services': ['banking', 'financial', 'psu bank'],
+      'Energy': ['energy', 'infrastructure'],
+      'Consumer Cyclical': ['consumption', 'consumer'],
+      'Consumer Defensive': ['fmcg', 'consumer defensive'],
+      'Industrials': ['infrastructure', 'industrial', 'manufacturing'],
+      'Real Estate': ['real estate'],
+      'Basic Materials': ['commodit', 'metal', 'mining'],
+      'Communication Services': ['media', 'communication', 'telecom'],
+      'Utilities': ['utilities', 'power'],
+    };
+    result = result.filter((f) => {
+      const cat = (f.category_name || '').toLowerCase();
+      const fundName = (f.fund_name || '').toLowerCase();
+      return filters.sectors.some((sector) => {
+        const keywords = sectorCatMap[sector] || [sector.toLowerCase()];
+        return keywords.some((kw) => cat.includes(kw) || fundName.includes(kw));
+      });
+    });
   }
 
   return result;

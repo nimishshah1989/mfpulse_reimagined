@@ -124,7 +124,24 @@ export default function HoldingsTable({ holdings, sectorQuadrants }) {
                         {sector}
                       </span>
                     )}
+                    {h.ticker && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded flex-shrink-0 bg-slate-100 text-slate-500 font-mono">
+                        {h.ticker}
+                      </span>
+                    )}
                   </div>
+                  {(h.global_industry || h.holding_ytd_return != null) && (
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {h.global_industry && (
+                        <span className="text-[9px] text-slate-400">{h.global_industry}</span>
+                      )}
+                      {h.holding_ytd_return != null && (
+                        <span className={`text-[9px] font-semibold ${Number(h.holding_ytd_return) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          YTD: {Number(h.holding_ytd_return).toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {hasWeightData && (
                   <>
