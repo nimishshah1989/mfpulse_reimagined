@@ -170,6 +170,9 @@ class NLSearchService:
 
     def _execute(self, parsed: dict, limit: int = 50, min_nav_count: int = 0) -> list[dict]:
         """Execute parsed filters against DB."""
+        if not parsed:
+            return []
+
         # Get latest lens date
         latest_lens = self.db.query(func.max(FundLensScores.computed_date)).scalar()
         latest_class = self.db.query(func.max(FundClassification.computed_date)).scalar()
@@ -177,18 +180,7 @@ class NLSearchService:
         if not latest_lens:
             return []
 
-        # NAV count subquery — counts non-NULL NAV records per fund
-        nav_count_sq = (
-            self.db.query(
-                NavDaily.mstar_id.label("mstar_id"),
-                func.count(NavDaily.id).label("nav_count"),
-            )
-            .filter(NavDaily.nav.isnot(None))
-            .group_by(NavDaily.mstar_id)
-            .subquery("nav_counts")
-        )
-
-        # Base query: funds with lens scores + nav count
+        # Base query: funds with lens scores (no expensive NAV count join)
         query = (
             self.db.query(
                 FundMaster.mstar_id,
@@ -201,34 +193,21 @@ class NLSearchService:
                 FundLensScores.consistency_score,
                 FundLensScores.efficiency_score,
                 FundLensScores.resilience_score,
-                nav_count_sq.c.nav_count,
             )
             .join(FundLensScores, FundMaster.mstar_id == FundLensScores.mstar_id)
-            .outerjoin(nav_count_sq, FundMaster.mstar_id == nav_count_sq.c.mstar_id)
             .filter(
-                FundMaster.is_eligible.is_(True),
-                FundMaster.purchase_mode == 1,  # Regular funds only — platform-wide policy
+                FundMaster.purchase_mode == 1,
                 FundLensScores.computed_date == latest_lens,
             )
         )
 
-        # Filter by minimum NAV count if requested
-        if min_nav_count > 0:
-            query = query.filter(nav_count_sq.c.nav_count >= min_nav_count)
-
-        # Text search fallback — search fund name and AMC name
+        # Text search fallback — search fund name (fast single-column ILIKE)
         if parsed.get("text_search"):
             txt = parsed["text_search"]
             words = [w for w in txt.split() if len(w) >= 2]
             if words:
-                conditions = []
                 for w in words:
-                    conditions.append(or_(
-                        FundMaster.fund_name.ilike(f"%{w}%"),
-                        FundMaster.legal_name.ilike(f"%{w}%"),
-                        FundMaster.amc_name.ilike(f"%{w}%"),
-                    ))
-                query = query.filter(and_(*conditions))
+                    query = query.filter(FundMaster.fund_name.ilike(f"%{w}%"))
 
         # Sector filter — filter by fund holdings sector exposure
         if parsed["sectors"]:
@@ -303,7 +282,7 @@ class NLSearchService:
                 "consistency_score": float(r.consistency_score) if r.consistency_score else None,
                 "efficiency_score": float(r.efficiency_score) if r.efficiency_score else None,
                 "resilience_score": float(r.resilience_score) if r.resilience_score else None,
-                "nav_count": r.nav_count or 0,
+                "nav_count": 0,  # Skip expensive NAV count query
             }
             for r in rows
         ]
