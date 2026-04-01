@@ -48,7 +48,7 @@ const Treemap = dynamic(
 );
 
 const DEFAULT_FILTERS = {
-  purchaseMode: 'Both',
+  purchaseMode: 'Regular',
   categories: [],
   amcs: [],
   aumRange: 'Any AUM',
@@ -84,13 +84,7 @@ function applyGlobalFilters(funds, globalFilters) {
   if (!funds || funds.length === 0) return [];
   let result = funds;
 
-  if (globalFilters.directOnly) {
-    result = result.filter((f) => {
-      if (f.purchase_mode) return f.purchase_mode === 'Direct';
-      const name = (f.fund_name || '').toLowerCase();
-      return name.includes('direct') || name.includes('dir ') || name.includes('dir-');
-    });
-  }
+  // Platform shows Regular funds only — directOnly filter removed
 
   if (globalFilters.equityOnly) {
     result = result.filter((f) => EQUITY_BROADS.has(f.broad_category));
@@ -119,7 +113,6 @@ export default function UniversePage() {
 
   // Local filters — default to OFF (no pre-filtering). Global FilterContext handles cross-page filters.
   const [globalFilters, setGlobalFilters] = useState({
-    directOnly: false,
     equityOnly: false,
     minAum: false,
   });

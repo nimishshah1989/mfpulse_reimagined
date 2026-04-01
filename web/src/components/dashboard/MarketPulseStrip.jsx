@@ -170,15 +170,22 @@ function NiftyCard({ nifty, allIndices }) {
 function RegimeCard({ regime }) {
   const label = regime?.market_regime ?? 'Unknown';
   const lower = label.toLowerCase();
-  const isBear = lower.includes('bear');
+  const isBull = lower.includes('bull') || lower.includes('risk-on') || lower.includes('risk on');
+  const isBear = lower.includes('bear') || lower.includes('risk-off') || lower.includes('risk off');
   const isCorrection = lower.includes('correction');
-  const badgeBg = isBear ? 'bg-red-50' : isCorrection ? 'bg-amber-50' : 'bg-emerald-50';
-  const badgeText = isBear ? 'text-red-700' : isCorrection ? 'text-amber-700' : 'text-emerald-700';
+  const isNeutral = !isBull && !isBear && !isCorrection;
+
+  const badgeBg = isBear ? 'bg-red-50 border border-red-200' : isCorrection ? 'bg-amber-50 border border-amber-200' : isBull ? 'bg-emerald-50 border border-emerald-200' : 'bg-blue-50 border border-blue-200';
+  const badgeText = isBear ? 'text-red-700' : isCorrection ? 'text-amber-700' : isBull ? 'text-emerald-700' : 'text-blue-700';
+  const arrow = isBear ? '\u2193' : isCorrection ? '\u2198' : isBull ? '\u2191' : '\u2194';
+  const arrowColor = isBear ? 'text-red-500' : isCorrection ? 'text-amber-500' : isBull ? 'text-emerald-500' : 'text-blue-500';
   const implication = isBear
     ? 'Favour large-caps, reduce mid/small allocation'
     : isCorrection
-    ? 'Defensive tilt — favour quality, reduce speculative positions'
-    : 'Broad participation — all-cap strategies viable';
+    ? 'Defensive tilt -- favour quality, reduce speculative'
+    : isBull
+    ? 'Broad participation -- all-cap strategies viable'
+    : 'Balanced allocation -- diversify across styles';
 
   const leadingSectors = (regime?.leading_sectors || []).slice(0, 3);
   const topPick = (regime?.top_etfs || [])[0];
@@ -189,29 +196,34 @@ function RegimeCard({ regime }) {
         Market Regime <InfoIcon tip="Current market regime from MarketPulse. BULL = risk-on, favor equity/small caps. BEAR = risk-off, favor large caps/debt. NEUTRAL = diversified allocation." />
       </p>
       <div className="flex items-center gap-2">
-        <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-semibold ${badgeBg} ${badgeText}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${badgeBg} ${badgeText}`}>
+          <span className={`text-sm ${arrowColor}`}>{arrow}</span>
           {label}
         </span>
-        {(regime?.regime_since || regime?.generated_at) && (
-          <span className="text-[10px] text-slate-400">
-            {regime.regime_since ? `Since ${formatDate(regime.regime_since)}` : `As of ${formatDate(regime.generated_at)}`}
-          </span>
-        )}
       </div>
+      {(regime?.regime_since || regime?.generated_at) && (
+        <p className="text-[10px] text-slate-400 mt-1.5">
+          {regime.regime_since ? `Since ${formatDate(regime.regime_since)}` : `As of ${formatDate(regime.generated_at)}`}
+        </p>
+      )}
       <p className="text-[11px] text-slate-600 leading-snug mt-2">{implication}</p>
 
       {leadingSectors.length > 0 && (
         <div className="border-t border-slate-100 mt-2.5 pt-2">
           <p className="text-[9px] uppercase text-slate-400 font-semibold mb-1">Leading Sectors</p>
           <div className="space-y-0.5">
-            {leadingSectors.map((s) => (
-              <div key={s.sector} className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-700">{s.sector.replace('NIFTY ', '')}</span>
-                <span className={`text-[10px] font-semibold tabular-nums ${s.rs_score >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                  RS {s.rs_score?.toFixed(1)}
-                </span>
-              </div>
-            ))}
+            {leadingSectors.map((s) => {
+              const rs = s.rs_score;
+              const rsColor = rs == null ? 'text-slate-400' : rs >= 60 ? 'text-emerald-600' : rs >= 40 ? 'text-amber-600' : 'text-red-500';
+              return (
+                <div key={s.sector} className="flex items-center justify-between">
+                  <span className="text-[11px] text-slate-700">{s.sector.replace('NIFTY ', '')}</span>
+                  <span className={`text-[10px] font-semibold tabular-nums ${rsColor}`}>
+                    RS {rs?.toFixed(1)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -231,6 +243,15 @@ function RegimeCard({ regime }) {
 
 function SentimentCard({ sentiment, sentimentRaw }) {
   const composite = sentiment?.composite_score;
+  const compositeNum = composite != null ? Number(composite) : null;
+
+  // Sentiment zone label + color
+  const sentimentZone = compositeNum == null ? { label: 'No Data', bg: 'bg-slate-50', text: 'text-slate-500' }
+    : compositeNum >= 70 ? { label: 'Extreme Greed', bg: 'bg-red-50', text: 'text-red-700', arrow: '\u2191' }
+    : compositeNum >= 55 ? { label: 'Greed', bg: 'bg-amber-50', text: 'text-amber-700', arrow: '\u2197' }
+    : compositeNum >= 45 ? { label: 'Neutral', bg: 'bg-blue-50', text: 'text-blue-700', arrow: '\u2192' }
+    : compositeNum >= 30 ? { label: 'Fear', bg: 'bg-amber-50', text: 'text-amber-700', arrow: '\u2198' }
+    : { label: 'Extreme Fear', bg: 'bg-emerald-50', text: 'text-emerald-700', arrow: '\u2193' };
 
   // Extract top 3 short-term and top 3 long-term indicators
   const shortTermMetrics = (sentimentRaw?.short_term_trend?.metrics || [])
@@ -245,7 +266,7 @@ function SentimentCard({ sentiment, sentimentRaw }) {
 
   return (
     <CardShell>
-      <div className="flex items-baseline justify-between mb-3">
+      <div className="flex items-baseline justify-between mb-2">
         <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1">
           Sentiment <InfoIcon tip="Composite sentiment score (0-100) from 26 market indicators. Below 30 = extreme fear (buy opportunity). Above 70 = extreme greed (caution). 30-70 = neutral." />
         </p>
@@ -253,8 +274,14 @@ function SentimentCard({ sentiment, sentimentRaw }) {
           className="text-sm font-bold font-mono tabular-nums"
           style={{ color: scoreColor(composite) }}
         >
-          {composite != null ? Number(composite).toFixed(1) : '\u2014'}
+          {compositeNum != null ? compositeNum.toFixed(1) : '\u2014'}
         </span>
+      </div>
+
+      {/* Sentiment zone badge */}
+      <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold mb-2 ${sentimentZone.bg} ${sentimentZone.text}`}>
+        {sentimentZone.arrow && <span>{sentimentZone.arrow}</span>}
+        {sentimentZone.label}
       </div>
 
       {/* Short Term Indicators */}

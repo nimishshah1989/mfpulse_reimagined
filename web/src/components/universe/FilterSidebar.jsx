@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import Pill from '../shared/Pill';
 import { LENS_OPTIONS } from '../../lib/lens';
 
-const PURCHASE_MODES = ['Regular', 'Direct', 'Both'];
+const PURCHASE_MODES = ['Regular', 'Both'];
 const DIVIDEND_TYPES = ['Growth', 'IDCW', 'Both'];
 const BROAD_CATEGORIES = ['Equity', 'Debt', 'Hybrid', 'Solution Oriented', 'Other'];
 

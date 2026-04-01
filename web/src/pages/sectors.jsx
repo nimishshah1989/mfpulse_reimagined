@@ -367,10 +367,10 @@ export default function SectorsPage() {
             onSectorClick={handleSectorClick}
           />
           {/* Sector Weight Distribution — replaces duplicate risk-return scatter */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="bg-white rounded-xl border border-slate-200 p-5 h-full flex flex-col">
             <p className="section-title mb-1">Sector Weight Distribution</p>
             <p className="text-[11px] text-slate-500 mb-3">Where is the money concentrated? Larger = more AUM exposed.</p>
-            <div className="space-y-2">
+            <div className="space-y-2 flex-1">
               {[...sectorData].sort((a, b) => (b.avg_weight_pct || 0) - (a.avg_weight_pct || 0)).map((s) => {
                 const wt = Number(s.avg_weight_pct) || 0;
                 const maxWt = Math.max(...sectorData.map((ss) => Number(ss.avg_weight_pct) || 0), 1);

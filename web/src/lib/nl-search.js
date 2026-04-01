@@ -186,11 +186,15 @@ export function applyNLFilters(funds, filters) {
 
   let result = [...funds];
 
-  // Category filter — normalize hyphens/spaces for fuzzy matching
+  // Category filter — case-insensitive, normalize hyphens/spaces for partial matching
   if (filters.categories.length > 0) {
     result = result.filter((f) => {
-      const cat = (f.category_name || '').toLowerCase().replace(/[-\s]+/g, ' ');
-      return filters.categories.some((c) => cat.includes(c.toLowerCase().replace(/[-\s]+/g, ' ')));
+      const cat = (f.category_name || '').toLowerCase().replace(/[-_\s]+/g, ' ').trim();
+      return filters.categories.some((c) => {
+        const normalized = c.toLowerCase().replace(/[-_\s]+/g, ' ').trim();
+        // Partial match: "small cap" matches "Equity - Small Cap Fund"
+        return cat.includes(normalized);
+      });
     });
   }
 

@@ -22,6 +22,7 @@ import SmartBuckets from '../components/dashboard/SmartBuckets';
 import TopFundsByLens from '../components/dashboard/TopFundsByLens';
 import CategoryHeatmap from '../components/dashboard/CategoryHeatmap';
 import LensFingerprint from '../components/dashboard/LensFingerprint';
+import MetricCards from '../components/dashboard/MetricCards';
 
 function UniversalFilterBar({ totalCount, filteredCount }) {
   const { filters, setFilter, resetFilters, hasActiveFilters, AUM_OPTIONS, PLAN_OPTIONS, FUND_TYPE_OPTIONS } = useFilters();
@@ -237,10 +238,13 @@ export default function DashboardPage() {
       {/* Row 6: Smart Buckets */}
       <SmartBuckets universe={filteredUniverse} />
 
-      {/* Row 7: Top Funds + Category Heatmap */}
+      {/* Row 7: Top Funds + Category Heatmap + Expense Insight */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TopFundsByLens universe={filteredUniverse} onFundClick={handleFundClick} loading={!filteredUniverse} />
-        <CategoryHeatmap universe={filteredUniverse} loading={!filteredUniverse} />
+        <div className="space-y-4">
+          <CategoryHeatmap universe={filteredUniverse} loading={!filteredUniverse} />
+          <MetricCards universe={filteredUniverse} />
+        </div>
       </div>
 
       {/* Row 8: Quadrant Alignment (moved DOWN) */}

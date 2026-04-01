@@ -66,12 +66,16 @@ function parseNLQuery(query, funds) {
     }
   }
 
-  // Free-text name/AMC match as fallback
-  if (filtered.length === funds.length) {
-    const words = lower.split(/\s+/).filter((w) => w.length > 2);
-    if (words.length) {
+  // Free-text name/AMC match — always run as additional filter
+  // Split query into words, match if ALL words appear anywhere in fund metadata
+  // This enables "parag flexi" to match "Parag Parikh Flexi Cap Dir Gr"
+  const words = lower.split(/\s+/).filter((w) => w.length >= 2);
+  if (words.length > 0) {
+    // If structured filters (category, tier, score) already narrowed results, skip free-text
+    const hasStructuredFilters = filtered.length < funds.length;
+    if (!hasStructuredFilters) {
       filtered = filtered.filter((f) => {
-        const haystack = `${f.fund_name} ${f.amc_name} ${f.category_name}`.toLowerCase();
+        const haystack = `${f.fund_name || ''} ${f.amc_name || ''} ${f.category_name || ''} ${f.mstar_id || ''}`.toLowerCase().replace(/\s+/g, ' ');
         return words.every((w) => haystack.includes(w));
       });
     }

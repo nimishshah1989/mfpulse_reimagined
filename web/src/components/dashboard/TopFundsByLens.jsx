@@ -36,7 +36,7 @@ export default function TopFundsByLens({ universe, onFundClick, loading }) {
     return [...universe]
       .filter((f) => f[activeTab] != null)
       .sort((a, b) => (b[activeTab] || 0) - (a[activeTab] || 0))
-      .slice(0, 10);
+      .slice(0, 15);
   }, [universe, activeTab]);
 
   if (loading) {
@@ -131,14 +131,19 @@ export default function TopFundsByLens({ universe, onFundClick, loading }) {
             </tbody>
           </table>
 
-          {/* Legend */}
-          <div className="flex items-center gap-3 mt-3 pt-2 border-t border-slate-100">
-            {LEGEND_ITEMS.map(({ color, label }) => (
-              <div key={label} className="flex items-center gap-1">
-                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: color, display: 'inline-block' }} />
-                <span className="text-slate-400" style={{ fontSize: 9 }}>{label}</span>
-              </div>
-            ))}
+          {/* Legend + count */}
+          <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
+            <div className="flex items-center gap-3">
+              {LEGEND_ITEMS.map(({ color, label }) => (
+                <div key={label} className="flex items-center gap-1">
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: color, display: 'inline-block' }} />
+                  <span className="text-slate-400" style={{ fontSize: 9 }}>{label}</span>
+                </div>
+              ))}
+            </div>
+            <span className="text-[10px] text-slate-400">
+              Showing {topFunds.length} of {universe?.filter((f) => f[activeTab] != null).length || 0} scored funds
+            </span>
           </div>
         </div>
       ) : null}

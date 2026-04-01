@@ -91,11 +91,30 @@ export default function PerformanceChart({ mstarId, initialData = [], fundReturn
     }
   }, [mstarId]);
 
-  const cleanData = data
+  // Clean and sort data
+  const allCleanData = data
     .filter((d) => d.nav != null)
     .map((d) => ({ ...d, nav: Number(d.nav) }))
     .filter((d) => !isNaN(d.nav))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // Downsample large datasets to keep charts responsive
+  // Keep all points for short periods, sample for longer ones
+  const MAX_DISPLAY_POINTS = 250;
+  const cleanData = (() => {
+    const isShortPeriod = period === '1m' || period === '3m';
+    if (isShortPeriod || allCleanData.length <= MAX_DISPLAY_POINTS) {
+      return allCleanData;
+    }
+    // Always keep first and last point, evenly sample the rest
+    const step = Math.ceil(allCleanData.length / MAX_DISPLAY_POINTS);
+    const sampled = [allCleanData[0]];
+    for (let i = step; i < allCleanData.length - 1; i += step) {
+      sampled.push(allCleanData[i]);
+    }
+    sampled.push(allCleanData[allCleanData.length - 1]);
+    return sampled;
+  })();
 
   const firstNav = cleanData.length > 0 ? Number(cleanData[0].nav) : null;
   const lastNav = cleanData.length > 0 ? Number(cleanData[cleanData.length - 1].nav) : null;

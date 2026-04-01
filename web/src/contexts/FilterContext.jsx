@@ -11,7 +11,7 @@ import { createContext, useContext, useState, useCallback } from 'react';
  */
 
 const DEFAULT_FILTERS = {
-  planType: 'all',       // 'all' | 'regular' | 'direct'
+  planType: 'regular',   // 'all' | 'regular' — platform shows Regular funds only
   fundType: 'all',       // 'all' | 'equity' | 'debt' | 'hybrid'
   minAum: null,          // null | 100 | 500 | 1000 | 2000 | 5000 (in crores)
 };
@@ -28,7 +28,6 @@ const AUM_OPTIONS = [
 const PLAN_OPTIONS = [
   { label: 'All Plans', value: 'all' },
   { label: 'Regular', value: 'regular' },
-  { label: 'Direct', value: 'direct' },
 ];
 
 const FUND_TYPE_OPTIONS = [
@@ -62,19 +61,20 @@ export function FilterProvider({ children }) {
   }, [filters]);
 
   // Check if any filters are active
-  const hasActiveFilters = filters.planType !== 'all' || filters.fundType !== 'all' || filters.minAum != null;
+  const hasActiveFilters = filters.planType !== 'regular' || filters.fundType !== 'all' || filters.minAum != null;
 
   // Client-side filter function for universe data
   const applyFilters = useCallback((funds) => {
-    if (!hasActiveFilters) return funds;
+    // Always filter to Regular funds (platform-wide policy) + any other active filters
     return funds.filter((f) => {
-      // Plan type filter
-      if (filters.planType === 'direct' && f.purchase_mode !== 'Direct') return false;
+      // Plan type filter — always enforce Regular
       if (filters.planType === 'regular' && f.purchase_mode !== 'Regular') return false;
-      // Fund type filter
+      // Fund type filter — map user-facing labels to Morningstar broad_category values
       if (filters.fundType !== 'all') {
         const broad = (f.broad_category || '').toLowerCase();
-        if (!broad.includes(filters.fundType)) return false;
+        const typeMap = { equity: 'equity', debt: 'fixed income', hybrid: 'allocation' };
+        const mapped = typeMap[filters.fundType] || filters.fundType;
+        if (!broad.includes(mapped)) return false;
       }
       // AUM filter (AUM in raw rupees, minAum in crores)
       if (filters.minAum != null) {

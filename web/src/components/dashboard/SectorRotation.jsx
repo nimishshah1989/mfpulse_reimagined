@@ -158,17 +158,17 @@ function CategoryBubbleChart({ categories, onCategoryClick }) {
       </svg>
       <div className="flex items-center justify-center gap-3 mt-1">
         {[
-          { color: '#059669', label: '75+' },
-          { color: '#0d9488', label: '50+' },
-          { color: '#f59e0b', label: '25+' },
-          { color: '#ef4444', label: '<25' },
+          { color: '#059669', label: 'Score 75+ (Strong)' },
+          { color: '#0d9488', label: 'Score 50+' },
+          { color: '#f59e0b', label: 'Score 25+' },
+          { color: '#ef4444', label: 'Score <25 (Weak)' },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center gap-1">
             <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
             <span className="text-[9px] text-slate-500">{label}</span>
           </div>
         ))}
-        <span className="text-[9px] text-slate-400">Size = fund count</span>
+        <span className="text-[9px] text-slate-400">{'\u00b7'} Size = fund count</span>
       </div>
     </div>
   );
@@ -229,7 +229,7 @@ function SectorTable({ sectors, onSectorClick }) {
   const maxWt = Math.max(...sorted.map((s) => Number(s.avg_weight_pct) || 0), 1);
 
   return (
-    <div className="overflow-x-auto">
+    <div className="relative">
       <table className="w-full text-xs">
         <thead>
           <tr className="text-[9px] uppercase tracking-wider text-slate-500 border-b border-slate-200">

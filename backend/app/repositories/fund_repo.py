@@ -259,12 +259,18 @@ class FundRepository:
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
         limit: Optional[int] = None,
+        nav_only: bool = False,
     ) -> list[dict]:
-        """NAV time series for charting."""
+        """NAV time series for charting.
+
+        If nav_only=True, only returns rows where nav IS NOT NULL.
+        """
         query = (
             self.db.query(NavDaily)
             .filter(NavDaily.mstar_id == mstar_id)
         )
+        if nav_only:
+            query = query.filter(NavDaily.nav.isnot(None))
         if start_date:
             query = query.filter(NavDaily.nav_date >= start_date)
         if end_date:

@@ -20,18 +20,19 @@ from app.models.db.nav_daily import NavDaily
 
 logger = logging.getLogger(__name__)
 
-SECTOR_KEYWORDS: dict[str, str] = {
-    "technology": "Technology", "tech": "Technology", "it": "Technology",
-    "healthcare": "Healthcare", "pharma": "Healthcare",
-    "financial": "Financial Services", "banking": "Financial Services", "bank": "Financial Services",
-    "energy": "Energy", "oil": "Energy",
-    "consumer": "Consumer Cyclical", "auto": "Consumer Cyclical",
-    "fmcg": "Consumer Defensive", "staples": "Consumer Defensive",
-    "industrial": "Industrials", "infra": "Industrials", "infrastructure": "Industrials",
-    "real estate": "Real Estate", "realty": "Real Estate",
-    "materials": "Basic Materials", "metal": "Basic Materials", "mining": "Basic Materials",
-    "telecom": "Communication Services", "media": "Communication Services",
-    "utilities": "Utilities", "power": "Utilities",
+# Use word-boundary regex to avoid substring false positives (e.g., "it" in "with")
+SECTOR_KEYWORDS: dict[str, re.Pattern] = {
+    "Technology": re.compile(r"\b(?:technology|tech)\b", re.I),
+    "Healthcare": re.compile(r"\b(?:healthcare|pharma)\b", re.I),
+    "Financial Services": re.compile(r"\b(?:financial|banking|bank)\b", re.I),
+    "Energy": re.compile(r"\b(?:energy|oil)\b", re.I),
+    "Consumer Cyclical": re.compile(r"\b(?:consumer\s*cyclical|auto)\b", re.I),
+    "Consumer Defensive": re.compile(r"\b(?:fmcg|staples|consumer\s*defensive)\b", re.I),
+    "Industrials": re.compile(r"\b(?:industrial|infra|infrastructure)\b", re.I),
+    "Real Estate": re.compile(r"\b(?:real\s*estate|realty)\b", re.I),
+    "Basic Materials": re.compile(r"\b(?:materials|metal|mining)\b", re.I),
+    "Communication Services": re.compile(r"\b(?:telecom|media)\b", re.I),
+    "Utilities": re.compile(r"\b(?:utilities|power)\b", re.I),
 }
 
 TIER_KEYWORDS: dict[str, tuple[str, str]] = {
@@ -54,8 +55,9 @@ CATEGORY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"large\s*(and|&)\s*mid", re.I), "Large & Mid"),
     (re.compile(r"\belss\b|\btax\s*sav", re.I), "ELSS"),
     (re.compile(r"\bindex\b|\bpassive\b", re.I), "Index"),
-    (re.compile(r"\bdebt\b|\bbond\b", re.I), "Debt"),
-    (re.compile(r"\bhybrid\b|\bbalanced\b", re.I), "Hybrid"),
+    (re.compile(r"\bdebt\b|\bbond\b", re.I), "_BROAD_DEBT"),
+    (re.compile(r"\bhybrid\b|\bbalanced\b", re.I), "_BROAD_HYBRID"),
+    (re.compile(r"\bequity\b", re.I), "_BROAD_EQUITY"),
     (re.compile(r"\bvalue\b", re.I), "Value"),
     (re.compile(r"\bcontra\b", re.I), "Contra"),
     (re.compile(r"\bfocused\b", re.I), "Focused"),
@@ -84,17 +86,16 @@ class NLSearchService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
+    # Map broad category markers to actual DB broad_category values
+    BROAD_MAP = {
+        "_BROAD_DEBT": "Fixed Income",
+        "_BROAD_HYBRID": "Allocation",
+        "_BROAD_EQUITY": "Equity",
+    }
+
     def search(self, query: str, limit: int = 50, min_nav_count: int = 0) -> dict:
-        """Parse NL query and return matching funds.
-
-        Args:
-            min_nav_count: Minimum number of NAV data points required.
-                          Use 1250 for 5Y backtestable, 750 for 3Y, 250 for 1Y.
-        """
+        """Parse NL query and return matching funds."""
         parsed = self._parse(query)
-        if not parsed:
-            return {"parsed": None, "funds": [], "count": 0}
-
         funds = self._execute(parsed, limit=limit, min_nav_count=min_nav_count)
         return {
             "parsed": parsed,
@@ -117,9 +118,9 @@ class NLSearchService:
             "raw": query,
         }
 
-        # Match sectors
-        for keyword, sector in SECTOR_KEYWORDS.items():
-            if keyword in lower and sector not in result["sectors"]:
+        # Match sectors (word-boundary regex to prevent false positives)
+        for sector, pattern in SECTOR_KEYWORDS.items():
+            if pattern.search(lower) and sector not in result["sectors"]:
                 result["sectors"].append(sector)
 
         # Match tiers
@@ -132,22 +133,23 @@ class NLSearchService:
             if pattern.search(query) and cat not in result["categories"]:
                 result["categories"].append(cat)
 
-        # Match numeric filters
+        # Match numeric filters — extract only the last word as the field name
         for match in NUMERIC_PATTERN.finditer(lower):
-            field_raw, operator, value = match.group(1).strip(), match.group(2), match.group(3)
+            field_raw = match.group(1).strip().split()[-1]  # "funds with sharpe" → "sharpe"
+            operator, value = match.group(2), match.group(3)
             mapped = FIELD_MAP.get(field_raw, field_raw)
             op = "gt" if operator in (">", "above", "over") else "lt"
             result["numeric_filters"].append({
                 "field": mapped, "operator": op, "value": float(value),
             })
 
-        # Detect high/top qualifiers for lens scores
+        # Detect high/top qualifiers for lens scores (word-boundary match)
         high_keywords = ["high", "strong", "good", "top", "best"]
-        if any(k in lower for k in high_keywords):
+        if any(re.search(rf"\b{k}\b", lower) for k in high_keywords):
             for lens_word, lens_key in [("alpha", "alpha_score"), ("return", "return_score"),
-                                         ("risk", "risk_score"), ("consistency", "consistency_score"),
+                                         ("consistency", "consistency_score"),
                                          ("efficiency", "efficiency_score"), ("resilience", "resilience_score")]:
-                if lens_word in lower:
+                if re.search(rf"\b{lens_word}\b", lower):
                     result["numeric_filters"].append({
                         "field": lens_key, "operator": "gt", "value": 70,
                     })
@@ -161,7 +163,10 @@ class NLSearchService:
             result["sectors"] or result["categories"] or
             result["tier_filters"] or result["numeric_filters"]
         )
-        return result if has_filters else None
+        # Fallback: if no structured filters matched, treat as fund/AMC name search
+        if not has_filters:
+            result["text_search"] = query.strip()
+        return result
 
     def _execute(self, parsed: dict, limit: int = 50, min_nav_count: int = 0) -> list[dict]:
         """Execute parsed filters against DB."""
@@ -202,6 +207,7 @@ class NLSearchService:
             .outerjoin(nav_count_sq, FundMaster.mstar_id == nav_count_sq.c.mstar_id)
             .filter(
                 FundMaster.is_eligible.is_(True),
+                FundMaster.purchase_mode == 1,  # Regular funds only — platform-wide policy
                 FundLensScores.computed_date == latest_lens,
             )
         )
@@ -210,11 +216,49 @@ class NLSearchService:
         if min_nav_count > 0:
             query = query.filter(nav_count_sq.c.nav_count >= min_nav_count)
 
-        # Category filter
-        if parsed["categories"]:
+        # Text search fallback — search fund name and AMC name
+        if parsed.get("text_search"):
+            txt = parsed["text_search"]
+            words = [w for w in txt.split() if len(w) >= 2]
+            if words:
+                conditions = []
+                for w in words:
+                    conditions.append(or_(
+                        FundMaster.fund_name.ilike(f"%{w}%"),
+                        FundMaster.legal_name.ilike(f"%{w}%"),
+                        FundMaster.amc_name.ilike(f"%{w}%"),
+                    ))
+                query = query.filter(and_(*conditions))
+
+        # Sector filter — filter by fund holdings sector exposure
+        if parsed["sectors"]:
+            from app.models.db.sector_exposure import FundSectorExposure
+            sector_sq = (
+                self.db.query(FundSectorExposure.mstar_id)
+                .filter(
+                    FundSectorExposure.sector_name.in_(parsed["sectors"]),
+                    FundSectorExposure.net_pct > 5,  # Meaningful exposure > 5%
+                )
+                .distinct()
+                .subquery()
+            )
+            query = query.filter(FundMaster.mstar_id.in_(
+                self.db.query(sector_sq.c.mstar_id)
+            ))
+
+        # Category filter — separate broad_category markers from real category names
+        broad_cats = [c for c in parsed["categories"] if c.startswith("_BROAD_")]
+        real_cats = [c for c in parsed["categories"] if not c.startswith("_BROAD_")]
+
+        if broad_cats:
+            broad_values = [self.BROAD_MAP[bc] for bc in broad_cats if bc in self.BROAD_MAP]
+            if broad_values:
+                query = query.filter(FundMaster.broad_category.in_(broad_values))
+
+        if real_cats:
             cat_conditions = [
                 FundMaster.category_name.ilike(f"%{c}%")
-                for c in parsed["categories"]
+                for c in real_cats
             ]
             query = query.filter(or_(*cat_conditions))
 

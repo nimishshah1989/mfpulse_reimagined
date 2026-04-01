@@ -70,11 +70,21 @@ export default function MoneyFlowChart({ sectorData, onSectorClick }) {
       // History is sorted ascending (oldest first)
       // Each history entry has: rs_score, rs_momentum, quadrant, snapshot_date
       // AND total_aum_exposed + weighted_return (from _row_to_dict)
-      if (s.history?.length > 0) {
-        const lastH = s.history[s.history.length - 1];
-        if (lastH.total_aum_exposed != null && lastH.total_aum_exposed > 0) {
-          prevAUM = lastH.total_aum_exposed;
-          prevDate = lastH.snapshot_date;
+      // Use SECOND-TO-LAST entry as previous — the last entry often matches
+      // the current snapshot date, which would make delta = 0.
+      if (s.history?.length >= 2) {
+        const prevH = s.history[s.history.length - 2];
+        if (prevH.total_aum_exposed != null && prevH.total_aum_exposed > 0) {
+          prevAUM = prevH.total_aum_exposed;
+          prevDate = prevH.snapshot_date;
+          hasRealDelta = true;
+        }
+      } else if (s.history?.length === 1) {
+        const onlyH = s.history[0];
+        if (onlyH.total_aum_exposed != null && onlyH.total_aum_exposed > 0
+            && onlyH.snapshot_date !== s.snapshot_date) {
+          prevAUM = onlyH.total_aum_exposed;
+          prevDate = onlyH.snapshot_date;
           hasRealDelta = true;
         }
       }

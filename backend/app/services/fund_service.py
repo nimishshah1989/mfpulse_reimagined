@@ -101,6 +101,7 @@ class FundService:
         peers = self.fund_repo.get_category_peers(
             fund.category_name,
             exclude_mstar_id=mstar_id,
+            purchase_mode=1,  # Regular funds only — platform-wide policy
         )
 
         # Look up category average returns (category_code == category_name)
@@ -150,16 +151,20 @@ class FundService:
             days = PERIOD_DAYS[period]
             start_date = date.today() - timedelta(days=days)
 
+        # First, try rows with real NAV values only
         rows = self.fund_repo.get_nav_history(
-            mstar_id, start_date=start_date,
+            mstar_id, start_date=start_date, nav_only=True,
         )
 
-        # Synthesize NAV from cumulative daily returns when most nav values are NULL
-        # Some funds only have the latest NAV but have daily returns for history
-        if rows:
-            null_count = sum(1 for r in rows if r.get("nav") is None)
-            if null_count > len(rows) * 0.5:  # More than 50% null → synthesize
-                rows = self._synthesize_nav(rows)
+        # If too few real NAV rows, fall back to all rows + synthesis
+        if len(rows) < 30:
+            rows = self.fund_repo.get_nav_history(
+                mstar_id, start_date=start_date,
+            )
+            if rows:
+                null_count = sum(1 for r in rows if r.get("nav") is None)
+                if null_count > len(rows) * 0.5:
+                    rows = self._synthesize_nav(rows)
 
         return [
             {
@@ -247,7 +252,7 @@ class FundService:
         from app.repositories.lens_repo import LensRepository
 
         funds, _ = self.fund_repo.get_all_funds(
-            purchase_mode=None,
+            purchase_mode=1,  # Regular funds only — platform-wide policy
             eligible_only=True,
             limit=50000,
             offset=0,
@@ -508,7 +513,7 @@ class FundService:
         """All funds in a category sorted by performance."""
         funds, total = self.fund_repo.get_all_funds(
             category=category_name,
-            purchase_mode=None,
+            purchase_mode=1,  # Regular funds only — platform-wide policy
             sort_by=sort_by,
             sort_dir=sort_dir,
             limit=limit,

@@ -1,5 +1,6 @@
 """Read operations for portfolio holdings data."""
 
+import re
 from collections import defaultdict
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
@@ -113,7 +114,7 @@ class HoldingsRepository:
         return result
 
     def get_top_holdings(self, mstar_id: str, limit: int = 10) -> list[dict]:
-        """Top N holdings by weight for latest portfolio date."""
+        """Top N holdings by weight for latest portfolio date, deduplicated by name."""
         snap = (
             self.db.query(FundHoldingsSnapshot)
             .filter(FundHoldingsSnapshot.mstar_id == mstar_id)
@@ -122,14 +123,30 @@ class HoldingsRepository:
         )
         if snap is None:
             return []
+        # Fetch more than needed to allow dedup headroom
         holdings = (
             self.db.query(FundHoldingDetail)
             .filter(FundHoldingDetail.snapshot_id == snap.id)
             .order_by(FundHoldingDetail.weighting_pct.desc().nulls_last())
-            .limit(limit)
+            .limit(limit * 3)
             .all()
         )
-        return [self._holding_to_dict(h) for h in holdings]
+        # Deduplicate by normalized holding_name (strip Ltd/Limited/Ltd., case-insensitive)
+        # Keep the one with highest weighting_pct per normalized name
+        seen: dict[str, FundHoldingDetail] = {}
+        for h in holdings:
+            raw = h.holding_name or ""
+            norm = re.sub(r"\s*(Ltd\.?|Limited)\s*$", "", raw, flags=re.IGNORECASE).strip().lower()
+            existing = seen.get(norm)
+            if existing is None:
+                seen[norm] = h
+            else:
+                cur_wt = h.weighting_pct or Decimal("0")
+                ex_wt = existing.weighting_pct or Decimal("0")
+                if cur_wt > ex_wt:
+                    seen[norm] = h
+        deduped = sorted(seen.values(), key=lambda x: x.weighting_pct or Decimal("0"), reverse=True)
+        return [self._holding_to_dict(h) for h in deduped[:limit]]
 
     def get_all_holdings(self, mstar_id: str) -> list[dict]:
         """All holdings for latest portfolio date."""
@@ -373,6 +390,7 @@ class HoldingsRepository:
             "prospective_div_yield": snap.prospective_div_yield,
             "turnover_ratio": snap.turnover_ratio,
             "est_fund_net_flow": snap.est_fund_net_flow,
+            "est_fund_net_flow_ytd": float(snap.est_fund_net_flow_ytd) if snap.est_fund_net_flow_ytd is not None else None,
         }
 
     @staticmethod
@@ -391,4 +409,8 @@ class HoldingsRepository:
             "maturity_date": h.maturity_date,
             "credit_quality": h.credit_quality,
             "share_change": h.share_change,
+            "ticker": h.ticker,
+            "global_industry": h.global_industry,
+            "holding_ytd_return": float(h.holding_ytd_return) if h.holding_ytd_return is not None else None,
+            "first_bought_date": str(h.first_bought_date) if h.first_bought_date else None,
         }

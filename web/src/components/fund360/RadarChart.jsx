@@ -63,17 +63,17 @@ export default function RadarChart({ funds = [], size = 320, categoryAvg = null 
         .attr('stroke-width', 1);
     });
 
-    // Axis labels
+    // Axis labels — push further out to avoid overlap with score values
     AXES.forEach((axis, i) => {
       const a = angleFor(i);
-      const labelR = radius + 36;
+      const labelR = radius + 42;
       const lx = cx + labelR * Math.cos(a);
       const ly = cy + labelR * Math.sin(a);
       chart.append('text')
         .attr('x', lx).attr('y', ly)
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'middle')
-        .attr('class', 'fill-slate-600 text-xs font-medium')
+        .attr('class', 'fill-slate-600 text-[11px] font-medium')
         .text(axis.label);
     });
 
@@ -130,22 +130,22 @@ export default function RadarChart({ funds = [], size = 320, categoryAvg = null 
           .text(`${fund.label} - ${AXES[i].label}: ${score}`);
 
         const a = angleFor(i);
-        // Place score text INSIDE the polygon (toward center) to avoid overlap with axis labels
-        const dist = -16;
+        // Place score text outward from the polygon dot, between dot and axis label
+        const dist = 14;
         const offsetX = Math.cos(a) * dist;
         const offsetY = Math.sin(a) * dist;
         const anchor = Math.abs(Math.cos(a)) < 0.3 ? 'middle'
-          : Math.cos(a) > 0 ? 'end' : 'start';  // Reversed anchoring for inward placement
+          : Math.cos(a) > 0 ? 'start' : 'end';
         chart.append('text')
           .attr('x', p.x + offsetX)
           .attr('y', p.y + offsetY)
           .attr('text-anchor', anchor)
           .attr('dominant-baseline', 'middle')
-          .attr('class', 'font-mono text-[10px] font-bold fill-slate-700')
+          .attr('class', 'font-mono text-[9px] font-bold fill-slate-700')
           .attr('paint-order', 'stroke')
           .attr('stroke', '#fff')
           .attr('stroke-width', 3)
-          .text(score);
+          .text(Math.round(score));
       });
     });
 
@@ -155,7 +155,10 @@ export default function RadarChart({ funds = [], size = 320, categoryAvg = null 
         .attr('transform', `translate(${cx}, ${size + 8})`);
       const items = [];
       funds.forEach((fund, fi) => {
-        items.push({ label: fund.label, color: COLORS[fi % COLORS.length], dashed: false });
+        const truncated = fund.label && fund.label.length > 25
+          ? fund.label.slice(0, 25) + '\u2026'
+          : fund.label;
+        items.push({ label: truncated, color: COLORS[fi % COLORS.length], dashed: false });
       });
       if (categoryAvg) {
         items.push({ label: 'Category Avg', color: '#94a3b8', dashed: true });

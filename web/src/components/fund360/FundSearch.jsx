@@ -12,12 +12,12 @@ import EmptyState from '../shared/EmptyState';
 import SmartBuckets from './SmartBuckets';
 import FundCardGrid from './FundCardGrid';
 import FundListView from './FundListView';
+import { useFilters } from '../../contexts/FilterContext';
 
 /* ---- Constants ---- */
 const BROAD_CATEGORIES = ['All', 'Equity', 'Fixed Income', 'Allocation', 'Alternative Strategies'];
 const PURCHASE_MODES = [
-  { label: 'Both', value: 0 },
-  { label: 'Direct', value: 2 },
+  { label: 'All', value: 0 },
   { label: 'Regular', value: 1 },
 ];
 const SORT_OPTIONS = [
@@ -70,6 +70,7 @@ function addRecentlyViewed(fund) {
  * recently viewed, NL search hints, enhanced sort options.
  */
 export default function FundSearch({ onSelect }) {
+  const { applyFilters: applyGlobalFilters } = useFilters();
   const [query, setQuery] = useState('');
   const [categories, setCategories] = useState([]);
   const [amcs, setAmcs] = useState([]);
@@ -78,9 +79,9 @@ export default function FundSearch({ onSelect }) {
   const [selectedAmc, setSelectedAmc] = useState('');
   const [activeBucket, setActiveBucket] = useState(null);
   const [bucketFundIds, setBucketFundIds] = useState([]);
-  const [universe, setUniverse] = useState([]);
+  const [rawUniverse, setRawUniverse] = useState([]);
   const [universeLoading, setUniverseLoading] = useState(true);
-  const [purchaseMode, setPurchaseMode] = useState(2); // Default: Direct
+  const [purchaseMode, setPurchaseMode] = useState(1); // Default: Regular only
   const [sortBy, setSortBy] = useState('composite_desc');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [activeLensFilters, setActiveLensFilters] = useState(new Set());
@@ -96,12 +97,15 @@ export default function FundSearch({ onSelect }) {
     setUniverseLoading(true);
     cachedFetch('universe', fetchUniverseData, 600)
       .then((data) => {
-        setUniverse(data);
+        setRawUniverse(data);
         setUniverseLoading(false);
       })
       .catch(() => setUniverseLoading(false));
     setRecentFunds(getRecentlyViewed());
   }, []);
+
+  // Apply global filters (plan type, fund type, AUM) from FilterContext
+  const universe = useMemo(() => applyGlobalFilters(rawUniverse), [rawUniverse, applyGlobalFilters]);
 
   // Keyboard shortcut: Cmd+K focuses search
   useEffect(() => {
@@ -250,15 +254,16 @@ export default function FundSearch({ onSelect }) {
         filtered = filtered.filter((f) => f.amc_name === selectedAmc);
       }
 
-      // Text search
+      // Text search — split query into words, match if ALL words appear anywhere
+      // Enables "parag flexi" to match "Parag Parikh Flexi Cap Dir Gr"
       if (query.length >= 2) {
-        const q = query.toLowerCase();
-        filtered = filtered.filter((f) =>
-          (f.fund_name || '').toLowerCase().includes(q) ||
-          (f.amc_name || '').toLowerCase().includes(q) ||
-          (f.mstar_id || '').toLowerCase().includes(q) ||
-          (f.category_name || '').toLowerCase().includes(q),
-        );
+        const queryWords = query.toLowerCase().trim().split(/\s+/).filter((w) => w.length >= 2);
+        if (queryWords.length > 0) {
+          filtered = filtered.filter((f) => {
+            const haystack = `${f.fund_name || ''} ${f.amc_name || ''} ${f.mstar_id || ''} ${f.category_name || ''}`.toLowerCase();
+            return queryWords.every((w) => haystack.includes(w));
+          });
+        }
       }
 
       // Lens filters
@@ -384,7 +389,7 @@ export default function FundSearch({ onSelect }) {
 
       {/* Filter Panel */}
       <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
-        <div className="flex flex-wrap gap-2.5 items-center">
+        <div className="flex flex-wrap gap-2.5 items-center w-full">
           {/* Type */}
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mr-0.5">Type</span>
@@ -470,6 +475,9 @@ export default function FundSearch({ onSelect }) {
               ))}
             </select>
           </div>
+
+          {/* Spacer fills remaining width so view toggle + clear sit at right edge */}
+          <div className="flex-1" />
 
           <div className="w-px h-6 bg-slate-200" />
 
@@ -568,7 +576,7 @@ export default function FundSearch({ onSelect }) {
         <p className="text-[12px] text-slate-500 font-semibold">
           Showing <span className="font-mono tabular-nums text-slate-800">{displayFunds.length}</span> funds
           {activeBucket && <span className="text-slate-400 ml-2">{'\u00B7'} {activeBucket} bucket</span>}
-          {purchaseMode === 2 && <span className="text-slate-400 ml-2">{'\u00B7'} Direct plans</span>}
+          {purchaseMode === 1 && <span className="text-slate-400 ml-2">{'\u00B7'} Regular plans</span>}
           <span className="text-slate-400 ml-2">{'\u00B7'} Sorted by {SORT_OPTIONS.find((o) => o.value === sortBy)?.label}</span>
         </p>
       </div>
