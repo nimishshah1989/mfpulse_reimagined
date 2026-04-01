@@ -80,7 +80,8 @@ export default function QuartileRibbon({ ranks, categoryName }) {
         <>
           <div className="flex items-center justify-between">
             <p className="text-xs text-slate-500">
-              Rank within {categoryName || 'category'} over time -- lower is better
+              Rank within {categoryName || 'category'} over time — lower is better
+              <InfoIcon tip="Quartile rank: Q1 (green) = top 25% of category. Q2 (teal) = 25-50%. Q3 (amber) = 50-75%. Q4 (red) = bottom 25%. Consistent Q1 = reliable outperformer." className="ml-1" />
             </p>
             {q1Count > 0 && (
               <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">

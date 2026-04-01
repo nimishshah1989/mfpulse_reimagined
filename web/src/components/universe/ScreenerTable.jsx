@@ -17,31 +17,33 @@ const COLUMN_GROUPS = [
   { key: 'valuations', label: 'Valuations' },
 ];
 
+import InfoIcon from '../shared/InfoIcon';
+
 const SORTABLE_COLUMNS = {
   fund_name: { label: 'Fund Name', group: 'core' },
   category_name: { label: 'Category', group: 'core' },
-  aum: { label: 'AUM', group: 'core', numeric: true },
-  return_1y: { label: '1Y', group: 'returns', numeric: true },
-  return_3y: { label: '3Y', group: 'returns', numeric: true },
-  return_5y: { label: '5Y', group: 'returns', numeric: true },
-  sharpe_3y: { label: 'Sharpe', group: 'risk', numeric: true },
-  alpha_3y: { label: 'Alpha', group: 'risk', numeric: true },
-  max_drawdown_3y: { label: 'Max DD', group: 'risk', numeric: true },
-  beta_3y: { label: 'Beta', group: 'risk', numeric: true },
-  net_expense_ratio: { label: 'Expense', group: 'risk', numeric: true },
-  return_score: { label: 'Return', group: 'lens', numeric: true },
-  risk_score: { label: 'Risk', group: 'lens', numeric: true },
-  consistency_score: { label: 'Consist.', group: 'lens', numeric: true },
-  alpha_score: { label: 'Alpha', group: 'lens', numeric: true },
-  efficiency_score: { label: 'Effic.', group: 'lens', numeric: true },
-  resilience_score: { label: 'Resil.', group: 'lens', numeric: true },
-  quartile_1y: { label: 'Q1Y', group: 'quartile', numeric: true },
-  quartile_3y: { label: 'Q3Y', group: 'quartile', numeric: true },
-  quartile_5y: { label: 'Q5Y', group: 'quartile', numeric: true },
-  pe_ratio: { label: 'P/E', group: 'valuations', numeric: true },
-  pb_ratio: { label: 'P/B', group: 'valuations', numeric: true },
-  prospective_div_yield: { label: 'Div Yield', group: 'valuations', numeric: true },
-  turnover_ratio: { label: 'Turnover', group: 'valuations', numeric: true },
+  aum: { label: 'AUM', group: 'core', numeric: true, tip: 'Assets Under Management in crores' },
+  return_1y: { label: '1Y', group: 'returns', numeric: true, tip: '1-year trailing return (CAGR)' },
+  return_3y: { label: '3Y', group: 'returns', numeric: true, tip: '3-year annualized return' },
+  return_5y: { label: '5Y', group: 'returns', numeric: true, tip: '5-year annualized return' },
+  sharpe_3y: { label: 'Sharpe', group: 'risk', numeric: true, tip: 'Risk-adjusted return. Higher = better. (Return - RiskFree) / StdDev' },
+  alpha_3y: { label: 'Alpha', group: 'risk', numeric: true, tip: 'Excess return over benchmark. Positive = manager adding value.' },
+  max_drawdown_3y: { label: 'Max DD', group: 'risk', numeric: true, tip: 'Worst peak-to-trough decline in 3 years. Closer to 0 = better.' },
+  beta_3y: { label: 'Beta', group: 'risk', numeric: true, tip: 'Market sensitivity. <1 = less volatile than market.' },
+  net_expense_ratio: { label: 'Expense', group: 'risk', numeric: true, tip: 'Annual Total Expense Ratio. Lower = more cost-efficient.' },
+  return_score: { label: 'Return', group: 'lens', numeric: true, tip: 'Percentile rank (0-100) for returns within SEBI category' },
+  risk_score: { label: 'Risk', group: 'lens', numeric: true, tip: 'Percentile rank for risk. Higher = lower risk (inverted)' },
+  consistency_score: { label: 'Consist.', group: 'lens', numeric: true, tip: 'Percentile rank for consistency — reliable performers score high' },
+  alpha_score: { label: 'Alpha', group: 'lens', numeric: true, tip: 'Percentile rank for manager skill (excess return)' },
+  efficiency_score: { label: 'Effic.', group: 'lens', numeric: true, tip: 'Percentile rank for cost-efficiency — best return per rupee of expense' },
+  resilience_score: { label: 'Resil.', group: 'lens', numeric: true, tip: 'Percentile rank for downside protection — how well fund holds up in crashes' },
+  quartile_1y: { label: 'Q1Y', group: 'quartile', numeric: true, tip: 'Quartile rank for 1Y. Q1 = top 25% of category.' },
+  quartile_3y: { label: 'Q3Y', group: 'quartile', numeric: true, tip: 'Quartile rank for 3Y.' },
+  quartile_5y: { label: 'Q5Y', group: 'quartile', numeric: true, tip: 'Quartile rank for 5Y.' },
+  pe_ratio: { label: 'P/E', group: 'valuations', numeric: true, tip: 'Price-to-Earnings of portfolio. Lower = cheaper.' },
+  pb_ratio: { label: 'P/B', group: 'valuations', numeric: true, tip: 'Price-to-Book of portfolio. Lower = more value-oriented.' },
+  prospective_div_yield: { label: 'Div Yield', group: 'valuations', numeric: true, tip: 'Expected dividend yield of the portfolio.' },
+  turnover_ratio: { label: 'Turnover', group: 'valuations', numeric: true, tip: 'How often the fund trades. High turnover = higher costs.' },
 };
 
 function QuartileBadge({ q }) {
@@ -249,7 +251,7 @@ export default function ScreenerTable({
                     } ${sortKey === key ? 'text-teal-700' : 'text-slate-400'}`}
                     style={{ minWidth: key === 'fund_name' ? 200 : undefined }}
                   >
-                    {col.label}
+                    <span className="inline-flex items-center gap-0.5">{col.label}{col.tip && <InfoIcon tip={col.tip} />}</span>
                     {sortKey === key && (
                       <span className="ml-0.5">{sortDir === 'desc' ? ' ▼' : ' ▲'}</span>
                     )}

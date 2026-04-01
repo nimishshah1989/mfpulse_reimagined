@@ -3,15 +3,16 @@ import { useState, useMemo } from 'react';
 import Card from '../shared/Card';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import { formatPct, formatScore } from '../../lib/format';
+import InfoIcon from '../shared/InfoIcon';
 
 const COLUMNS = [
   { key: 'fund_name', label: 'Fund', sortable: false },
-  { key: 'return_1y', label: '1Y', sortable: true },
-  { key: 'return_3y', label: '3Y', sortable: true },
-  { key: 'sharpe_3y', label: 'Sharpe', sortable: true },
-  { key: 'return_score', label: 'Return', sortable: true },
-  { key: 'risk_score', label: 'Risk', sortable: true },
-  { key: 'alpha_score', label: 'Alpha', sortable: true },
+  { key: 'return_1y', label: '1Y', sortable: true, tip: '1-year trailing return (CAGR)' },
+  { key: 'return_3y', label: '3Y', sortable: true, tip: '3-year annualized return' },
+  { key: 'sharpe_3y', label: 'Sharpe', sortable: true, tip: 'Risk-adjusted return. Higher = better. (Return - Risk Free) / Std Dev' },
+  { key: 'return_score', label: 'Return', sortable: true, tip: 'Percentile rank (0-100) within category for returns' },
+  { key: 'risk_score', label: 'Risk', sortable: true, tip: 'Percentile rank (0-100) for risk. Higher = lower risk (inverted)' },
+  { key: 'alpha_score', label: 'Alpha', sortable: true, tip: 'Percentile rank (0-100) for manager skill (excess return over benchmark)' },
 ];
 
 function truncate(str, max) {
@@ -110,7 +111,7 @@ export default function PeerTable({ peers, currentMstarId }) {
                   } ${col.sortable ? 'cursor-pointer select-none hover:text-slate-800' : ''}`}
                   onClick={() => col.sortable && handleSort(col.key)}
                 >
-                  {col.label}
+                  <span className="inline-flex items-center gap-0.5">{col.label} {col.tip && <InfoIcon tip={col.tip} />}</span>
                   {col.sortable && sortKey === col.key && (
                     <span className="ml-1">
                       {sortDir === 'asc' ? '\u25B2' : '\u25BC'}

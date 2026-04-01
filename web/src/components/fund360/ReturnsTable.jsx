@@ -1,5 +1,6 @@
 import Card from '../shared/Card';
 import { formatPct } from '../../lib/format';
+import InfoIcon from '../shared/InfoIcon';
 
 const PERIODS = [
   { key: 'return_1m', label: '1M' },
@@ -42,7 +43,7 @@ function DiffCell({ fund, category }) {
 
 export default function ReturnsTable({ fundReturns, categoryReturns }) {
   return (
-    <Card title="Returns">
+    <Card title={<span className="flex items-center gap-1">Returns <InfoIcon tip="Trailing returns for the fund vs SEBI category average. Green = fund outperforms. 1Y/3Y/5Y are CAGR (annualized). Difference row shows alpha over category." wide /></span>}>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px]">
           <thead>

@@ -1,4 +1,5 @@
 import SkeletonLoader from '../shared/SkeletonLoader';
+import InfoIcon from '../shared/InfoIcon';
 
 function scoreColor(score) {
   if (score == null) return '#94a3b8';
@@ -184,8 +185,8 @@ function RegimeCard({ regime }) {
 
   return (
     <CardShell>
-      <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">
-        Market Regime
+      <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2 flex items-center gap-1">
+        Market Regime <InfoIcon tip="Current market regime from MarketPulse. BULL = risk-on, favor equity/small caps. BEAR = risk-off, favor large caps/debt. NEUTRAL = diversified allocation." />
       </p>
       <div className="flex items-center gap-2">
         <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-semibold ${badgeBg} ${badgeText}`}>
@@ -245,8 +246,8 @@ function SentimentCard({ sentiment, sentimentRaw }) {
   return (
     <CardShell>
       <div className="flex items-baseline justify-between mb-3">
-        <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-          Sentiment
+        <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1">
+          Sentiment <InfoIcon tip="Composite sentiment score (0-100) from 26 market indicators. Below 30 = extreme fear (buy opportunity). Above 70 = extreme greed (caution). 30-70 = neutral." />
         </p>
         <span
           className="text-sm font-bold font-mono tabular-nums"
@@ -334,8 +335,8 @@ function BreadthCard({ breadth }) {
 
   return (
     <CardShell>
-      <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-3">
-        Market Breadth
+      <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-3 flex items-center gap-1">
+        Market Breadth <InfoIcon tip="% of Nifty 500 stocks above their moving averages. >50% = broad participation (healthy rally). <30% = narrow market (caution). >200 EMA is the key long-term indicator." />
       </p>
       <div className="space-y-2">
         {emas.map((ema) => (
