@@ -12,7 +12,6 @@ import {
   fetchFundArchetypes,
 } from '../lib/api';
 import { cachedFetch } from '../lib/cache';
-import DashboardSearchStrip from '../components/dashboard/DashboardSearchStrip';
 import MarketPulseStrip from '../components/dashboard/MarketPulseStrip';
 import SectorRotation from '../components/dashboard/SectorRotation';
 import FundExposureBridge from '../components/dashboard/FundExposureBridge';
@@ -25,7 +24,7 @@ import LensFingerprint from '../components/dashboard/LensFingerprint';
 import MetricCards from '../components/dashboard/MetricCards';
 
 function UniversalFilterBar({ totalCount, filteredCount }) {
-  const { filters, setFilter, resetFilters, hasActiveFilters, AUM_OPTIONS, PLAN_OPTIONS, FUND_TYPE_OPTIONS } = useFilters();
+  const { filters, setFilter, resetFilters, hasActiveFilters, BROAD_CATEGORY_OPTIONS, AUM_OPTIONS, AGE_OPTIONS } = useFilters();
 
   return (
     <div className="flex flex-wrap items-center gap-2.5 bg-white rounded-xl border border-slate-200 px-4 py-3">
@@ -33,14 +32,14 @@ function UniversalFilterBar({ totalCount, filteredCount }) {
       <span className="text-[9px] text-slate-400 italic">(applies across all pages)</span>
       <div className="w-px h-5 bg-slate-200 mx-1" />
 
-      {/* Plan Type */}
-      {PLAN_OPTIONS.map((opt) => (
+      {/* Broad Category pills */}
+      {BROAD_CATEGORY_OPTIONS.map((opt) => (
         <button
           key={opt.value}
           type="button"
-          onClick={() => setFilter('planType', opt.value)}
+          onClick={() => setFilter('broadCategory', opt.value)}
           className={`px-2.5 py-1.5 text-[11px] font-semibold rounded-lg border transition-all ${
-            filters.planType === opt.value
+            filters.broadCategory === opt.value
               ? 'bg-teal-600 text-white border-teal-600'
               : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
           }`}
@@ -51,31 +50,26 @@ function UniversalFilterBar({ totalCount, filteredCount }) {
 
       <div className="w-px h-5 bg-slate-200" />
 
-      {/* Fund Type */}
-      {FUND_TYPE_OPTIONS.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => setFilter('fundType', opt.value)}
-          className={`px-2.5 py-1.5 text-[11px] font-semibold rounded-lg border transition-all ${
-            filters.fundType === opt.value
-              ? 'bg-teal-600 text-white border-teal-600'
-              : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
-          }`}
-        >
-          {opt.label}
-        </button>
-      ))}
-
-      <div className="w-px h-5 bg-slate-200" />
-
-      {/* AUM Size */}
+      {/* AUM dropdown */}
       <select
         value={filters.minAum ?? ''}
         onChange={(e) => setFilter('minAum', e.target.value ? Number(e.target.value) : null)}
         className="px-2.5 py-1.5 text-[11px] font-medium border border-slate-200 rounded-lg bg-white"
       >
         {AUM_OPTIONS.map((opt) => (
+          <option key={opt.label} value={opt.value ?? ''}>{opt.label}</option>
+        ))}
+      </select>
+
+      <div className="w-px h-5 bg-slate-200" />
+
+      {/* Age dropdown */}
+      <select
+        value={filters.minAge ?? ''}
+        onChange={(e) => setFilter('minAge', e.target.value ? Number(e.target.value) : null)}
+        className="px-2.5 py-1.5 text-[11px] font-medium border border-slate-200 rounded-lg bg-white"
+      >
+        {AGE_OPTIONS.map((opt) => (
           <option key={opt.label} value={opt.value ?? ''}>{opt.label}</option>
         ))}
       </select>
@@ -88,7 +82,7 @@ function UniversalFilterBar({ totalCount, filteredCount }) {
 
       <span className="text-[11px] text-slate-500 ml-auto tabular-nums">
         {filteredCount != null && totalCount != null
-          ? `${filteredCount.toLocaleString('en-IN')} Growth funds (excl. IDCW & segregated)`
+          ? `${filteredCount.toLocaleString('en-IN')} funds`
           : ''}
       </span>
     </div>
@@ -116,10 +110,7 @@ export default function DashboardPage() {
   // Apply universal filters to universe + inject derived alpha
   const filteredUniverse = useMemo(() => {
     if (!universe) return null;
-    let filtered = applyFilters(universe);
-    // Exclude IDCW + segregated (always)
-    filtered = filtered.filter((f) => !(f.fund_name || '').includes('IDCW'));
-    filtered = filtered.filter((f) => !(f.fund_name || '').toLowerCase().includes('segregated'));
+    const filtered = applyFilters(universe);
 
     // Compute category average return_1y for derived alpha
     const catReturns = {};
@@ -211,9 +202,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5 w-full">
-      {/* Search Strip */}
-      <DashboardSearchStrip universe={universe} />
-
       {/* Universal Filters — applies across all pages */}
       <UniversalFilterBar
         totalCount={universe?.length}

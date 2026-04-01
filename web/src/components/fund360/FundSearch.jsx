@@ -16,10 +16,6 @@ import { useFilters } from '../../contexts/FilterContext';
 
 /* ---- Constants ---- */
 const BROAD_CATEGORIES = ['All', 'Equity', 'Fixed Income', 'Allocation', 'Alternative Strategies'];
-const PURCHASE_MODES = [
-  { label: 'All', value: 0 },
-  { label: 'Regular', value: 1 },
-];
 const SORT_OPTIONS = [
   { label: 'Top Funds (AUM + 3Y)', value: 'composite_desc' },
   { label: '1Y Return \u2193', value: 'return_1y_desc' },
@@ -81,7 +77,6 @@ export default function FundSearch({ onSelect }) {
   const [bucketFundIds, setBucketFundIds] = useState([]);
   const [rawUniverse, setRawUniverse] = useState([]);
   const [universeLoading, setUniverseLoading] = useState(true);
-  const [purchaseMode, setPurchaseMode] = useState(1); // Default: Regular only
   const [sortBy, setSortBy] = useState('composite_desc');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [activeLensFilters, setActiveLensFilters] = useState(new Set());
@@ -125,7 +120,7 @@ export default function FundSearch({ onSelect }) {
       setActiveBucket(null);
       setBucketFundIds([]);
     }
-  }, [query, selectedCategory, selectedAmc, selectedBroad, purchaseMode]);
+  }, [query, selectedCategory, selectedAmc, selectedBroad]);
 
   const handleBucketSelect = useCallback((bucketId, fundIds) => {
     setActiveBucket(bucketId);
@@ -134,7 +129,6 @@ export default function FundSearch({ onSelect }) {
     setSelectedCategory('');
     setSelectedAmc('');
     setSelectedBroad('All');
-    setPurchaseMode(2);
     setActiveLensFilters(new Set());
   }, []);
 
@@ -197,7 +191,6 @@ export default function FundSearch({ onSelect }) {
   // Universe stats (computed from real data)
   const universeStats = useMemo(() => {
     if (!universe.length) return null;
-    const directFunds = universe.filter((f) => f.purchase_mode === 'Direct');
     const withReturns = universe.filter((f) => f.return_1y != null);
     const avgReturn = withReturns.length
       ? withReturns.reduce((s, f) => s + Number(f.return_1y), 0) / withReturns.length
@@ -213,7 +206,6 @@ export default function FundSearch({ onSelect }) {
 
     return {
       total: universe.length,
-      direct: directFunds.length,
       avgReturn,
       leaders,
       avoidZone,
@@ -232,12 +224,6 @@ export default function FundSearch({ onSelect }) {
       label = `${filtered.length} funds in bucket`;
     } else {
       filtered = [...universe];
-
-      // Purchase mode
-      if (purchaseMode > 0) {
-        const modeStr = purchaseMode === 1 ? 'Regular' : 'Direct';
-        filtered = filtered.filter((f) => f.purchase_mode === modeStr);
-      }
 
       // Broad category
       if (selectedBroad !== 'All') {
@@ -286,9 +272,9 @@ export default function FundSearch({ onSelect }) {
 
     const sorted = filtered.sort(sortFn).slice(0, 200);
     return { displayFunds: sorted, displayLabel: label };
-  }, [universe, activeBucket, bucketFundIds, purchaseMode, selectedBroad, selectedCategory, selectedAmc, query, activeLensFilters, sortFn]);
+  }, [universe, activeBucket, bucketFundIds, selectedBroad, selectedCategory, selectedAmc, query, activeLensFilters, sortFn]);
 
-  const hasActiveFilters = selectedCategory || selectedAmc || selectedBroad !== 'All' || query || activeBucket || purchaseMode !== 0 || sortBy !== 'composite_desc' || activeLensFilters.size > 0;
+  const hasActiveFilters = selectedCategory || selectedAmc || selectedBroad !== 'All' || query || activeBucket || sortBy !== 'composite_desc' || activeLensFilters.size > 0;
 
   const clearAllFilters = useCallback(() => {
     setQuery('');
@@ -297,7 +283,6 @@ export default function FundSearch({ onSelect }) {
     setSelectedAmc('');
     setActiveBucket(null);
     setBucketFundIds([]);
-    setPurchaseMode(0);
     setSortBy('return_1y_desc');
     setActiveLensFilters(new Set());
   }, []);
@@ -332,10 +317,6 @@ export default function FundSearch({ onSelect }) {
             <p className="text-lg font-extrabold font-mono tabular-nums text-slate-800 mt-0.5">{universeStats.total.toLocaleString('en-IN')}</p>
           </div>
           <div className="text-center flex-1">
-            <p className="text-[9px] text-slate-400 uppercase tracking-wider">Direct Plans</p>
-            <p className="text-lg font-extrabold font-mono tabular-nums text-teal-600 mt-0.5">{universeStats.direct.toLocaleString('en-IN')}</p>
-          </div>
-          <div className="text-center flex-1">
             <p className="text-[9px] text-slate-400 uppercase tracking-wider">Avg 1Y Return</p>
             <p className={`text-lg font-extrabold font-mono tabular-nums mt-0.5 ${universeStats.avgReturn >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
               {formatPct(universeStats.avgReturn)}
@@ -363,7 +344,6 @@ export default function FundSearch({ onSelect }) {
           activeBucket={activeBucket}
           onSelect={handleBucketSelect}
           universe={universe.length > 0 ? universe : undefined}
-          purchaseMode={purchaseMode}
         />
       </div>
 
@@ -405,27 +385,6 @@ export default function FundSearch({ onSelect }) {
                 }`}
               >
                 {bc}
-              </button>
-            ))}
-          </div>
-
-          <div className="w-px h-6 bg-slate-200" />
-
-          {/* Plan */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mr-0.5">Plan</span>
-            {PURCHASE_MODES.map((pm) => (
-              <button
-                key={pm.value}
-                type="button"
-                onClick={() => setPurchaseMode(pm.value)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-all ${
-                  purchaseMode === pm.value
-                    ? 'bg-teal-600 text-white border-teal-600'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
-                }`}
-              >
-                {pm.label}
               </button>
             ))}
           </div>
@@ -576,7 +535,6 @@ export default function FundSearch({ onSelect }) {
         <p className="text-[12px] text-slate-500 font-semibold">
           Showing <span className="font-mono tabular-nums text-slate-800">{displayFunds.length}</span> funds
           {activeBucket && <span className="text-slate-400 ml-2">{'\u00B7'} {activeBucket} bucket</span>}
-          {purchaseMode === 1 && <span className="text-slate-400 ml-2">{'\u00B7'} Regular plans</span>}
           <span className="text-slate-400 ml-2">{'\u00B7'} Sorted by {SORT_OPTIONS.find((o) => o.value === sortBy)?.label}</span>
         </p>
       </div>

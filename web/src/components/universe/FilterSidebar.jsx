@@ -2,8 +2,6 @@ import { useState, useMemo, useCallback } from 'react';
 import Pill from '../shared/Pill';
 import { LENS_OPTIONS } from '../../lib/lens';
 
-const PURCHASE_MODES = ['Regular', 'Both'];
-const DIVIDEND_TYPES = ['Growth', 'IDCW', 'Both'];
 const BROAD_CATEGORIES = ['Equity', 'Debt', 'Hybrid', 'Solution Oriented', 'Other'];
 
 const AUM_RANGES = [
@@ -260,8 +258,6 @@ export default function FilterSidebar({
   // Count active filters
   const activeCount = useMemo(() => {
     let count = 0;
-    if (purchaseMode !== 'Regular') count += 1;
-    if (dividendType !== 'Growth') count += 1;
     if (broadCategories.length > 0) count += 1;
     if (categories.length > 0) count += 1;
     if (amcs.length > 0) count += 1;
@@ -269,17 +265,11 @@ export default function FilterSidebar({
     const activeLenses = Object.values(lensFilters).filter(Boolean).length;
     count += activeLenses;
     return count;
-  }, [purchaseMode, dividendType, broadCategories, categories, amcs, aumRange, lensFilters]);
+  }, [broadCategories, categories, amcs, aumRange, lensFilters]);
 
   // Active filter chips
   const activeChips = useMemo(() => {
     const chips = [];
-    if (purchaseMode !== 'Regular') {
-      chips.push({ key: 'pm', label: purchaseMode, clear: () => update({ purchaseMode: 'Regular' }) });
-    }
-    if (dividendType !== 'Growth') {
-      chips.push({ key: 'dt', label: dividendType, clear: () => update({ dividendType: 'Growth' }) });
-    }
     broadCategories.forEach((bc) => {
       chips.push({
         key: `bc-${bc}`,
@@ -323,8 +313,6 @@ export default function FilterSidebar({
 
   const clearAll = useCallback(() => {
     onFiltersChange({
-      purchaseMode: 'Regular',
-      dividendType: 'Growth',
       broadCategories: [],
       categories: [],
       amcs: [],
@@ -337,8 +325,6 @@ export default function FilterSidebar({
   const applyPreset = useCallback(
     (preset) => {
       const base = {
-        purchaseMode: 'Regular',
-        dividendType: 'Growth',
         broadCategories: [],
         categories: [],
         amcs: [],
@@ -468,45 +454,6 @@ export default function FilterSidebar({
                 {p}
               </Pill>
             ))}
-          </div>
-        </section>
-
-        {/* Fund Type */}
-        <section>
-          <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-            Fund Type
-          </h4>
-          <div className="space-y-2">
-            <div>
-              <p className="text-[10px] text-slate-400 mb-1">Purchase Mode</p>
-              <div className="flex gap-1">
-                {PURCHASE_MODES.map((mode) => (
-                  <Pill
-                    key={mode}
-                    active={purchaseMode === mode}
-                    onClick={() => update({ purchaseMode: mode })}
-                    className="text-[10px] px-2 py-1"
-                  >
-                    {mode}
-                  </Pill>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="text-[10px] text-slate-400 mb-1">Dividend Type</p>
-              <div className="flex gap-1">
-                {DIVIDEND_TYPES.map((type) => (
-                  <Pill
-                    key={type}
-                    active={dividendType === type}
-                    onClick={() => update({ dividendType: type })}
-                    className="text-[10px] px-2 py-1"
-                  >
-                    {type}
-                  </Pill>
-                ))}
-              </div>
-            </div>
           </div>
         </section>
 

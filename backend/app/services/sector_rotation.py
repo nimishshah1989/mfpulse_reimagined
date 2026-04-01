@@ -489,18 +489,26 @@ class SectorRotationService:
         return result
 
     def _get_sector_weighted_returns(self, target_date: date) -> dict:
-        """Compute AUM-weighted sector returns using sector exposure × fund 1Y return."""
-        # Get all sector exposures for the date
+        """Compute AUM-weighted sector returns using sector exposure × fund 1Y return.
+
+        Only includes Regular funds (purchase_mode=1).
+        """
+        # Get all sector exposures for the date — Regular funds only
         exposures = (
             self.db.query(
                 FundSectorExposure.mstar_id,
                 FundSectorExposure.sector_name,
                 FundSectorExposure.net_pct,
             )
+            .join(
+                FundMaster,
+                FundSectorExposure.mstar_id == FundMaster.mstar_id,
+            )
             .filter(
                 FundSectorExposure.portfolio_date == target_date,
                 FundSectorExposure.net_pct.isnot(None),
                 FundSectorExposure.sector_name.in_(MORNINGSTAR_SECTORS),
+                FundMaster.purchase_mode == 1,
             )
             .all()
         )
@@ -644,17 +652,22 @@ class SectorRotationService:
         }
 
     def _get_sector_weights(self, target_date: date) -> dict:
-        """Get average sector weights for a specific date."""
+        """Get average sector weights for a specific date (Regular funds only)."""
         rows = (
             self.db.query(
                 FundSectorExposure.sector_name,
                 func.avg(FundSectorExposure.net_pct).label("avg_weight"),
                 func.count(FundSectorExposure.mstar_id.distinct()).label("fund_count"),
             )
+            .join(
+                FundMaster,
+                FundSectorExposure.mstar_id == FundMaster.mstar_id,
+            )
             .filter(FundSectorExposure.portfolio_date == target_date)
             .filter(FundSectorExposure.net_pct.isnot(None))
             .filter(FundSectorExposure.sector_name.in_(MORNINGSTAR_SECTORS))
             .filter(FundSectorExposure.net_pct >= 5)
+            .filter(FundMaster.purchase_mode == 1)
             .group_by(FundSectorExposure.sector_name)
             .all()
         )

@@ -36,7 +36,7 @@ export default function TopFundsByLens({ universe, onFundClick, loading }) {
     return [...universe]
       .filter((f) => f[activeTab] != null)
       .sort((a, b) => (b[activeTab] || 0) - (a[activeTab] || 0))
-      .slice(0, 15);
+      .slice(0, 25);
   }, [universe, activeTab]);
 
   if (loading) {
@@ -76,7 +76,7 @@ export default function TopFundsByLens({ universe, onFundClick, loading }) {
 
       {/* Fund table with lens columns */}
       {topFunds.length > 0 ? (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
           <table className="w-full" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr className="border-b border-slate-200">

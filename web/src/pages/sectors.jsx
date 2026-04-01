@@ -11,7 +11,7 @@
  * 7. Fund Exposure Matrix (which funds → which sectors)
  * 8. Fund Drill-Down (opens when sector clicked — risk vs return scatter + fund list)
  */
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   fetchMorningstarSectors,
   fetchFundExposureMatrix,
@@ -36,32 +36,6 @@ import RotationHeatmap from '../components/sectors/RotationHeatmap';
 import FundExposureMatrix from '../components/sectors/FundExposureMatrix';
 import SectorDeepDive from '../components/sectors/SectorDeepDive';
 import InfoBulb from '../components/shared/InfoBulb';
-
-function buildRotationNarrative(sectors) {
-  if (!sectors || sectors.length === 0) return null;
-
-  const grouped = { Leading: [], Improving: [], Weakening: [], Lagging: [] };
-  sectors.forEach((s) => {
-    const q = s.quadrant || '';
-    if (grouped[q]) grouped[q].push(s.sector_name);
-  });
-
-  const parts = [];
-  if (grouped.Leading.length > 0) {
-    parts.push(`**${grouped.Leading.join(' & ')}** in Leading quadrant — consider overweight positions.`);
-  }
-  if (grouped.Improving.length > 0) {
-    parts.push(`**${grouped.Improving.join(' & ')}** improving — early accumulation window.`);
-  }
-  if (grouped.Weakening.length > 0) {
-    parts.push(`**${grouped.Weakening.join(' & ')}** losing momentum — reduce exposure.`);
-  }
-  if (grouped.Lagging.length > 0) {
-    parts.push(`**${grouped.Lagging.join(' & ')}** lagging — avoid or monitor for turnaround.`);
-  }
-
-  return parts.length > 0 ? parts.join(' ') : null;
-}
 
 export default function SectorsPage() {
   const [sectorData, setSectorData] = useState([]);
@@ -232,11 +206,6 @@ export default function SectorsPage() {
     setSelectedSector(null);
   }, []);
 
-  const rotationNarrative = useMemo(
-    () => buildRotationNarrative(sectorData),
-    [sectorData]
-  );
-
   const handleHeatmapSectorClick = useCallback(
     (sectorName) => {
       const found = sectorData.find((s) => s.sector_name === sectorName);
@@ -333,18 +302,6 @@ export default function SectorsPage() {
           ) : (
             <div className="h-[480px] flex items-center justify-center text-sm text-slate-400">
               Measuring layout...
-            </div>
-          )}
-
-          {/* Rotation narrative */}
-          {rotationNarrative && (
-            <div className="mt-4 p-3 rounded-lg bg-teal-50 border border-teal-100">
-              <p className="text-[10px] font-semibold text-teal-700 uppercase tracking-wider mb-1">
-                Rotation Playbook
-              </p>
-              <p className="text-xs text-teal-800 leading-relaxed">
-                {rotationNarrative.replace(/\*\*/g, '')}
-              </p>
             </div>
           )}
 

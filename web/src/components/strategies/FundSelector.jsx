@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { fetchFunds, searchFundsNL } from '../../lib/api';
+import { fetchFunds } from '../../lib/api';
 import LensCircle from '../shared/LensCircle';
 import TierBadge from '../shared/TierBadge';
-import { formatINR, formatPct, formatAUM } from '../../lib/format';
+import { formatINR, formatPct, formatAUMRaw } from '../../lib/format';
 
 const LENS_KEYS = [
   { key: 'return_score', label: 'Ret' },
@@ -76,6 +76,14 @@ export default function FundSelector({
         )}
       </div>
 
+      {/* Empty state */}
+      {search.length >= 2 && !searching && results.length === 0 && (
+        <div className="border border-slate-200 rounded-xl px-4 py-5 text-center">
+          <p className="text-xs text-slate-400">No funds found matching &quot;{search}&quot;</p>
+          <p className="text-[10px] text-slate-300 mt-1">Try a different fund name, AMC, or category</p>
+        </div>
+      )}
+
       {/* Search results dropdown */}
       <SearchResults results={results} isAdded={isAdded} onAdd={onAddFund} onRemove={onRemoveFund} />
 
@@ -108,9 +116,9 @@ function SearchResults({ results, isAdded, onAdd, onRemove }) {
               {fund.category_name && (
                 <span className="text-[10px] text-slate-400">{fund.category_name}</span>
               )}
-              {fund.aum_cr != null && (
+              {fund.aum != null && (
                 <span className="text-[10px] text-slate-400 font-mono tabular-nums">
-                  {formatAUM(fund.aum_cr)}
+                  {formatAUMRaw(fund.aum)}
                 </span>
               )}
               {fund.return_1y != null && (

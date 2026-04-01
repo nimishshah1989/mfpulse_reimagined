@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/funds", tags=["funds"])
 
 # In-memory cache for universe data (refreshes every 10 minutes)
-_universe_cache: dict = {"data": None, "ts": 0}
+# Keyed by filter params string so different filter combos get separate cached results
+_universe_cache: dict[str, dict] = {}
 _UNIVERSE_CACHE_TTL = 600  # seconds
 
 LENS_SORT_FIELDS = {
@@ -34,35 +35,48 @@ LENS_TIER_FILTERS = {
 
 
 @router.get("/universe")
-def get_universe_data(db: Session = Depends(get_db)) -> dict:
+def get_universe_data(
+    broad_category: str = Query(None, description="Filter: equity, debt, hybrid, or all"),
+    min_aum: float = Query(None, description="Minimum AUM in crores"),
+    min_age_years: int = Query(None, description="Minimum fund age in years"),
+    db: Session = Depends(get_db),
+) -> dict:
     """Single-query bulk endpoint for Universe Explorer — all active funds with lens scores.
 
-    Cache priority: (1) PostgreSQL kv_cache (pre-computed nightly), (2) in-memory 10-min cache, (3) live query.
+    Cache priority: (1) PostgreSQL kv_cache (unfiltered only), (2) in-memory 10-min cache (per filter combo), (3) live query.
     """
-    # L1: PostgreSQL pre-computed cache (fastest — no query)
-    from app.repositories.cache_repo import CacheRepository
-    from app.core.cache_keys import CACHE_UNIVERSE_DATA
+    has_filters = any(p is not None for p in (broad_category, min_aum, min_age_years))
 
-    kv_cached = CacheRepository(db).get(CACHE_UNIVERSE_DATA)
-    if kv_cached is not None:
-        data = kv_cached
-        return {
-            "success": True,
-            "data": data,
-            "meta": {"timestamp": Meta().timestamp, "count": len(data), "cached": True},
-            "error": None,
-        }
+    # L1: PostgreSQL pre-computed cache (fastest — only for unfiltered requests)
+    if not has_filters:
+        from app.repositories.cache_repo import CacheRepository
+        from app.core.cache_keys import CACHE_UNIVERSE_DATA
 
-    # L2: In-memory cache (10 min TTL)
+        kv_cached = CacheRepository(db).get(CACHE_UNIVERSE_DATA)
+        if kv_cached is not None:
+            data = kv_cached
+            return {
+                "success": True,
+                "data": data,
+                "meta": {"timestamp": Meta().timestamp, "count": len(data), "cached": True},
+                "error": None,
+            }
+
+    # L2: In-memory cache (10 min TTL, keyed by filter params)
+    cache_key = f"{broad_category}|{min_aum}|{min_age_years}"
     now = time.time()
-    if _universe_cache["data"] is not None and (now - _universe_cache["ts"]) < _UNIVERSE_CACHE_TTL:
-        data = _universe_cache["data"]
+    cached_entry = _universe_cache.get(cache_key)
+    if cached_entry is not None and (now - cached_entry["ts"]) < _UNIVERSE_CACHE_TTL:
+        data = cached_entry["data"]
     else:
-        # L3: Live query (14s)
+        # L3: Live query
         service = FundService(db)
-        data = service.get_universe_data()
-        _universe_cache["data"] = data
-        _universe_cache["ts"] = now
+        data = service.get_universe_data(
+            broad_category=broad_category,
+            min_aum=min_aum,
+            min_age_years=min_age_years,
+        )
+        _universe_cache[cache_key] = {"data": data, "ts": now}
     return {
         "success": True,
         "data": data,

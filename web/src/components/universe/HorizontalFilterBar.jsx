@@ -1,8 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
-import { LENS_OPTIONS, LENS_LABELS } from '../../lib/lens';
-
-const PLAN_TYPES = ['Direct', 'Regular'];
-const GROWTH_TYPES = ['Growth'];
+import { useState, useMemo } from 'react';
 
 const AUM_RANGES = [
   { label: 'Any AUM', min: 0, max: Infinity },
@@ -64,7 +60,6 @@ export default function HorizontalFilterBar({
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const {
-    purchaseMode = 'Direct',
     categories = [],
     amcs = [],
     aumRange = 'Any AUM',
@@ -106,22 +101,6 @@ export default function HorizontalFilterBar({
     </>
   );
 
-  /* Plan type pills */
-  const planPills = PLAN_TYPES.map((m) => (
-    <button
-      key={m}
-      type="button"
-      onClick={() => update({ purchaseMode: m })}
-      className={`filter-pill px-3 py-1.5 text-xs font-semibold border rounded-full ${
-        purchaseMode === m
-          ? 'active bg-teal-50 border-teal-500 text-teal-700'
-          : 'border-slate-200 text-slate-500'
-      }`}
-    >
-      {m}
-    </button>
-  ));
-
   /* Data filter dropdowns */
   const dataFilters = (
     <>
@@ -157,11 +136,6 @@ export default function HorizontalFilterBar({
       <div className="hidden md:flex items-center gap-3 flex-wrap">
         {axisSelectors}
         <div className="flex items-center gap-1.5 flex-wrap flex-1">
-          {planPills}
-          {GROWTH_TYPES.map((t) => (
-            <button key={t} type="button" className="filter-pill px-2.5 py-1 text-[10px] font-medium border border-slate-200 text-slate-500 rounded-full">{t}</button>
-          ))}
-          <span className="text-slate-300">|</span>
           {dataFilters}
         </div>
         <div className="text-right flex-shrink-0">
@@ -173,9 +147,6 @@ export default function HorizontalFilterBar({
       {/* Mobile layout */}
       <div className="md:hidden">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {planPills}
-          </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
               <p className="text-xs font-bold text-teal-600 tabular-nums">{filteredCount.toLocaleString('en-IN')}</p>

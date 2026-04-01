@@ -47,7 +47,7 @@ export default function MetricCards({ universe }) {
   return (
     <button
       type="button"
-      onClick={() => router.push('/fund360?sort=efficiency_score_desc')}
+      onClick={() => router.push('/universe?sort=net_expense_ratio')}
       className="bg-white rounded-xl border border-slate-200 p-5 text-left hover:shadow-md hover:border-teal-300 transition-all cursor-pointer w-full"
     >
       <p className="section-title mb-3">Expense vs Performance</p>

@@ -495,7 +495,7 @@ export default function SectorRotation({ sectors, universe, loading, onFundClick
   }, [universe]);
 
   const handleSectorClick = (sectorName) => {
-    router.push(`/sectors?sector=${encodeURIComponent(sectorName)}`);
+    router.push(`/universe?sector=${encodeURIComponent(sectorName)}`);
   };
 
   if (loading) {

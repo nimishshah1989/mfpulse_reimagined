@@ -134,8 +134,23 @@ class NLSearchService:
                 result["categories"].append(cat)
 
         # Match numeric filters — extract only the last word as the field name
+        # Skip when the captured field name is a sector keyword (e.g., "technology >20%")
+        sector_field_names = {s.lower() for s in SECTOR_KEYWORDS}
+        # Also collect the individual trigger words from sector patterns
+        _sector_trigger_words = {
+            "tech", "technology", "healthcare", "pharma", "financial", "banking",
+            "bank", "energy", "oil", "auto", "fmcg", "staples", "industrial",
+            "infra", "infrastructure", "realty", "materials", "metal", "mining",
+            "telecom", "media", "utilities", "power",
+        }
+        sector_field_names |= _sector_trigger_words
+
         for match in NUMERIC_PATTERN.finditer(lower):
             field_raw = match.group(1).strip().split()[-1]  # "funds with sharpe" → "sharpe"
+            # Skip if the field name matches a sector keyword — these are sector
+            # exposure queries, not numeric lens/metric filters
+            if field_raw.lower() in sector_field_names:
+                continue
             operator, value = match.group(2), match.group(3)
             mapped = FIELD_MAP.get(field_raw, field_raw)
             op = "gt" if operator in (">", "above", "over") else "lt"

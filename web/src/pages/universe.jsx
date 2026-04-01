@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { fetchUniverseData } from '../lib/api';
 import { cachedFetch } from '../lib/cache';
 import { formatPct, formatAUM } from '../lib/format';
+import { useFilters } from '../contexts/FilterContext';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
 import EmptyState from '../components/shared/EmptyState';
 import SmartPresets, { PRESETS } from '../components/universe/SmartPresets';
@@ -48,29 +49,10 @@ const Treemap = dynamic(
 );
 
 const DEFAULT_FILTERS = {
-  purchaseMode: 'Regular',
   categories: [],
   amcs: [],
   aumRange: 'Any AUM',
 };
-
-/** Map tier display names to class values for filtering */
-const TIER_CLASS_MAP = {
-  'Alpha Machine': 'ALPHA_MACHINE',
-  'Positive Alpha': 'POSITIVE',
-  'Neutral': 'NEUTRAL',
-  'Negative Alpha': 'NEGATIVE',
-};
-
-const EQUITY_BROADS = new Set(['Equity', 'Allocation']);
-const MIN_AUM_CR = 1000;
-const MIN_AUM_RAW = MIN_AUM_CR * 1e7;
-
-const GLOBAL_TOGGLES = [
-  { key: 'directOnly', label: 'Direct Plans' },
-  { key: 'equityOnly', label: 'Equity Only' },
-  { key: 'minAum', label: `AUM > ${MIN_AUM_CR} Cr` },
-];
 
 /** Section tabs — no "tab" word, colored accent bands */
 const SECTIONS = [
@@ -79,27 +61,6 @@ const SECTIONS = [
   { key: 'analytics', label: 'Analytics', band: '#0369a1', bg: '#f0f9ff' },
   { key: 'compare', label: 'Compare', band: '#475569', bg: '#f8fafc' },
 ];
-
-function applyGlobalFilters(funds, globalFilters) {
-  if (!funds || funds.length === 0) return [];
-  let result = funds;
-
-  // Platform shows Regular funds only — directOnly filter removed
-
-  if (globalFilters.equityOnly) {
-    result = result.filter((f) => EQUITY_BROADS.has(f.broad_category));
-  }
-
-  if (globalFilters.minAum) {
-    result = result.filter((f) => f.aum != null && Number(f.aum) >= MIN_AUM_RAW);
-  }
-
-  // Always exclude IDCW + segregated
-  result = result.filter((f) => !(f.fund_name || '').includes('IDCW'));
-  result = result.filter((f) => !(f.fund_name || '').toLowerCase().includes('segregated'));
-
-  return result;
-}
 
 export default function UniversePage() {
   const router = useRouter();
@@ -111,11 +72,8 @@ export default function UniversePage() {
   const [activeSection, setActiveSection] = useState('explorer');
   const [isPending, startTransition] = useTransition();
 
-  // Local filters — default to OFF (no pre-filtering). Global FilterContext handles cross-page filters.
-  const [globalFilters, setGlobalFilters] = useState({
-    equityOnly: false,
-    minAum: false,
-  });
+  // Use FilterContext for global filters
+  const { applyFilters: applyContextFilters } = useFilters();
 
   const [xAxis, setXAxis] = useState('risk_score');
   const [yAxis, setYAxis] = useState('return_1y');
@@ -211,10 +169,10 @@ export default function UniversePage() {
     }
   }, [activePreset]);
 
-  // Pre-compute globally filtered funds
+  // Pre-compute globally filtered funds via FilterContext
   const globallyFiltered = useMemo(
-    () => applyGlobalFilters(allFunds, globalFilters),
-    [allFunds, globalFilters]
+    () => applyContextFilters(allFunds),
+    [allFunds, applyContextFilters]
   );
 
   // Apply all filters
@@ -236,10 +194,9 @@ export default function UniversePage() {
       return true;
     });
 
-    // Standard filters
+    // Standard filters (page-specific: AMC, Category, AUM range)
     result = result.filter((fund) => {
-      const { purchaseMode, categories, amcs, aumRange } = filters;
-      if (purchaseMode && purchaseMode !== 'Both' && fund.purchase_mode !== purchaseMode) return false;
+      const { categories, amcs, aumRange } = filters;
       if (categories.length > 0 && !categories.includes(fund.category_name)) return false;
       if (amcs.length > 0 && !amcs.includes(fund.amc_name)) return false;
       if (aumRange && aumRange !== 'Any AUM') {
@@ -481,27 +438,10 @@ export default function UniversePage() {
         )}
       </div>
 
-      {/* Global Filters */}
-      <div className="flex flex-wrap items-center gap-3 glass-card px-5 py-3 animate-in">
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filters</span>
-        {GLOBAL_TOGGLES.map(({ key, label }) => {
-          const active = globalFilters[key];
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setGlobalFilters((prev) => ({ ...prev, [key]: !prev[key] }))}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
-                active
-                  ? 'bg-teal-50 text-teal-700 border-teal-300 shadow-sm'
-                  : 'bg-white text-slate-400 border-slate-200 hover:text-slate-600'
-              }`}
-            >
-              {active ? '\u2713 ' : ''}{label}
-            </button>
-          );
-        })}
-        <span className="text-xs text-slate-400 ml-auto tabular-nums font-medium">
+      {/* Fund count — global filters controlled from Dashboard FilterContext */}
+      <div className="flex items-center justify-between glass-card px-5 py-3 animate-in">
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fund Universe</span>
+        <span className="text-xs text-slate-400 tabular-nums font-medium">
           {taggedFunds.length.toLocaleString('en-IN')} of {allFunds.length.toLocaleString('en-IN')} funds
         </span>
       </div>
@@ -509,7 +449,7 @@ export default function UniversePage() {
       {/* Filter Breadcrumbs */}
       <FilterBreadcrumbs
         filters={filters}
-        globalFilters={globalFilters}
+        globalFilters={{}}
         activePreset={activePreset}
         selectedTier={selectedTier}
         searchQuery={searchQuery}

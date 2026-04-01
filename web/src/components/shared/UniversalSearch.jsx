@@ -1,96 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { fetchUniverseData } from '../../lib/api';
-import { cachedFetch } from '../../lib/cache';
+import { searchFundsNL, fetchFunds } from '../../lib/api';
 import { formatPct } from '../../lib/format';
 import { LENS_OPTIONS, scoreColor } from '../../lib/lens';
-
-/* ────────── NL Query Parser ────────── */
-function parseNLQuery(query, funds) {
-  const lower = query.toLowerCase().trim();
-  if (!lower || !funds.length) return [];
-  let filtered = [...funds];
-
-  // Category detection
-  const categories = [
-    'large cap', 'mid cap', 'small cap', 'flexi cap', 'multi cap',
-    'elss', 'debt', 'hybrid', 'liquid', 'gilt', 'index', 'focused',
-  ];
-  for (const cat of categories) {
-    if (lower.includes(cat)) {
-      filtered = filtered.filter(
-        (f) => f.category_name?.toLowerCase().includes(cat)
-      );
-    }
-  }
-
-  // Score thresholds: "alpha above 70", "risk below 30"
-  const scoreRx =
-    /(return|risk|consistency|alpha|efficiency|resilience)\s*(?:score)?\s*(above|below|greater|less|over|under|>=|<=|>|<)\s*(\d+)/gi;
-  let m;
-  while ((m = scoreRx.exec(lower)) !== null) {
-    const lens = m[1] + '_score';
-    const threshold = parseInt(m[3], 10);
-    const isAbove = ['above', 'greater', 'over', '>=', '>'].includes(m[2]);
-    filtered = filtered.filter((f) =>
-      isAbove ? (f[lens] ?? 0) >= threshold : (f[lens] ?? 100) <= threshold
-    );
-  }
-
-  // AMC detection
-  const amcPatterns = [
-    'icici', 'hdfc', 'sbi', 'axis', 'mirae', 'kotak', 'nippon', 'dsp',
-    'uti', 'tata', 'aditya', 'birla', 'franklin', 'motilal', 'pgim',
-    'canara', 'quant', 'parag', 'edelweiss', 'bandhan', 'hsbc',
-  ];
-  for (const amc of amcPatterns) {
-    if (lower.includes(amc)) {
-      filtered = filtered.filter((f) =>
-        f.amc_name?.toLowerCase().includes(amc)
-      );
-    }
-  }
-
-  // Tier detection
-  const tierMap = {
-    'alpha machine': { field: 'alpha_class', value: 'ALPHA_MACHINE' },
-    fortress: { field: 'resilience_class', value: 'FORTRESS' },
-    'rock solid': { field: 'consistency_class', value: 'ROCK_SOLID' },
-    'low risk': { field: 'risk_class', value: 'LOW_RISK' },
-    leader: { field: 'return_class', value: 'LEADER' },
-    lean: { field: 'efficiency_class', value: 'LEAN' },
-  };
-  for (const [phrase, { field, value }] of Object.entries(tierMap)) {
-    if (lower.includes(phrase)) {
-      filtered = filtered.filter((f) => f[field] === value);
-    }
-  }
-
-  // Free-text name/AMC match — always run as additional filter
-  // Split query into words, match if ALL words appear anywhere in fund metadata
-  // This enables "parag flexi" to match "Parag Parikh Flexi Cap Dir Gr"
-  const words = lower.split(/\s+/).filter((w) => w.length >= 2);
-  if (words.length > 0) {
-    // If structured filters (category, tier, score) already narrowed results, skip free-text
-    const hasStructuredFilters = filtered.length < funds.length;
-    if (!hasStructuredFilters) {
-      filtered = filtered.filter((f) => {
-        const haystack = `${f.fund_name || ''} ${f.amc_name || ''} ${f.category_name || ''} ${f.mstar_id || ''}`.toLowerCase().replace(/\s+/g, ' ');
-        return words.every((w) => haystack.includes(w));
-      });
-    }
-  }
-
-  // Sort by avg score descending
-  filtered.sort((a, b) => {
-    const avg = (f) =>
-      ((f.return_score ?? 0) + (f.risk_score ?? 0) + (f.consistency_score ?? 0) +
-        (f.alpha_score ?? 0) + (f.efficiency_score ?? 0) + (f.resilience_score ?? 0)) / 6;
-    return avg(b) - avg(a);
-  });
-
-  return filtered.slice(0, 20);
-}
 
 /* ────────── Navigation commands ────────── */
 const NAV_COMMANDS = [
@@ -175,38 +87,50 @@ export default function UniversalSearch() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [funds, setFunds] = useState([]);
   const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
   const [listening, setListening] = useState(false);
   const [navHint, setNavHint] = useState(null);
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
+  const debounceRef = useRef(null);
 
-  // Load universe data on first open
-  useEffect(() => {
-    if (open && funds.length === 0) {
-      cachedFetch('search-universe', fetchUniverseData, 600)
-        .then(setFunds)
-        .catch(() => {});
-    }
-  }, [open, funds.length]);
-
-  // Parse query
+  // Debounced backend NL search
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
       setNavHint(null);
+      setSearching(false);
       return;
     }
     const nav = detectNavCommand(query);
     if (nav) {
       setNavHint(nav);
       setResults([]);
-    } else {
-      setNavHint(null);
-      setResults(parseNLQuery(query, funds));
+      setSearching(false);
+      return;
     }
-  }, [query, funds]);
+    setNavHint(null);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await searchFundsNL(query);
+        setResults(res.funds || res.data || []);
+      } catch {
+        // Fallback to basic search on error
+        try {
+          const fallback = await fetchFunds({ search: query, limit: 10 });
+          setResults(fallback.data || []);
+        } catch {
+          setResults([]);
+        }
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [query]);
 
   // Keyboard shortcut Cmd+K / Ctrl+K
   useEffect(() => {
@@ -403,8 +327,19 @@ export default function UniversalSearch() {
               </div>
             )}
 
+            {/* Loading state */}
+            {searching && (
+              <div className="px-5 py-6 text-center">
+                <svg className="animate-spin h-5 w-5 mx-auto text-teal-600 mb-2" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <div className="text-xs text-slate-400">Searching...</div>
+              </div>
+            )}
+
             {/* Empty state */}
-            {query.trim() && !navHint && results.length === 0 && funds.length > 0 && (
+            {query.trim() && !navHint && !searching && results.length === 0 && (
               <div className="px-5 py-8 text-center">
                 <div className="text-slate-300 text-3xl mb-2">
                   <svg className="w-10 h-10 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

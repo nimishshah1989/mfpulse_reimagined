@@ -15,6 +15,17 @@ from app.repositories.holdings_repo import HoldingsRepository
 PURCHASE_MODE_MAP = {1: "Regular", 2: "Direct"}
 
 _IDCW_PATTERN = re.compile(r"\b(IDCW|Dividend)\b", re.IGNORECASE)
+_SEGREGATED_PATTERN = re.compile(r"Segregated", re.IGNORECASE)
+
+# Maps frontend broad_category param → DB broad_category value
+BROAD_CATEGORY_MAP = {
+    "equity": "Equity",
+    "debt": "Fixed Income",
+    "hybrid": "Allocation",
+}
+
+# AUM in DB is raw (rupees). 1 crore = 10,000,000
+AUM_CRORE_MULTIPLIER = Decimal("10000000")
 
 
 def derive_dividend_type(fund_name: str) -> str:
@@ -243,25 +254,68 @@ class FundService:
         """Sector allocation breakdown."""
         return self.holdings_repo.get_sector_exposure(mstar_id)
 
-    def get_universe_data(self) -> list[dict]:
+    def get_universe_data(
+        self,
+        broad_category: Optional[str] = None,
+        min_aum: Optional[float] = None,
+        min_age_years: Optional[int] = None,
+    ) -> list[dict]:
         """Bulk data for Universe Explorer — active funds (AUM > 0) with lens + returns.
+
+        Always filters: purchase_mode=1 (Regular), excludes IDCW/Dividend and
+        Segregated portfolio funds. Optional filters for broad_category, min_aum,
+        and min_age_years.
 
         Includes risk stats, quartile ranks, and asset allocation for
         Screener and Analytics sections.
         """
         from app.repositories.lens_repo import LensRepository
 
+        # Map frontend broad_category param to DB value
+        db_broad_category = None
+        if broad_category and broad_category.lower() != "all":
+            db_broad_category = BROAD_CATEGORY_MAP.get(
+                broad_category.lower(), broad_category,
+            )
+
         funds, _ = self.fund_repo.get_all_funds(
             purchase_mode=1,  # Regular funds only — platform-wide policy
+            broad_category=db_broad_category,
             eligible_only=True,
             limit=50000,
             offset=0,
         )
+
+        # Hard-filter: exclude IDCW/Dividend and Segregated portfolio funds
+        funds = [
+            f for f in funds
+            if not _IDCW_PATTERN.search(f.fund_name or f.legal_name or "")
+            and not _SEGREGATED_PATTERN.search(f.fund_name or f.legal_name or "")
+        ]
+
+        # Filter by minimum fund age (inception_date)
+        if min_age_years is not None and min_age_years > 0:
+            cutoff_date = date.today() - timedelta(days=min_age_years * 365)
+            funds = [
+                f for f in funds
+                if getattr(f, "inception_date", None) is not None
+                and f.inception_date <= cutoff_date
+            ]
+
         mstar_ids = [f.mstar_id for f in funds]
 
         # Batch fetch latest holdings snapshots first — filter to funds with AUM > 0
         snapshot_map = self.holdings_repo.get_latest_snapshots_batch(mstar_ids)
         active_funds = [f for f in funds if snapshot_map.get(f.mstar_id, {}).get("aum")]
+
+        # Filter by minimum AUM (param is in crores, DB is in raw rupees)
+        if min_aum is not None and min_aum > 0:
+            min_aum_raw = float(Decimal(str(min_aum)) * AUM_CRORE_MULTIPLIER)
+            active_funds = [
+                f for f in active_funds
+                if float(snapshot_map.get(f.mstar_id, {}).get("aum", 0)) >= min_aum_raw
+            ]
+
         active_ids = [f.mstar_id for f in active_funds]
 
         nav_map = self.fund_repo.get_latest_navs_batch(active_ids)
