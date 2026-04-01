@@ -168,13 +168,13 @@ export default function FundSearch({ onSelect }) {
   const sortFn = useCallback((a, b) => {
     switch (sortBy) {
       case 'composite_desc': {
-        // Composite: AUM rank + 3Y return rank — shows top recognizable, high-performing funds
+        // Composite: AUM-dominant sort — shows biggest, well-performing funds first
+        // 70% AUM weight ensures SBI/HDFC/ICICI show first, 30% return prevents dead funds
         const aumA = Number(a.aum) || 0, aumB = Number(b.aum) || 0;
-        const retA = Number(a.return_3y) || Number(a.return_1y) || -999;
-        const retB = Number(b.return_3y) || Number(b.return_1y) || -999;
-        // Weighted: 40% AUM (normalized to global max) + 60% return
-        const scoreA = (aumA / globalMaxAum) * 0.4 + (retA > 0 ? retA / 100 : 0) * 0.6;
-        const scoreB = (aumB / globalMaxAum) * 0.4 + (retB > 0 ? retB / 100 : 0) * 0.6;
+        const retA = Math.min(Number(a.return_3y) || Number(a.return_1y) || 0, 50); // Cap at 50% to prevent outliers
+        const retB = Math.min(Number(b.return_3y) || Number(b.return_1y) || 0, 50);
+        const scoreA = (aumA / globalMaxAum) * 0.7 + (retA > 0 ? retA / 50 : 0) * 0.3;
+        const scoreB = (aumB / globalMaxAum) * 0.7 + (retB > 0 ? retB / 50 : 0) * 0.3;
         return scoreB - scoreA;
       }
       case 'return_1y_desc': return (Number(b.return_1y) || -999) - (Number(a.return_1y) || -999);

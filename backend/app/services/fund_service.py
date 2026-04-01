@@ -154,10 +154,12 @@ class FundService:
             mstar_id, start_date=start_date,
         )
 
-        # Synthesize NAV from cumulative daily returns when nav column is NULL
-        needs_synthesis = rows and rows[0].get("nav") is None
-        if needs_synthesis:
-            rows = self._synthesize_nav(rows)
+        # Synthesize NAV from cumulative daily returns when most nav values are NULL
+        # Some funds only have the latest NAV but have daily returns for history
+        if rows:
+            null_count = sum(1 for r in rows if r.get("nav") is None)
+            if null_count > len(rows) * 0.5:  # More than 50% null → synthesize
+                rows = self._synthesize_nav(rows)
 
         return [
             {
@@ -392,9 +394,17 @@ class FundService:
             mstar_ids, start_date=start_date,
         )
 
-        # Find first common date across all funds that have data
+        # Synthesize NAV for funds where most rows have null nav
+        for mid, rows in nav_histories.items():
+            if rows:
+                null_count = sum(1 for r in rows if r.get("nav") is None)
+                if null_count > len(rows) * 0.5:
+                    nav_histories[mid] = self._synthesize_nav(rows)
+
+        # Find first common date across all funds that have data (with non-null NAVs)
         funds_with_data = [
-            mid for mid in mstar_ids if nav_histories.get(mid)
+            mid for mid in mstar_ids
+            if nav_histories.get(mid) and any(r.get("nav") is not None for r in nav_histories[mid])
         ]
         if not funds_with_data:
             return {"funds": [], "benchmark": None}
@@ -415,9 +425,10 @@ class FundService:
         funds_result = []
         for mid in funds_with_data:
             series = nav_histories[mid]
-            # Filter to common start date onwards
+            # Filter to common start date onwards, only rows with nav data
             filtered = [
-                r for r in series if r["nav_date"] >= common_start
+                r for r in series
+                if r["nav_date"] >= common_start and r.get("nav") is not None
             ]
             if not filtered:
                 continue
