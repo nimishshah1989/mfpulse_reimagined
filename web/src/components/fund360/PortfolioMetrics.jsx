@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
 import { formatAUM } from '../../lib/format';
+import InfoIcon from '../shared/InfoIcon';
 
 /**
  * PortfolioMetrics — shows fund portfolio-level metrics from holdings snapshot.
@@ -11,14 +11,14 @@ import { formatAUM } from '../../lib/format';
  */
 
 const EQUITY_METRICS = [
-  { key: 'pe_ratio', label: 'P/E Ratio', format: (v) => Number(v).toFixed(1) },
-  { key: 'pb_ratio', label: 'P/B Ratio', format: (v) => Number(v).toFixed(1) },
-  { key: 'ps_ratio', label: 'P/S Ratio', format: (v) => Number(v).toFixed(1) },
-  { key: 'pc_ratio', label: 'P/CF Ratio', format: (v) => Number(v).toFixed(1) },
-  { key: 'avg_market_cap', label: 'Avg Market Cap', format: (v) => formatAUM(Number(v) / 10000000) },
-  { key: 'roe_ttm', label: 'ROE (TTM)', format: (v) => `${Number(v).toFixed(1)}%` },
-  { key: 'roa_ttm', label: 'ROA (TTM)', format: (v) => `${Number(v).toFixed(1)}%` },
-  { key: 'net_margin_ttm', label: 'Net Margin', format: (v) => `${Number(v).toFixed(1)}%` },
+  { key: 'pe_ratio', label: 'P/E Ratio', format: (v) => Number(v).toFixed(1), tip: 'Price-to-Earnings. Lower = cheaper. Compare within same category.' },
+  { key: 'pb_ratio', label: 'P/B Ratio', format: (v) => Number(v).toFixed(1), tip: 'Price-to-Book. Lower = more value-oriented. >4 is expensive for most categories.' },
+  { key: 'ps_ratio', label: 'P/S Ratio', format: (v) => Number(v).toFixed(1), tip: 'Price-to-Sales. Useful for growth companies with low/no earnings.' },
+  { key: 'pc_ratio', label: 'P/CF Ratio', format: (v) => Number(v).toFixed(1), tip: 'Price-to-Cash-Flow. Harder to manipulate than P/E. Lower = better value.' },
+  { key: 'avg_market_cap', label: 'Avg Market Cap', format: (v) => formatAUM(Number(v) / 10000000), tip: 'Weighted average market cap of holdings. Shows if fund leans large/mid/small cap.' },
+  { key: 'roe_ttm', label: 'ROE (TTM)', format: (v) => `${Number(v).toFixed(1)}%`, tip: 'Return on Equity — how efficiently the portfolio companies use shareholder money. Higher = better.' },
+  { key: 'roa_ttm', label: 'ROA (TTM)', format: (v) => `${Number(v).toFixed(1)}%`, tip: 'Return on Assets — overall efficiency. Especially meaningful for banks/financials.' },
+  { key: 'net_margin_ttm', label: 'Net Margin', format: (v) => `${Number(v).toFixed(1)}%`, tip: 'Average net profit margin of portfolio companies. Higher = more profitable businesses.' },
 ];
 
 const BOND_METRICS = [
@@ -49,7 +49,7 @@ export default function PortfolioMetrics({ holdingsData }) {
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       {available.map((m) => (
         <div key={m.key} className="p-2.5 bg-slate-50 rounded-lg">
-          <p className="text-[10px] text-slate-400 mb-0.5">{m.label}</p>
+          <p className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-0.5">{m.label} {m.tip && <InfoIcon tip={m.tip} />}</p>
           <p className="text-sm font-bold font-mono tabular-nums text-slate-800">
             {m.format(holdingsData[m.key])}
           </p>

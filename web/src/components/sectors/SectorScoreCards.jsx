@@ -7,6 +7,7 @@ import { useMemo } from 'react';
 import { QUADRANT_COLORS } from '../../lib/sectors';
 import { formatAUMRaw, formatPct } from '../../lib/format';
 import InfoBulb from '../shared/InfoBulb';
+import InfoIcon from '../shared/InfoIcon';
 
 const QUADRANT_ACTIONS = {
   Leading: { text: 'Overweight', icon: '↑' },
@@ -56,7 +57,7 @@ function SectorCard({ sector, onClick }) {
       {/* RS Score gauge */}
       <div className="mb-2">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[9px] text-slate-400 uppercase">RS Score</span>
+          <span className="text-[9px] text-slate-400 uppercase flex items-center gap-0.5">RS Score <InfoIcon tip="Relative Strength Score (0-100). Measures this sector's AUM-weighted 1Y return vs the average of all 11 sectors. Above 50 = outperforming." /></span>
           <span className="text-sm font-bold tabular-nums" style={{ color: colors.circle }}>
             {Math.round(sector.rs_score)}
           </span>

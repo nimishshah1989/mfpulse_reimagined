@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import SkeletonLoader from '../shared/SkeletonLoader';
+import InfoIcon from '../shared/InfoIcon';
 
 const QUADRANT_COLORS = {
   Leading: { dot: '#059669', badge: 'text-emerald-700 bg-emerald-100', bar: '#059669' },
@@ -234,8 +235,8 @@ function SectorTable({ sectors, onSectorClick }) {
           <tr className="text-[9px] uppercase tracking-wider text-slate-500 border-b border-slate-200">
             <th className="text-left py-1.5 px-1.5 font-semibold">Sector</th>
             <th className="text-left py-1.5 px-1 font-semibold">Zone</th>
-            <th className="text-right py-1.5 px-1 font-semibold">RS</th>
-            <th className="text-right py-1.5 px-1 font-semibold">1M</th>
+            <th className="text-right py-1.5 px-1 font-semibold"><span className="flex items-center justify-end gap-0.5">RS <InfoIcon tip="Relative Strength (0-100). Above 50 = sector outperforming. Based on AUM-weighted fund returns." /></span></th>
+            <th className="text-right py-1.5 px-1 font-semibold"><span className="flex items-center justify-end gap-0.5">1M <InfoIcon tip="1-month momentum — change in RS score from previous month. Positive = sector gaining strength." /></span></th>
             <th className="text-right py-1.5 px-1 font-semibold">3M</th>
             <th className="text-right py-1.5 px-1 font-semibold">1Y Ret</th>
             <th className="text-right py-1.5 px-1 font-semibold">#</th>

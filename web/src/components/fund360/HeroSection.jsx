@@ -194,13 +194,13 @@ export default function HeroSection({ fundDetail, lensScores, mstarId, onCompare
                   </span>
                 )}
                 {aumCr != null && (
-                  <span className="text-[11px] text-slate-400">
-                    AUM: {formatAUM(aumCr)}
+                  <span className="text-[11px] text-slate-400 flex items-center gap-0.5">
+                    AUM: {formatAUM(aumCr)} <InfoIcon tip="Assets Under Management — total money invested in this fund. Larger AUM = more liquid and established." />
                   </span>
                 )}
                 {(fundDetail.net_expense_ratio ?? fundDetail.expense_ratio) != null && (
-                  <span className="text-[11px] text-slate-400">
-                    Expense: {Number(fundDetail.net_expense_ratio ?? fundDetail.expense_ratio).toFixed(2)}%
+                  <span className="text-[11px] text-slate-400 flex items-center gap-0.5">
+                    Expense: {Number(fundDetail.net_expense_ratio ?? fundDetail.expense_ratio).toFixed(2)}% <InfoIcon tip="Total Expense Ratio (TER) — annual fee charged by the fund. Lower = more of your returns stay with you." action="Direct plans typically have 0.5-1% lower expense than Regular plans." />
                   </span>
                 )}
                 {fundDetail.indian_risk_level && (

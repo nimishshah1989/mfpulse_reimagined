@@ -1,17 +1,38 @@
 import Card from '../shared/Card';
 import SkeletonLoader from '../shared/SkeletonLoader';
+import InfoIcon from '../shared/InfoIcon';
 
 const METRIC_CONFIG = [
-  { key: 'sharpe', label: 'Sharpe', good: 'high', greenAbove: 1.0, redBelow: 0.5 },
-  { key: 'sortino', label: 'Sortino', good: 'high', greenAbove: 1.2, redBelow: 0.6 },
-  { key: 'alpha', label: 'Alpha', good: 'high', greenAbove: 2.0, redBelow: 0.0 },
-  { key: 'beta', label: 'Beta', good: 'low', greenBelow: 0.9, redAbove: 1.1 },
-  { key: 'std_dev', label: 'Std Dev', good: 'low', greenBelow: 12, redAbove: 20 },
-  { key: 'max_drawdown', label: 'Max DD', good: 'low', greenBelow: -10, redAbove: -20 },
-  { key: 'treynor', label: 'Treynor', good: 'high', greenAbove: 8, redBelow: 3 },
-  { key: 'info_ratio', label: 'Info Ratio', good: 'high', greenAbove: 0.5, redBelow: 0.0 },
-  { key: 'r_squared', label: 'R-Squared', good: null },
-  { key: 'capture_down', label: 'Capture Down', good: 'low', greenBelow: 90, redAbove: 110 },
+  { key: 'sharpe', label: 'Sharpe', good: 'high', greenAbove: 1.0, redBelow: 0.5,
+    tip: 'Risk-adjusted return. Higher = better return per unit of risk taken.',
+    formula: '(Return - Risk Free) / Std Dev', action: 'Above 1.0 is good. Above 1.5 is excellent.' },
+  { key: 'sortino', label: 'Sortino', good: 'high', greenAbove: 1.2, redBelow: 0.6,
+    tip: 'Like Sharpe but only penalizes downside volatility. Better for asymmetric returns.',
+    formula: '(Return - Risk Free) / Downside Dev', action: 'Above 1.2 is good. Prefers funds that protect on the downside.' },
+  { key: 'alpha', label: 'Alpha', good: 'high', greenAbove: 2.0, redBelow: 0.0,
+    tip: 'Manager skill — excess return above what the benchmark delivered.',
+    formula: 'Fund Return - (Beta × Benchmark Return)', action: 'Positive = manager adding value. >2% is strong.' },
+  { key: 'beta', label: 'Beta', good: 'low', greenBelow: 0.9, redAbove: 1.1,
+    tip: 'Market sensitivity. Beta 1.0 = moves with market. <1 = less volatile than market.',
+    formula: 'Covariance(Fund, Benchmark) / Variance(Benchmark)', action: 'Lower beta = less market risk. >1.1 = amplifies market moves.' },
+  { key: 'std_dev', label: 'Std Dev', good: 'low', greenBelow: 12, redAbove: 20,
+    tip: 'Total volatility — how much the fund\'s returns swing around the average.',
+    formula: 'Annualized standard deviation of monthly returns', action: 'Lower = smoother ride. <12% is low volatility for equity.' },
+  { key: 'max_drawdown', label: 'Max DD', good: 'low', greenBelow: -10, redAbove: -20,
+    tip: 'Worst peak-to-trough decline. Shows the maximum pain an investor experienced.',
+    action: 'Smaller (closer to 0) = better downside protection. >-20% is concerning.' },
+  { key: 'treynor', label: 'Treynor', good: 'high', greenAbove: 8, redBelow: 3,
+    tip: 'Return per unit of systematic (market) risk.',
+    formula: '(Return - Risk Free) / Beta', action: 'Higher = better compensation for market risk taken.' },
+  { key: 'info_ratio', label: 'Info Ratio', good: 'high', greenAbove: 0.5, redBelow: 0.0,
+    tip: 'Consistency of outperformance vs benchmark. Measures skill reliability.',
+    formula: 'Alpha / Tracking Error', action: 'Above 0.5 = consistently beating benchmark. Above 1.0 = exceptional.' },
+  { key: 'r_squared', label: 'R-Squared', good: null,
+    tip: 'How closely fund tracks its benchmark. 100 = perfect correlation.',
+    action: 'High R² means beta/alpha are reliable. Low R² = fund diverges from benchmark.' },
+  { key: 'capture_down', label: 'Capture Down', good: 'low', greenBelow: 90, redAbove: 110,
+    tip: 'How much of market decline the fund captures. Lower = better protection.',
+    formula: 'Fund downside return / Benchmark downside return × 100', action: '<90% = fund falls less than market. >110% = falls more.' },
 ];
 
 const TIMEFRAMES = ['1y', '3y', '5y'];
@@ -124,7 +145,10 @@ export default function RiskStatsGrid({ riskStats, categoryAvgRisk }) {
             {METRIC_CONFIG.map((metric) => (
               <tr key={metric.key} className="border-b border-slate-100">
                 <td className="py-2 pr-4">
-                  <div className="text-xs font-medium text-slate-600">{metric.label}</div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-medium text-slate-600">{metric.label}</span>
+                    <InfoIcon tip={metric.tip} formula={metric.formula} action={metric.action} />
+                  </div>
                   {getThresholdLabel(metric) && (
                     <div className="text-[10px] text-slate-400 mt-0.5">{getThresholdLabel(metric)}</div>
                   )}
