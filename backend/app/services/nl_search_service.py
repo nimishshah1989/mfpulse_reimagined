@@ -246,6 +246,8 @@ class NLSearchService:
             .filter(
                 FundMaster.purchase_mode == 1,
                 FundLensScores.computed_date == latest_lens,
+                ~FundMaster.fund_name.ilike('%IDCW%'),
+                ~FundMaster.fund_name.ilike('%Segregated%'),
             )
         )
 
@@ -330,9 +332,24 @@ class NLSearchService:
                 else:
                     query = query.filter(col <= Decimal(str(nf["value"])))
 
-        # Sort
-        sort_col = getattr(FundLensScores, parsed.get("sort_by") or "return_score", FundLensScores.return_score)
-        query = query.order_by(sort_col.desc().nulls_last())
+        # Sort by composite quality: average of all available lens scores (best funds first)
+        from sqlalchemy import case
+        composite = (
+            func.coalesce(FundLensScores.return_score, 0) +
+            func.coalesce(FundLensScores.risk_score, 0) +
+            func.coalesce(FundLensScores.consistency_score, 0) +
+            func.coalesce(FundLensScores.alpha_score, 0) +
+            func.coalesce(FundLensScores.efficiency_score, 0) +
+            func.coalesce(FundLensScores.resilience_score, 0)
+        )
+        if parsed.get("sort_by"):
+            sort_col = getattr(FundLensScores, parsed["sort_by"], None)
+            if sort_col:
+                query = query.order_by(sort_col.desc().nulls_last())
+            else:
+                query = query.order_by(composite.desc())
+        else:
+            query = query.order_by(composite.desc())
 
         rows = query.limit(limit).all()
 

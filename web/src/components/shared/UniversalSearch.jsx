@@ -181,7 +181,12 @@ export default function UniversalSearch() {
     };
 
     recognition.onend = () => setListening(false);
-    recognition.onerror = () => setListening(false);
+    recognition.onerror = (event) => {
+      setListening(false);
+      if (event.error === 'not-allowed') {
+        alert('Microphone access denied. Please allow microphone in browser settings.');
+      }
+    };
 
     recognitionRef.current = recognition;
     recognition.start();
