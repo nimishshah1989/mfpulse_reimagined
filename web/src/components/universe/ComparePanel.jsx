@@ -7,7 +7,7 @@ import { useRouter } from 'next/router';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { formatPct, formatAUM } from '../../lib/format';
+import { formatPct, formatAUM, formatINR } from '../../lib/format';
 import { scoreColor } from '../../lib/lens';
 
 const FUND_COLORS = ['#0f766e', '#1e40af', '#0369a1', '#b45309', '#7c3aed'];
@@ -85,12 +85,12 @@ export default function ComparePanel({
     navData.funds.forEach((fundSeries, idx) => {
       (fundSeries.data || []).forEach(({ date, value }) => {
         if (!dateMap[date]) dateMap[date] = { date };
-        dateMap[date][`fund_${idx}`] = value;
+        dateMap[date][`fund_${idx}`] = Number(value);
       });
     });
     if (navData.benchmark) {
       navData.benchmark.forEach(({ date, value }) => {
-        if (dateMap[date]) dateMap[date].benchmark = value;
+        if (dateMap[date]) dateMap[date].benchmark = Number(value);
       });
     }
     return Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date));
@@ -102,7 +102,7 @@ export default function ComparePanel({
     riskData.funds.forEach((fundSeries, idx) => {
       (fundSeries.data || []).forEach(({ date, value }) => {
         if (!dateMap[date]) dateMap[date] = { date };
-        dateMap[date][`fund_${idx}`] = value;
+        dateMap[date][`fund_${idx}`] = Number(value);
       });
     });
     return Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date));
@@ -212,7 +212,7 @@ export default function ComparePanel({
                 />
                 <Tooltip
                   contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0' }}
-                  formatter={(v) => [`₹${Number(v).toLocaleString('en-IN')}`, '']}
+                  formatter={(v) => [formatINR(v, 0), '']}
                   labelFormatter={(l) => l}
                 />
                 {selectedFunds.map((f, i) => (

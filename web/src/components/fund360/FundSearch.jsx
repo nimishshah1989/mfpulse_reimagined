@@ -209,7 +209,7 @@ export default function FundSearch({ onSelect }) {
       avgReturn,
       leaders,
       avoidZone,
-      totalAumLCr: totalAumCr >= 100000 ? `${(totalAumCr / 100000).toFixed(1)}L Cr` : `${Math.round(totalAumCr).toLocaleString('en-IN')} Cr`,
+      totalAumLCr: totalAumCr >= 100000 ? `${(totalAumCr / 100000).toFixed(1)}L Cr` : `${formatCount(Math.round(totalAumCr))} Cr`,
     };
   }, [universe]);
 
@@ -266,8 +266,8 @@ export default function FundSearch({ onSelect }) {
 
       const totalMatches = filtered.length;
       label = totalMatches > 200
-        ? `Showing 200 of ${totalMatches.toLocaleString('en-IN')} funds`
-        : `${totalMatches.toLocaleString('en-IN')} funds`;
+        ? `Showing 200 of ${formatCount(totalMatches)} funds`
+        : `${formatCount(totalMatches)} funds`;
     }
 
     const sorted = filtered.sort(sortFn).slice(0, 200);
@@ -303,7 +303,7 @@ export default function FundSearch({ onSelect }) {
               Scores updated
             </span>
             <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
-              {universeStats.total.toLocaleString('en-IN')} funds
+              {formatCount(universeStats.total)} funds
             </span>
           </div>
         )}
@@ -314,7 +314,7 @@ export default function FundSearch({ onSelect }) {
         <div className="flex gap-5 px-5 py-3.5 bg-white rounded-xl border border-slate-200">
           <div className="text-center flex-1">
             <p className="text-[9px] text-slate-400 uppercase tracking-wider">Total Funds</p>
-            <p className="text-lg font-extrabold font-mono tabular-nums text-slate-800 mt-0.5">{universeStats.total.toLocaleString('en-IN')}</p>
+            <p className="text-lg font-extrabold font-mono tabular-nums text-slate-800 mt-0.5">{formatCount(universeStats.total)}</p>
           </div>
           <div className="text-center flex-1">
             <p className="text-[9px] text-slate-400 uppercase tracking-wider">Avg 1Y Return</p>
@@ -324,11 +324,11 @@ export default function FundSearch({ onSelect }) {
           </div>
           <div className="text-center flex-1">
             <p className="text-[9px] text-slate-400 uppercase tracking-wider">Leaders</p>
-            <p className="text-lg font-extrabold font-mono tabular-nums text-emerald-600 mt-0.5">{universeStats.leaders.toLocaleString('en-IN')}</p>
+            <p className="text-lg font-extrabold font-mono tabular-nums text-emerald-600 mt-0.5">{formatCount(universeStats.leaders)}</p>
           </div>
           <div className="text-center flex-1">
             <p className="text-[9px] text-slate-400 uppercase tracking-wider">Avoid Zone</p>
-            <p className="text-lg font-extrabold font-mono tabular-nums text-red-600 mt-0.5">{universeStats.avoidZone.toLocaleString('en-IN')}</p>
+            <p className="text-lg font-extrabold font-mono tabular-nums text-red-600 mt-0.5">{formatCount(universeStats.avoidZone)}</p>
           </div>
           <div className="text-center flex-1">
             <p className="text-[9px] text-slate-400 uppercase tracking-wider">Total AUM</p>

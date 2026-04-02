@@ -1,6 +1,13 @@
-"""Central v1 router — mounts all sub-routers."""
+"""Central v1 router — mounts all sub-routers.
 
-from fastapi import APIRouter
+Admin-only routers (mutation endpoints) get require_admin_key as a
+router-level dependency so every POST/PUT/DELETE is protected.
+Read-only routers (categories, dashboard, etc.) are left open.
+"""
+
+from fastapi import APIRouter, Depends
+
+from app.core.auth import require_admin_key
 
 from app.api.v1.system import router as system_router
 from app.api.v1.ingestion import router as ingestion_router
@@ -21,22 +28,31 @@ from app.api.v1.sectors import router as sectors_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.portfolio_analytics import router as portfolio_analytics_router
 
+_admin = [Depends(require_admin_key)]
+
 api_v1_router = APIRouter(prefix="/api/v1")
+
+# Read-only routers — no auth required
 api_v1_router.include_router(system_router)
-api_v1_router.include_router(ingestion_router)
-api_v1_router.include_router(fetch_router)
-api_v1_router.include_router(marketpulse_router)
-api_v1_router.include_router(funds_router)
 api_v1_router.include_router(categories_router)
-api_v1_router.include_router(holdings_router)
-api_v1_router.include_router(lens_router)
-api_v1_router.include_router(simulation_router)
-api_v1_router.include_router(strategies_router)
-api_v1_router.include_router(overrides_router)
-api_v1_router.include_router(audit_router)
-api_v1_router.include_router(jobs_router)
-api_v1_router.include_router(backfill_router)
-api_v1_router.include_router(claude_router)
-api_v1_router.include_router(sectors_router)
 api_v1_router.include_router(dashboard_router)
 api_v1_router.include_router(portfolio_analytics_router)
+
+# Mixed routers — contain both reads and mutations.
+# Auth is applied per-endpoint inside each router file.
+api_v1_router.include_router(funds_router)
+api_v1_router.include_router(holdings_router)
+api_v1_router.include_router(lens_router)
+api_v1_router.include_router(marketpulse_router)
+api_v1_router.include_router(sectors_router)
+api_v1_router.include_router(simulation_router)
+api_v1_router.include_router(claude_router)
+
+# Admin-only routers — every endpoint requires admin key
+api_v1_router.include_router(ingestion_router, dependencies=_admin)
+api_v1_router.include_router(fetch_router, dependencies=_admin)
+api_v1_router.include_router(backfill_router, dependencies=_admin)
+api_v1_router.include_router(strategies_router, dependencies=_admin)
+api_v1_router.include_router(overrides_router, dependencies=_admin)
+api_v1_router.include_router(jobs_router, dependencies=_admin)
+api_v1_router.include_router(audit_router, dependencies=_admin)

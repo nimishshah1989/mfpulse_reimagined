@@ -1,4 +1,4 @@
-import { formatPct, formatAUM } from '../../lib/format';
+import { formatPct, formatAUM, formatCount } from '../../lib/format';
 import { LENS_OPTIONS, LENS_CLASS_KEYS, scoreColor } from '../../lib/lens';
 import Badge from '../shared/Badge';
 
@@ -77,7 +77,7 @@ export default function FundListView({ funds, onSelect }) {
               {ret1y != null ? formatPct(ret1y) : '\u2014'}
             </span>
             <span className="text-right font-mono tabular-nums text-slate-700">
-              {aumCr != null ? Math.round(aumCr).toLocaleString('en-IN') : '\u2014'}
+              {aumCr != null ? formatCount(Math.round(aumCr)) : '\u2014'}
             </span>
             <span className={`text-right font-mono tabular-nums font-semibold ${sharpe != null && sharpe >= 1 ? 'text-emerald-600' : sharpe != null && sharpe >= 0.5 ? 'text-amber-600' : 'text-red-600'}`}>
               {sharpe != null ? sharpe.toFixed(2) : '\u2014'}

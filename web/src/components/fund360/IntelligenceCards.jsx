@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchFundIntelligence } from '../../lib/api';
-import { formatPct } from '../../lib/format';
+import { formatPct, formatINR } from '../../lib/format';
 
 const SIGNAL_COLORS = {
   bullish: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', icon: '↑' },
@@ -82,7 +82,7 @@ export default function IntelligenceCards({ mstarId }) {
                     {f.fund_name}
                   </span>
                   <span className="font-mono tabular-nums font-bold text-slate-700">
-                    {f.sharpe_3y?.toFixed(2) || '—'}
+                    {f.sharpe_3y != null ? Number(f.sharpe_3y).toFixed(2) : '—'}
                   </span>
                 </div>
               ))}
@@ -102,30 +102,30 @@ export default function IntelligenceCards({ mstarId }) {
         {sip_intelligence ? (
           <>
             <p className="text-xs text-slate-500 mb-2">
-              ₹{(sip_intelligence.monthly_sip || 0).toLocaleString('en-IN')}/mo for {sip_intelligence.period_years || 5}Y
+              {formatINR(sip_intelligence.monthly_sip || 0, 0)}/mo for {sip_intelligence.period_years || 5}Y
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-[10px] text-slate-400">Invested</p>
                 <p className="text-sm font-bold font-mono tabular-nums text-slate-700">
-                  ₹{((sip_intelligence.invested || 0) / 100000).toFixed(1)}L
+                  ₹{(Number(sip_intelligence.invested || 0) / 100000).toFixed(1)}L
                 </p>
               </div>
               <div>
                 <p className="text-[10px] text-slate-400">Current Value</p>
                 <p className="text-sm font-bold font-mono tabular-nums text-emerald-700">
-                  ₹{((sip_intelligence.current_value || 0) / 100000).toFixed(1)}L
+                  ₹{(Number(sip_intelligence.current_value || 0) / 100000).toFixed(1)}L
                 </p>
               </div>
               <div>
                 <p className="text-[10px] text-slate-400">XIRR</p>
-                <p className={`text-sm font-bold font-mono tabular-nums ${sip_intelligence.xirr >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                <p className={`text-sm font-bold font-mono tabular-nums ${Number(sip_intelligence.xirr) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   {sip_intelligence.xirr}%
                 </p>
               </div>
               <div>
                 <p className="text-[10px] text-slate-400">Gain</p>
-                <p className={`text-sm font-bold font-mono tabular-nums ${sip_intelligence.gain_pct >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                <p className={`text-sm font-bold font-mono tabular-nums ${Number(sip_intelligence.gain_pct) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   +{sip_intelligence.gain_pct}%
                 </p>
               </div>

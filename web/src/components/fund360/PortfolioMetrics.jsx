@@ -1,4 +1,4 @@
-import { formatAUM } from '../../lib/format';
+import { formatAUM, formatCount } from '../../lib/format';
 import InfoIcon from '../shared/InfoIcon';
 
 /**
@@ -31,7 +31,7 @@ const BOND_METRICS = [
 const COMMON_METRICS = [
   { key: 'equity_style_box', label: 'Style Box', format: (v) => v },
   { key: 'bond_style_box', label: 'FI Style Box', format: (v) => v },
-  { key: 'num_holdings', label: 'Holdings', format: (v) => Number(v).toLocaleString('en-IN') },
+  { key: 'num_holdings', label: 'Holdings', format: (v) => formatCount(v) },
   { key: 'turnover_ratio', label: 'Turnover', format: (v) => `${Number(v).toFixed(0)}%` },
   { key: 'prospective_div_yield', label: 'Div Yield', format: (v) => `${Number(v).toFixed(2)}%` },
   { key: 'est_fund_net_flow', label: 'Est. Net Flow', format: (v) => formatAUM(Number(v) / 10000000) },

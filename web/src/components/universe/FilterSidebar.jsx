@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import Pill from '../shared/Pill';
 import { LENS_OPTIONS } from '../../lib/lens';
+import { formatCount } from '../../lib/format';
 
 const BROAD_CATEGORIES = ['Equity', 'Debt', 'Hybrid', 'Solution Oriented', 'Other'];
 
@@ -143,7 +144,7 @@ function SearchableMultiSelect({ label, options, selected, onChange, countMap })
                   </span>
                   <span className="truncate flex-1 text-left">{item}</span>
                   {count > 0 && (
-                    <span className="font-mono text-[10px] text-slate-400">{Number(count).toLocaleString('en-IN')}</span>
+                    <span className="font-mono text-[10px] text-slate-400">{formatCount(count)}</span>
                   )}
                 </button>
               );

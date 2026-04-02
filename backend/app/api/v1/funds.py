@@ -278,12 +278,12 @@ def compare_nav_history(
             "meta": {"timestamp": Meta().timestamp, "count": len(data.get("funds", []))},
             "error": None,
         }
-    except Exception as exc:
+    except Exception:
         logger.exception("compare_nav_history failed")
         return {
             "success": False,
             "data": None,
-            "error": {"code": "INTERNAL_ERROR", "message": str(exc)},
+            "error": {"code": "INTERNAL_ERROR", "message": "Failed to compare NAV history"},
         }
 
 
@@ -316,12 +316,12 @@ def compare_risk_history(
             "meta": {"timestamp": Meta().timestamp, "count": len(data.get("funds", []))},
             "error": None,
         }
-    except Exception as exc:
+    except Exception:
         logger.exception("compare_risk_history failed")
         return {
             "success": False,
             "data": None,
-            "error": {"code": "INTERNAL_ERROR", "message": str(exc)},
+            "error": {"code": "INTERNAL_ERROR", "message": "Failed to compare risk history"},
         }
 
 

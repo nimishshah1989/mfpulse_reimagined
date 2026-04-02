@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
@@ -70,6 +71,7 @@ class MarketPulseClient:
         self.timeout = min(timeout, 10)  # never wait more than 10s for MP
         self.db = db
         self._mem: dict[str, _MemEntry] = {}
+        self._mem_lock = threading.Lock()
 
     # ── Public read methods (used by API endpoints) ──
 
@@ -111,7 +113,8 @@ class MarketPulseClient:
             data = self._fetch_live(path, params)
             if data is not None:
                 self._write_db(cache_key, data)
-                self._mem[cache_key] = _MemEntry(data, MEMORY_TTL)
+                with self._mem_lock:
+                    self._mem[cache_key] = _MemEntry(data, MEMORY_TTL)
                 results[cache_key] = True
                 logger.info("MP sync OK: %s", cache_key)
             else:
@@ -133,15 +136,17 @@ class MarketPulseClient:
 
     def _read_cached(self, cache_key: str) -> Optional[Any]:
         """Read priority: memory cache → DB cache → live fetch (if DB stale)."""
-        # 1. Memory cache
-        mem = self._mem.get(cache_key)
-        if mem and mem.is_valid:
-            return mem.data
+        # 1. Memory cache (thread-safe read)
+        with self._mem_lock:
+            mem = self._mem.get(cache_key)
+            if mem and mem.is_valid:
+                return mem.data
 
         # 2. DB cache
         db_data, db_age_hours = self._read_db(cache_key)
         if db_data is not None:
-            self._mem[cache_key] = _MemEntry(db_data, MEMORY_TTL)
+            with self._mem_lock:
+                self._mem[cache_key] = _MemEntry(db_data, MEMORY_TTL)
             # If DB data is fresh enough, use it
             if db_age_hours is not None and db_age_hours < DB_STALE_HOURS:
                 return db_data
@@ -149,7 +154,8 @@ class MarketPulseClient:
             live = self._fetch_live_for_key(cache_key)
             if live is not None:
                 self._write_db(cache_key, live)
-                self._mem[cache_key] = _MemEntry(live, MEMORY_TTL)
+                with self._mem_lock:
+                    self._mem[cache_key] = _MemEntry(live, MEMORY_TTL)
                 return live
             # Live failed — serve stale DB data (better than nothing)
             logger.info("Serving stale DB cache for %s (%.1fh old)", cache_key, db_age_hours or 0)
@@ -159,7 +165,8 @@ class MarketPulseClient:
         live = self._fetch_live_for_key(cache_key)
         if live is not None:
             self._write_db(cache_key, live)
-            self._mem[cache_key] = _MemEntry(live, MEMORY_TTL)
+            with self._mem_lock:
+                self._mem[cache_key] = _MemEntry(live, MEMORY_TTL)
             return live
 
         return None

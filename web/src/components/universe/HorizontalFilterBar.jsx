@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { formatCount } from '../../lib/format';
 
 const AUM_RANGES = [
   { label: 'Any AUM', min: 0, max: Infinity },
@@ -139,8 +140,8 @@ export default function HorizontalFilterBar({
           {dataFilters}
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-sm font-bold text-teal-600 tabular-nums">{filteredCount.toLocaleString('en-IN')}</p>
-          <p className="text-[11px] text-slate-400">of {totalCount.toLocaleString('en-IN')} shown</p>
+          <p className="text-sm font-bold text-teal-600 tabular-nums">{formatCount(filteredCount)}</p>
+          <p className="text-[11px] text-slate-400">of {formatCount(totalCount)} shown</p>
         </div>
       </div>
 
@@ -149,8 +150,8 @@ export default function HorizontalFilterBar({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-xs font-bold text-teal-600 tabular-nums">{filteredCount.toLocaleString('en-IN')}</p>
-              <p className="text-[9px] text-slate-400">of {totalCount.toLocaleString('en-IN')}</p>
+              <p className="text-xs font-bold text-teal-600 tabular-nums">{formatCount(filteredCount)}</p>
+              <p className="text-[9px] text-slate-400">of {formatCount(totalCount)}</p>
             </div>
             <button
               type="button"

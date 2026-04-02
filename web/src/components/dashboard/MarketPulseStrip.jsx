@@ -1,3 +1,4 @@
+import { formatINR } from '@/lib/format';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import InfoIcon from '../shared/InfoIcon';
 
@@ -16,7 +17,7 @@ function changePctColor(pct) {
 
 function formatPrice(num) {
   if (num == null) return '\u2014';
-  return Number(num).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+  return formatINR(num, 0);
 }
 
 function formatChangePct(pct) {

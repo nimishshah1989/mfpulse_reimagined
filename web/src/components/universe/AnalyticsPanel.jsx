@@ -4,7 +4,7 @@
  *        Cap & Style Positioning, Valuation Pulse.
  */
 import { useState, useMemo } from 'react';
-import { formatPct, formatAUM } from '../../lib/format';
+import { formatPct, formatAUM, formatCount } from '../../lib/format';
 import { scoreColor } from '../../lib/lens';
 import FundListPanel from '../shared/FundListPanel';
 
@@ -241,7 +241,7 @@ function AMCLandscapeCard({ funds }) {
                   <span className={`text-[10px] font-bold tabular-nums w-[40px] text-right shrink-0 ${returnColorClass(a.avgReturn)}`}>
                     {formatPct(a.avgReturn)}
                   </span>
-                  <span className="text-[9px] text-slate-400 w-[25px] text-right shrink-0">{a.count.toLocaleString('en-IN')}</span>
+                  <span className="text-[9px] text-slate-400 w-[25px] text-right shrink-0">{formatCount(a.count)}</span>
                   <svg
                     className={`w-3 h-3 text-slate-300 group-hover:text-teal-500 transition-all ${isExpanded ? 'rotate-90' : ''}`}
                     fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}

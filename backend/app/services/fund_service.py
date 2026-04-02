@@ -310,10 +310,10 @@ class FundService:
 
         # Filter by minimum AUM (param is in crores, DB is in raw rupees)
         if min_aum is not None and min_aum > 0:
-            min_aum_raw = float(Decimal(str(min_aum)) * AUM_CRORE_MULTIPLIER)
+            min_aum_raw = Decimal(str(min_aum)) * AUM_CRORE_MULTIPLIER
             active_funds = [
                 f for f in active_funds
-                if float(snapshot_map.get(f.mstar_id, {}).get("aum", 0)) >= min_aum_raw
+                if Decimal(str(snapshot_map.get(f.mstar_id, {}).get("aum", 0))) >= min_aum_raw
             ]
 
         active_ids = [f.mstar_id for f in active_funds]
@@ -505,7 +505,7 @@ class FundService:
                 )
                 normalized.append({
                     "date": str(r["nav_date"]),
-                    "value": float(norm_val),
+                    "value": str(norm_val),
                 })
 
             funds_result.append({

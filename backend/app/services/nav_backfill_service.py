@@ -124,6 +124,14 @@ class BackfillProgress:
         self._started_at: str | None = None
         self._current_fund: str | None = None
 
+    def try_start(self) -> bool:
+        """Atomically check if already running and mark as starting. Returns False if already running."""
+        with self._lock:
+            if self._running:
+                return False
+            self._running = True
+            return True
+
     def start(self, total: int) -> None:
         with self._lock:
             self._total_funds = total

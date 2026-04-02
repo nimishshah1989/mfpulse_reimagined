@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import SectionTitle from '../shared/SectionTitle';
-import { formatPct, isOtherCategory } from '../../lib/format';
+import { formatPct, formatCount, isOtherCategory } from '../../lib/format';
 
 const PERIOD_OPTIONS = [
   { key: 'return_1m', label: '1M' },
@@ -35,7 +35,7 @@ function CategoryTile({ category, count, avgReturn, large, onClick }) {
         <p className={`text-2xl font-bold ${colors.text} tabular-nums mt-1`}>
           {avgReturn != null ? formatPct(avgReturn) : '--'}
         </p>
-        <p className={`text-[10px] ${colors.text} mt-0.5`}>{Number(count).toLocaleString('en-IN')} funds</p>
+        <p className={`text-[10px] ${colors.text} mt-0.5`}>{formatCount(count)} funds</p>
       </div>
     );
   }
@@ -50,7 +50,7 @@ function CategoryTile({ category, count, avgReturn, large, onClick }) {
         <p className={`text-lg font-bold ${colors.text} tabular-nums`}>
           {avgReturn != null ? formatPct(avgReturn) : '--'}
         </p>
-        <p className={`text-[10px] ${colors.text}`}>{Number(count).toLocaleString('en-IN')} funds</p>
+        <p className={`text-[10px] ${colors.text}`}>{formatCount(count)} funds</p>
       </div>
     );
   }
@@ -64,7 +64,7 @@ function CategoryTile({ category, count, avgReturn, large, onClick }) {
       <p className={`text-sm font-bold ${colors.text} tabular-nums`}>
         {avgReturn != null ? formatPct(avgReturn) : '--'}
       </p>
-      <p className="text-[10px] text-slate-500">{Number(count).toLocaleString('en-IN')} funds</p>
+      <p className="text-[10px] text-slate-500">{formatCount(count)} funds</p>
     </div>
   );
 }

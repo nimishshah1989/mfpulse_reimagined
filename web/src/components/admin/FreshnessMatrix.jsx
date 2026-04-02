@@ -1,4 +1,5 @@
 import InfoIcon from '../shared/InfoIcon';
+import { formatCount } from '../../lib/format';
 
 const DOMAINS = [
   { domain: 'NAV & Returns', table: 'nav_daily', expected: 'Daily', threshold: { amber: 1, red: 3 } },
@@ -76,7 +77,7 @@ export default function FreshnessMatrix({ freshness }) {
                   <div className="flex justify-between text-[10px]">
                     <span className="text-slate-400">Records</span>
                     <span className="font-mono text-slate-600 tabular-nums">
-                      {Number(data.record_count).toLocaleString('en-IN')}
+                      {formatCount(data.record_count)}
                     </span>
                   </div>
                 )}

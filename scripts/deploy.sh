@@ -87,8 +87,9 @@ deploy_frontend() {
     echo ">>> Building frontend on EC2 (pnpm build)..."
     ssh_cmd "cd $PROJECT_DIR/web && pnpm install --frozen-lockfile 2>/dev/null && pnpm build"
 
-    echo ">>> Copying static files into container..."
-    ssh_cmd "docker exec $CONTAINER rm -rf /app/web/out && docker cp $PROJECT_DIR/web/out/. $CONTAINER:/app/web/out/"
+    echo ">>> Copying static files into container (atomic swap)..."
+    ssh_cmd "docker cp $PROJECT_DIR/web/out/. $CONTAINER:/app/web/out_new/ \
+        && docker exec $CONTAINER sh -c 'rm -rf /app/web/out_old; mv /app/web/out /app/web/out_old 2>/dev/null || true; mv /app/web/out_new /app/web/out; rm -rf /app/web/out_old'"
 
     echo "    Frontend deployed (no restart needed — FastAPI serves static files)"
 }

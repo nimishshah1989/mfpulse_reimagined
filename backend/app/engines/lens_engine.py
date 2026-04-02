@@ -485,7 +485,7 @@ class LensEngine:
                 # Use max_drawdown as proxy for worst year when no CY data
                 worst_cy_raw[fid] = dd_raw[fid]
 
-        dd_pct = self._percentile_rank(dd_raw, higher_is_better=False)
+        dd_pct = self._percentile_rank(dd_raw, higher_is_better=True)  # Negative values: -5 > -25, less negative = better
         dc_pct = self._percentile_rank(dc_raw, higher_is_better=False)
         ud_pct = self._percentile_rank(ud_ratio_raw, higher_is_better=True)
         worst_pct = self._percentile_rank(worst_cy_raw, higher_is_better=True)
@@ -639,7 +639,12 @@ class LensEngine:
 
         present = 0
         for key in expected_keys:
-            val = ret.get(key) or rs.get(key) or rk.get(key)
+            # Use explicit None checks — Decimal("0") is a valid data point
+            val = ret.get(key)
+            if val is None:
+                val = rs.get(key)
+            if val is None:
+                val = rk.get(key)
             if val is not None:
                 present += 1
 

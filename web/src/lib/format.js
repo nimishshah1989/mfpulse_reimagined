@@ -82,7 +82,20 @@ export function formatScore(num) {
  */
 export function formatCount(num) {
   if (num == null) return '0';
-  return Number(num).toLocaleString('en-IN');
+  const n = Number(num);
+  if (isNaN(n)) return '0';
+  const sign = n < 0 ? '\u2212' : '';
+  const intStr = Math.round(Math.abs(n)).toString();
+  if (intStr.length <= 3) return `${sign}${intStr}`;
+  const lastThree = intStr.slice(-3);
+  let rest = intStr.slice(0, -3);
+  const parts = [];
+  while (rest.length > 2) {
+    parts.unshift(rest.slice(-2));
+    rest = rest.slice(0, -2);
+  }
+  if (rest.length > 0) parts.unshift(rest);
+  return `${sign}${parts.join(',')},${lastThree}`;
 }
 
 /**

@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_admin_key
 from app.core.database import get_db
 from app.models.schemas.responses import Meta
 from app.repositories.lens_repo import LensRepository
@@ -112,7 +113,7 @@ def get_distribution(
     }
 
 
-@router.post("/compute")
+@router.post("/compute", dependencies=[Depends(require_admin_key)])
 def trigger_computation(
     category: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -139,7 +140,7 @@ def trigger_computation(
     }
 
 
-@router.post("/compute/{mstar_id}")
+@router.post("/compute/{mstar_id}", dependencies=[Depends(require_admin_key)])
 def trigger_single_fund(
     mstar_id: str,
     db: Session = Depends(get_db),

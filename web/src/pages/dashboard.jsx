@@ -12,6 +12,7 @@ import {
   fetchFundArchetypes,
 } from '../lib/api';
 import { cachedFetch } from '../lib/cache';
+import { formatCount } from '../lib/format';
 import MarketPulseStrip from '../components/dashboard/MarketPulseStrip';
 import SectorRotation from '../components/dashboard/SectorRotation';
 import FundExposureBridge from '../components/dashboard/FundExposureBridge';
@@ -82,7 +83,7 @@ function UniversalFilterBar({ totalCount, filteredCount }) {
 
       <span className="text-[11px] text-slate-500 ml-auto tabular-nums">
         {filteredCount != null && totalCount != null
-          ? `${filteredCount.toLocaleString('en-IN')} funds`
+          ? `${formatCount(filteredCount)} funds`
           : ''}
       </span>
     </div>

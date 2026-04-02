@@ -11,7 +11,7 @@ import {
   Legend,
 } from 'recharts';
 import { fetchNAVHistory } from '../../lib/api';
-import { formatPct } from '../../lib/format';
+import { formatPct, formatINR } from '../../lib/format';
 import {
   PERIODS, PERIOD_LABELS, NIFTY_CAGR,
   synthBenchmarkSeries, formatAxisDate, downsample,
@@ -30,7 +30,7 @@ function TooltipContent({ active, payload }) {
           <span className="w-2 h-2 rounded-full bg-teal-600 inline-block" />
           <span className="text-xs text-slate-500">Fund</span>
           <span className="font-mono tabular-nums text-sm font-bold text-slate-900 ml-auto">
-            {'\u20B9'}{Number(row.fundGrowth).toLocaleString('en-IN')}
+            {formatINR(row.fundGrowth, 0)}
           </span>
         </div>
       )}
@@ -39,7 +39,7 @@ function TooltipContent({ active, payload }) {
           <span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />
           <span className="text-xs text-slate-500">Nifty 50</span>
           <span className="font-mono tabular-nums text-sm font-semibold text-slate-600 ml-auto">
-            {'\u20B9'}{Number(row.niftyGrowth).toLocaleString('en-IN')}
+            {formatINR(row.niftyGrowth, 0)}
           </span>
         </div>
       )}
@@ -204,7 +204,7 @@ export default function PerformanceChart({ mstarId, initialData = [], fundReturn
             <div className="bg-gradient-to-br from-teal-50/50 to-slate-50 rounded-xl p-3">
               <p className="text-[10px] text-slate-400 mb-1">Fund — {'\u20B9'}10,000 invested</p>
               <p className="text-xl font-bold font-mono tabular-nums text-slate-900">
-                {'\u20B9'}{growthOf10k.toLocaleString('en-IN')}
+                {formatINR(growthOf10k, 0)}
               </p>
               {periodChange != null && (
                 <p className={`text-xs font-semibold ${isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -218,12 +218,11 @@ export default function PerformanceChart({ mstarId, initialData = [], fundReturn
             <div className="bg-gradient-to-br from-slate-50 to-white rounded-xl p-3 border border-slate-100">
               <p className="text-[10px] text-slate-400 mb-1">Nifty 50 TRI — {'\u20B9'}10,000</p>
               <p className="text-lg font-bold font-mono tabular-nums text-slate-600">
-                {'\u20B9'}{niftyFinal.toLocaleString('en-IN')}
+                {formatINR(niftyFinal, 0)}
               </p>
               {growthOf10k != null && (
                 <p className={`text-[10px] font-semibold ${growthOf10k > niftyFinal ? 'text-emerald-600' : 'text-red-600'}`}>
-                  Fund {growthOf10k > niftyFinal ? 'beats' : 'trails'} Nifty by {'\u20B9'}
-                  {Math.abs(growthOf10k - niftyFinal).toLocaleString('en-IN')}
+                  Fund {growthOf10k > niftyFinal ? 'beats' : 'trails'} Nifty by {formatINR(Math.abs(growthOf10k - niftyFinal), 0)}
                 </p>
               )}
             </div>

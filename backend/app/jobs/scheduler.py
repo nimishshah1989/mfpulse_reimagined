@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
@@ -38,13 +39,16 @@ JOB_SCHEDULES = {
     "lens_recompute": "Monthly 7th BD 9:00 AM IST",
     "marketpulse_sync": "Daily 9:45 PM IST",
     "expire_overrides": "Daily midnight IST",
-    "fetch_nav": "Daily 9:30 PM IST (API)",
+    "fetch_nav": "Daily 10:00 PM IST (API)",
     "fetch_full": "Weekly Sun 11:00 PM IST (API)",
     "sector_rotation": "Monthly 8th 10:00 AM IST",
-    "aum_sync": "Daily 10:00 PM IST",
-    "cache_warm": "Daily 10:15 PM IST + 6:15 AM IST",
+    "aum_sync": "Daily 10:30 PM IST",
+    "cache_warm": "Daily 10:45 PM IST + 6:15 AM IST",
     "cache_cleanup": "Daily 3:00 AM IST",
 }
+
+# Common job kwargs: prevent overlap, coalesce missed triggers, 5 min grace
+_JOB_OPTS = dict(max_instances=1, coalesce=True, misfire_grace_time=300)
 
 
 class JobScheduler:
@@ -53,6 +57,8 @@ class JobScheduler:
     def __init__(self, db_session_factory: sessionmaker) -> None:
         self._db_session_factory = db_session_factory
         self._scheduler: Optional[BackgroundScheduler] = None
+        self._running_jobs: set[str] = set()
+        self._running_lock = threading.Lock()
 
     def start(self) -> None:
         """Start the scheduler with all registered jobs."""
@@ -62,12 +68,13 @@ class JobScheduler:
 
         self._scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
 
-        # Daily 9:30 PM IST — process NAV feeds
+        # Daily 9:30 PM IST — process NAV CSV feeds
         self._scheduler.add_job(
             lambda: self._run_with_audit("nav_feeds", self.job_process_nav_feeds),
             CronTrigger(hour=21, minute=30),
             id="nav_feeds",
             replace_existing=True,
+            **_JOB_OPTS,
         )
 
         # Daily 9:45 PM IST — sync MarketPulse signals
@@ -76,6 +83,7 @@ class JobScheduler:
             CronTrigger(hour=21, minute=45),
             id="marketpulse_sync",
             replace_existing=True,
+            **_JOB_OPTS,
         )
 
         # Weekly Mon 7 AM IST — process master feed
@@ -84,6 +92,7 @@ class JobScheduler:
             CronTrigger(day_of_week="mon", hour=7, minute=0),
             id="master_feed",
             replace_existing=True,
+            **_JOB_OPTS,
         )
 
         # Monthly 6th 9 AM IST — process risk stats + ranks + holdings
@@ -92,6 +101,7 @@ class JobScheduler:
             CronTrigger(day=6, hour=9, minute=0),
             id="monthly_feeds",
             replace_existing=True,
+            **_JOB_OPTS,
         )
 
         # Monthly 7th 9 AM IST — recompute lens scores
@@ -100,6 +110,7 @@ class JobScheduler:
             CronTrigger(day=7, hour=9, minute=0),
             id="lens_recompute",
             replace_existing=True,
+            **_JOB_OPTS,
         )
 
         # Daily midnight IST — expire stale overrides
@@ -108,14 +119,17 @@ class JobScheduler:
             CronTrigger(hour=0, minute=0),
             id="expire_overrides",
             replace_existing=True,
+            **_JOB_OPTS,
         )
 
-        # Daily 9:30 PM IST — fetch NAV + Returns from Morningstar API
+        # Daily 10:00 PM IST — fetch NAV + Returns from Morningstar API
+        # (30 min after nav_feeds to avoid concurrent writes to nav_daily)
         self._scheduler.add_job(
             lambda: self._run_with_audit("fetch_nav", self.job_fetch_nav),
-            CronTrigger(hour=21, minute=30),
+            CronTrigger(hour=22, minute=0),
             id="fetch_nav",
             replace_existing=True,
+            **_JOB_OPTS,
         )
 
         # Weekly Sunday 11 PM IST — full Morningstar API refresh + lens recompute
@@ -124,6 +138,7 @@ class JobScheduler:
             CronTrigger(day_of_week="sun", hour=23, minute=0),
             id="fetch_full",
             replace_existing=True,
+            **_JOB_OPTS,
         )
 
         # Monthly 8th 10 AM IST — compute sector rotation from holdings
@@ -132,28 +147,32 @@ class JobScheduler:
             CronTrigger(day=8, hour=10, minute=0),
             id="sector_rotation",
             replace_existing=True,
+            **_JOB_OPTS,
         )
 
-        # Daily 10:00 PM IST — sync latest AUM to fund_master
+        # Daily 10:30 PM IST — sync latest AUM to fund_master
         self._scheduler.add_job(
             lambda: self._run_with_audit("aum_sync", self.job_sync_aum),
-            CronTrigger(hour=22, minute=0),
+            CronTrigger(hour=22, minute=30),
             id="aum_sync",
             replace_existing=True,
+            **_JOB_OPTS,
         )
 
-        # Daily 10:15 PM IST + 6:15 AM IST — warm caches
+        # Daily 10:45 PM IST + 6:15 AM IST — warm caches
         self._scheduler.add_job(
             lambda: self._run_with_audit("cache_warm", self.job_warm_cache),
-            CronTrigger(hour=22, minute=15),
+            CronTrigger(hour=22, minute=45),
             id="cache_warm_night",
             replace_existing=True,
+            **_JOB_OPTS,
         )
         self._scheduler.add_job(
             lambda: self._run_with_audit("cache_warm", self.job_warm_cache),
             CronTrigger(hour=6, minute=15),
             id="cache_warm_morning",
             replace_existing=True,
+            **_JOB_OPTS,
         )
 
         # Daily 3:00 AM IST — clean expired cache entries
@@ -162,6 +181,7 @@ class JobScheduler:
             CronTrigger(hour=3, minute=0),
             id="cache_cleanup",
             replace_existing=True,
+            **_JOB_OPTS,
         )
 
         self._scheduler.start()
@@ -173,10 +193,18 @@ class JobScheduler:
             self._scheduler.shutdown(wait=False)
             logger.info("Job scheduler stopped")
 
-    def trigger_job(self, job_name: str) -> bool:
-        """Manually trigger a job by name. Returns False if job name is invalid."""
+    def trigger_job(self, job_name: str) -> bool | str:
+        """Manually trigger a job in a background thread.
+
+        Returns True on success, False if invalid name, or error string if already running.
+        """
         if job_name not in VALID_JOBS:
             return False
+
+        with self._running_lock:
+            if job_name in self._running_jobs:
+                return f"Job '{job_name}' is already running"
+            self._running_jobs.add(job_name)
 
         job_map: dict[str, Callable] = {
             "nav_feeds": self.job_process_nav_feeds,
@@ -194,7 +222,16 @@ class JobScheduler:
         }
 
         func = job_map[job_name]
-        self._run_with_audit(job_name, func)
+
+        def _run_and_release() -> None:
+            try:
+                self._run_with_audit(job_name, func)
+            finally:
+                with self._running_lock:
+                    self._running_jobs.discard(job_name)
+
+        thread = threading.Thread(target=_run_and_release, daemon=True)
+        thread.start()
         return True
 
     def get_job_status(self) -> list[dict]:
@@ -355,15 +392,18 @@ class JobScheduler:
         from app.services.morningstar_fetcher import MorningstarFetcher
 
         db = self._db_session_factory()
+        success = False
         try:
             fetcher = MorningstarFetcher(db)
             results = fetcher.fetch_nav_only()
             for r in results:
                 logger.info("Fetch %s: %s (%d funds)", r.api_name, r.status, r.fund_count)
-            # Chain: warm cache after NAV update
-            self.job_warm_cache()
+            success = True
         finally:
             db.close()
+        # Chain: warm cache only after successful NAV update
+        if success:
+            self.job_warm_cache()
 
     def job_compute_sector_rotation(self) -> None:
         """Compute sector rotation from latest Morningstar holdings."""
@@ -385,20 +425,23 @@ class JobScheduler:
         from app.services.lens_service import LensService
 
         db = self._db_session_factory()
+        success = False
         try:
             fetcher = MorningstarFetcher(db)
             results = fetcher.fetch_all()
             for r in results:
                 logger.info("Fetch %s: %s (%d funds)", r.api_name, r.status, r.fund_count)
-            # After full fetch, recompute lens scores
+            # After full fetch, recompute lens scores (same session — data is committed per-batch)
             lens_svc = LensService(db)
             lens_result = lens_svc.compute_all_categories()
             logger.info("Post-fetch lens recompute: %s", lens_result)
-            # Chain: AUM sync + cache warm after full fetch
-            self.job_sync_aum()
-            self.job_warm_cache()
+            success = True
         finally:
             db.close()
+        # Chain only after successful fetch + lens recompute
+        if success:
+            self.job_sync_aum()
+            self.job_warm_cache()
 
     def job_sync_aum(self) -> None:
         """Sync latest AUM from holdings snapshots to fund_master for fast filtering."""

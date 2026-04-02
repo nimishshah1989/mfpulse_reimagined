@@ -84,19 +84,24 @@ class SectorRotationService:
             sector_returns.get(s, {}).get("weighted_return", Decimal("0"))
             for s in MORNINGSTAR_SECTORS
         ]
+        # float required for stdev() — convert at boundary, document why
         all_returns_float = [float(r) for r in all_returns]
         avg_return = sum(all_returns_float) / max(len(all_returns_float), 1)
-        std_return = stdev(all_returns_float) if len(all_returns_float) > 1 else Decimal("1")
+        std_return = stdev(all_returns_float) if len(all_returns_float) > 1 else 1.0
         std_return = max(std_return, 0.01)  # avoid division by zero
+
+        # RS normalization: 50 + z_score * (100/6) maps ±3σ to 0-100 range
+        RS_SCALE = Decimal("16.67")
 
         # Compute RS scores for all sectors first
         rs_scores: dict[str, Decimal] = {}
         for sector in MORNINGSTAR_SECTORS:
             sec_ret = sector_returns.get(sector, {})
             weighted_ret = sec_ret.get("weighted_return", Decimal("0"))
+            # float for z-score calc, convert back immediately
             raw_rs = (float(weighted_ret) - avg_return) / std_return
             rs = max(Decimal("0"), min(Decimal("100"),
-                Decimal(str(50 + raw_rs * 16.67)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                (Decimal("50") + Decimal(str(raw_rs)) * RS_SCALE).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             ))
             rs_scores[sector] = rs
 

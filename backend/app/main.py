@@ -16,6 +16,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 from app.api.v1.router import api_v1_router
+from app.core.auth import validate_admin_key_configured
 from app.core.config import get_settings
 from app.core.database import check_db_connection
 from app.core.exceptions import MFPulseError
@@ -27,6 +28,9 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    # Fail fast if production is missing ADMIN_API_KEY
+    validate_admin_key_configured()
+
     db_ok = check_db_connection()
     logger.info(
         "MF Pulse Engine starting",
@@ -81,11 +85,14 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         logger.info("Job scheduler stopped")
 
 
+_is_dev = settings.app_env == "development"
+
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if _is_dev else None,
+    redoc_url="/redoc" if _is_dev else None,
+    openapi_url="/openapi.json" if _is_dev else None,
     lifespan=lifespan,
 )
 
@@ -271,10 +278,11 @@ def health_ready() -> JSONResponse:
             status_code=200,
             content={"ready": True, "fund_count": fund_count, "lens_count": lens_count},
         )
-    except Exception as e:
+    except Exception:
+        logger.exception("health/ready check failed")
         return JSONResponse(
             status_code=503,
-            content={"ready": False, "reason": str(e)},
+            content={"ready": False, "reason": "internal error during readiness check"},
         )
 
 
@@ -283,6 +291,15 @@ def health_ready() -> JSONResponse:
 # so API routes always work. Non-API paths get served from web/out/.
 _frontend_dir = Path("web/out")
 if _frontend_dir.is_dir():
+
+    _resolved_frontend = _frontend_dir.resolve()
+
+    def _safe_resolve(child_path: Path) -> Path | None:
+        """Resolve a path and return it only if it stays inside _frontend_dir."""
+        resolved = child_path.resolve()
+        if resolved.is_relative_to(_resolved_frontend):
+            return resolved
+        return None
 
     class FrontendMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request: Request, call_next) -> Response:
@@ -294,17 +311,23 @@ if _frontend_dir.is_dir():
 
             clean = path.strip("/")
 
+            # Reject any path component that tries to escape
+            if ".." in clean:
+                return JSONResponse(status_code=400, content={"error": "Invalid path"})
+
             # Exact file (favicon.ico, robots.txt)
             if clean:
                 file_path = _frontend_dir / clean
-                if file_path.is_file():
-                    return FileResponse(str(file_path))
+                safe = _safe_resolve(file_path)
+                if safe and safe.is_file():
+                    return FileResponse(str(safe))
 
             # _next assets
             if clean.startswith("_next/"):
                 asset = _frontend_dir / clean
-                if asset.is_file():
-                    return FileResponse(str(asset))
+                safe = _safe_resolve(asset)
+                if safe and safe.is_file():
+                    return FileResponse(str(safe))
                 return JSONResponse(status_code=404, content={"error": "Asset not found"})
 
             # /fund/<id> → serve fund360 page (client-side routing)
@@ -322,8 +345,9 @@ if _frontend_dir.is_dir():
             # Page directory (/fund360 -> /fund360/index.html)
             if clean:
                 page_index = _frontend_dir / clean / "index.html"
-                if page_index.is_file():
-                    return FileResponse(str(page_index))
+                safe = _safe_resolve(page_index)
+                if safe and safe.is_file():
+                    return FileResponse(str(safe))
 
             # Root or SPA fallback
             root_index = _frontend_dir / "index.html"

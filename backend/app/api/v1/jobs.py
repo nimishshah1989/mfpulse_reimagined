@@ -40,8 +40,8 @@ def trigger_job(job_name: str) -> dict:
             },
         )
 
-    success = sched.trigger_job(job_name)
-    if not success:
+    result = sched.trigger_job(job_name)
+    if result is False:
         return JSONResponse(
             status_code=400,
             content={
@@ -54,12 +54,28 @@ def trigger_job(job_name: str) -> dict:
                 },
             },
         )
+    if isinstance(result, str):
+        return JSONResponse(
+            status_code=409,
+            content={
+                "success": False,
+                "data": None,
+                "error": {
+                    "code": "JOB_ALREADY_RUNNING",
+                    "message": result,
+                    "details": {},
+                },
+            },
+        )
 
-    return {
-        "success": True,
-        "data": {"job_name": job_name, "status": "triggered"},
-        "error": None,
-    }
+    return JSONResponse(
+        status_code=202,
+        content={
+            "success": True,
+            "data": {"job_name": job_name, "status": "accepted"},
+            "error": None,
+        },
+    )
 
 
 @router.get("/status")

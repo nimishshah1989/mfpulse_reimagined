@@ -1,4 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { formatCount } from '../../lib/format';
 
 // Generate mock 30-day data
 function generateMockData() {
@@ -26,7 +27,7 @@ function CustomTooltip({ active, payload, label }) {
   return (
     <div className="bg-slate-800 text-white px-3 py-2 rounded-lg shadow-lg text-[11px]">
       <div className="font-semibold mb-1">{label}</div>
-      <div className="text-emerald-300">Success: {payload[0]?.value?.toLocaleString('en-IN')}</div>
+      <div className="text-emerald-300">Success: {formatCount(payload[0]?.value)}</div>
       {payload[1]?.value > 0 && (
         <div className="text-red-300">Errors: {payload[1].value}</div>
       )}

@@ -12,6 +12,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_admin_key
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.models.schemas.responses import APIResponse, ErrorDetail
@@ -142,7 +143,7 @@ def get_market_regime(db: Session = Depends(get_db)) -> APIResponse:
     return APIResponse(data=data)
 
 
-@router.post("/sync")
+@router.post("/sync", dependencies=[Depends(require_admin_key)])
 def trigger_sync(db: Session = Depends(get_db)) -> APIResponse:
     """Manually trigger MarketPulse data sync."""
     client = _get_client(db)

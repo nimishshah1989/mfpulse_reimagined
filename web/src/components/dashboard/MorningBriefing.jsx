@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import SkeletonLoader from '../shared/SkeletonLoader';
-import { formatPct, formatCount } from '../../lib/format';
+import { formatINR, formatPct, formatCount } from '../../lib/format';
 import { fetchMorningBriefing } from '../../lib/api';
 import { cachedFetch } from '../../lib/cache';
 import {
@@ -115,7 +115,7 @@ export default function MorningBriefing({ regime, breadth, sentiment, nifty, uni
 
   const formatNiftyPrice = (price) => {
     if (price == null) return '--';
-    return Number(price).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    return formatINR(price, 0);
   };
 
   return (

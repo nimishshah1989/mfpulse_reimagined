@@ -227,9 +227,9 @@ class SimulationEngine:
         # Max drawdown
         dd_pct, dd_start, dd_end = self._compute_max_drawdown(daily_timeline)
 
-        # Monthly returns
-        monthly_rets_list = self._compute_monthly_returns(daily_timeline)
-        monthly_ret_values = [Decimal(str(m["return_pct"])) for m in monthly_rets_list]
+        # Monthly returns (TWR — accounts for SIP/topup cashflows)
+        monthly_rets_list = self._compute_monthly_returns(daily_timeline, cashflow_events)
+        monthly_ret_values = [Decimal(m["return_pct"]) for m in monthly_rets_list]
 
         # Sharpe / Sortino
         sharpe = self._compute_sharpe(monthly_ret_values)
@@ -495,7 +495,10 @@ class SimulationEngine:
                 rate = 10
 
         try:
-            result = Decimal(str(round(rate * 100, 6)))
+            # Convert to Decimal BEFORE multiplying to avoid float*100 precision loss
+            result = (Decimal(str(rate)) * Decimal("100")).quantize(
+                Decimal("0.000001"), rounding=ROUND_HALF_UP
+            )
             if result < Decimal("-99") or result > Decimal("1000"):
                 return None
             return result
@@ -509,10 +512,13 @@ class SimulationEngine:
         if initial <= Decimal("0") or years <= Decimal("0"):
             return None
         try:
-            ratio = float(final / initial)  # float required for math.pow — Decimal inputs validated upstream
-            exp = 1.0 / float(years)  # float required for math.pow — Decimal inputs validated upstream
-            cagr = (ratio ** exp - 1) * 100
-            return Decimal(str(round(cagr, 6)))
+            # float required for power operation — convert back via Decimal(str()) immediately
+            ratio = float(final / initial)
+            exp = 1.0 / float(years)
+            cagr_rate = ratio ** exp - 1
+            return (Decimal(str(cagr_rate)) * Decimal("100")).quantize(
+                Decimal("0.000001"), rounding=ROUND_HALF_UP
+            )
         except (OverflowError, ZeroDivisionError, ValueError):
             return None
 
@@ -551,14 +557,16 @@ class SimulationEngine:
     def _compute_sharpe(
         self,
         monthly_returns: list[Decimal],
-        risk_free_annual: Decimal = Decimal("0.06"),
+        risk_free_annual: Decimal | None = None,
     ) -> Optional[Decimal]:
         """Sharpe = (avg_monthly_return - rf_monthly) / std_monthly_return * sqrt(12)"""
         if len(monthly_returns) < 2:
             return None
 
-        rf_monthly = float(risk_free_annual) / 12  # float required for std/variance math — Decimal inputs validated upstream
-        returns = [float(r) for r in monthly_returns]  # float required for std/variance math — Decimal inputs validated upstream
+        rf = risk_free_annual if risk_free_annual is not None else Decimal("0.06")
+        # float required for std/variance math — convert at boundary
+        rf_monthly = float(rf) / 12
+        returns = [float(r) for r in monthly_returns]
         avg = sum(returns) / len(returns)
         variance = sum((r - avg) ** 2 for r in returns) / (len(returns) - 1)
         std = variance ** 0.5
@@ -573,14 +581,16 @@ class SimulationEngine:
     def _compute_sortino(
         self,
         monthly_returns: list[Decimal],
-        risk_free_annual: Decimal = Decimal("0.06"),
+        risk_free_annual: Decimal | None = None,
     ) -> Optional[Decimal]:
         """Sortino = (avg_monthly_return - rf_monthly) / downside_std * sqrt(12)"""
         if len(monthly_returns) < 2:
             return None
 
-        rf_monthly = float(risk_free_annual) / 12  # float required for downside std math — Decimal inputs validated upstream
-        returns = [float(r) for r in monthly_returns]  # float required for downside std math — Decimal inputs validated upstream
+        rf = risk_free_annual if risk_free_annual is not None else Decimal("0.06")
+        # float required for downside std math — convert at boundary
+        rf_monthly = float(rf) / 12
+        returns = [float(r) for r in monthly_returns]
         avg = sum(returns) / len(returns)
         downside = [min(r - rf_monthly, 0) ** 2 for r in returns]
         downside_var = sum(downside) / len(downside)
@@ -640,15 +650,21 @@ class SimulationEngine:
             if xirr is not None:
                 result.append({
                     "date": end_date_val.isoformat(),
-                    "xirr": float(xirr),
+                    "xirr": str(xirr),
                 })
 
         return result
 
     def _compute_monthly_returns(
-        self, timeline: list[DailySnapshot]
+        self,
+        timeline: list[DailySnapshot],
+        cashflow_events: list[CashflowEvent] | None = None,
     ) -> list[dict]:
-        """Monthly portfolio returns from daily timeline."""
+        """Monthly portfolio returns using Modified Dietz (TWR proxy).
+
+        Accounts for external cashflows (SIP, top-ups, lumpsum) so that
+        inflows are not counted as returns.
+        """
         if not timeline:
             return []
 
@@ -658,19 +674,36 @@ class SimulationEngine:
             key = (snap.date.year, snap.date.month)
             monthly[key] = snap
 
+        # Group cashflows by month with day-weighted amounts
+        # Modified Dietz weight: Wi = (CD - Di) / CD where CD = calendar days, Di = day of flow
+        monthly_flows: dict[tuple[int, int], Decimal] = {}
+        monthly_weighted_flows: dict[tuple[int, int], Decimal] = {}
+        for ce in (cashflow_events or []):
+            key = (ce.date.year, ce.date.month)
+            monthly_flows[key] = monthly_flows.get(key, Decimal("0")) + ce.amount
+            cd = monthrange(ce.date.year, ce.date.month)[1]
+            wi = Decimal(str(cd - ce.date.day)) / Decimal(str(cd))
+            monthly_weighted_flows[key] = monthly_weighted_flows.get(key, Decimal("0")) + ce.amount * wi
+
         sorted_months = sorted(monthly.keys())
         result: list[dict] = []
 
         for i in range(1, len(sorted_months)):
             prev = monthly[sorted_months[i - 1]]
             curr = monthly[sorted_months[i]]
-            if prev.portfolio_value > Decimal("0"):
-                ret = ((curr.portfolio_value - prev.portfolio_value) / prev.portfolio_value * Decimal("100")).quantize(
+            flows = monthly_flows.get(sorted_months[i], Decimal("0"))
+            weighted_flows = monthly_weighted_flows.get(sorted_months[i], Decimal("0"))
+
+            # Modified Dietz: (end - start - flows) / (start + weighted_flows)
+            denominator = prev.portfolio_value + weighted_flows
+            if denominator > Decimal("0"):
+                ret = ((curr.portfolio_value - prev.portfolio_value - flows)
+                       / denominator * Decimal("100")).quantize(
                     Decimal("0.01"), ROUND_HALF_UP
                 )
                 result.append({
                     "month": f"{curr.date.year}-{curr.date.month:02d}",
-                    "return_pct": float(ret),
+                    "return_pct": str(ret),
                 })
 
         return result

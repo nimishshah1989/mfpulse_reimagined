@@ -3,7 +3,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { fetchUniverseData, searchFundsNL } from '../lib/api';
 import { cachedFetch } from '../lib/cache';
-import { formatPct, formatAUM } from '../lib/format';
+import { formatPct, formatAUM, formatCount } from '../lib/format';
 import { useFilters } from '../contexts/FilterContext';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
 import EmptyState from '../components/shared/EmptyState';
@@ -345,7 +345,7 @@ export default function UniversePage() {
       topReturn: Number(topFund.return_1y) || 0,
       avgAum: avgAumCr >= 1000
         ? `${(avgAumCr / 1000).toFixed(1)}K Cr`
-        : `${Math.round(avgAumCr).toLocaleString('en-IN')} Cr`,
+        : `${formatCount(Math.round(avgAumCr))} Cr`,
     };
   }, [taggedFunds]);
 
@@ -472,7 +472,7 @@ export default function UniversePage() {
       <div className="flex items-center justify-between glass-card px-5 py-3 animate-in">
         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fund Universe</span>
         <span className="text-xs text-slate-400 tabular-nums font-medium">
-          {taggedFunds.length.toLocaleString('en-IN')} of {allFunds.length.toLocaleString('en-IN')} funds
+          {formatCount(taggedFunds.length)} of {formatCount(allFunds.length)} funds
         </span>
       </div>
 
@@ -589,7 +589,7 @@ export default function UniversePage() {
                   Fund Universe{viewMode !== 'scatter' ? ` \u2014 ${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} View` : ''}
                 </p>
                 <span className="text-sm font-bold text-teal-600 tabular-nums">
-                  {taggedFunds.length.toLocaleString('en-IN')} funds
+                  {formatCount(taggedFunds.length)} funds
                 </span>
               </div>
               <div

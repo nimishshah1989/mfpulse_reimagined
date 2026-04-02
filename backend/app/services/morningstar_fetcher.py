@@ -137,7 +137,7 @@ class MorningstarFetcher:
 
             try:
                 if issubclass(col_type, Numeric):
-                    coerced[key] = Decimal(value)
+                    coerced[key] = Decimal(str(value))
                 elif issubclass(col_type, Date):
                     coerced[key] = date.fromisoformat(value)
                 elif issubclass(col_type, Integer):

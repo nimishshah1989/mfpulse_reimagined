@@ -52,20 +52,20 @@ class FundIntelligenceService:
         if not risk:
             return None
 
-        capture_up = float(risk.capture_up_3y) if risk.capture_up_3y else None
-        capture_down = float(risk.capture_down_3y) if risk.capture_down_3y else None
+        capture_up = Decimal(str(risk.capture_up_3y)) if risk.capture_up_3y is not None else None
+        capture_down = Decimal(str(risk.capture_down_3y)) if risk.capture_down_3y is not None else None
 
         if capture_up is None or capture_down is None:
             return None
 
         # Determine positioning
-        if capture_up > 100 and capture_down < 100:
+        if capture_up > Decimal("100") and capture_down < Decimal("100"):
             verdict = "Aggressive — captures upside while limiting downside"
             signal = "bullish"
-        elif capture_up < 100 and capture_down < 90:
+        elif capture_up < Decimal("100") and capture_down < Decimal("90"):
             verdict = "Defensive — protects capital but trails in rallies"
             signal = "defensive"
-        elif capture_up > 100 and capture_down > 100:
+        elif capture_up > Decimal("100") and capture_down > Decimal("100"):
             verdict = "High-beta — amplifies both gains and losses"
             signal = "volatile"
         else:
@@ -73,8 +73,8 @@ class FundIntelligenceService:
             signal = "neutral"
 
         return {
-            "capture_up_3y": capture_up,
-            "capture_down_3y": capture_down,
+            "capture_up_3y": str(capture_up),
+            "capture_down_3y": str(capture_down),
             "verdict": verdict,
             "signal": signal,
         }
@@ -129,7 +129,7 @@ class FundIntelligenceService:
             {
                 "mstar_id": r.mstar_id,
                 "fund_name": r.fund_name,
-                "sharpe_3y": float(r.sharpe_3y) if r.sharpe_3y else None,
+                "sharpe_3y": str(r.sharpe_3y) if r.sharpe_3y is not None else None,
             }
             for r in rows[:3]
         ]
@@ -158,33 +158,36 @@ class FundIntelligenceService:
         return_5y = None
         for nav in latest_nav:
             if nav.return_5y is not None:
-                return_5y = float(nav.return_5y)
+                return_5y = Decimal(str(nav.return_5y))
                 break
 
         if return_5y is None:
             return None
 
         # Simple SIP estimate: 25000/month for 5 years
-        monthly_sip = 25000
-        months = 60
-        invested = monthly_sip * months  # 15,00,000
+        MONTHLY_SIP = Decimal("25000")
+        MONTHS = 60
+        invested = MONTHLY_SIP * MONTHS  # 15,00,000
 
-        # Approximate using CAGR
-        monthly_rate = (1 + return_5y / 100) ** (1 / 12) - 1
+        # Approximate using CAGR — float required for power, convert back immediately
+        monthly_rate = (1 + float(return_5y) / 100) ** (1 / 12) - 1
         if monthly_rate <= 0:
             current_value = invested
         else:
-            # Future value of annuity formula
-            current_value = monthly_sip * (((1 + monthly_rate) ** months - 1) / monthly_rate)
+            # Future value of annuity formula (float for power, then back to Decimal)
+            fv = float(MONTHLY_SIP) * (((1 + monthly_rate) ** MONTHS - 1) / monthly_rate)
+            current_value = Decimal(str(fv)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
 
-        # Approximate XIRR = annualized return
         xirr = return_5y
+        gain_pct = ((current_value - invested) / invested * Decimal("100")).quantize(
+            Decimal("0.1"), rounding=ROUND_HALF_UP
+        ) if invested > 0 else Decimal("0")
 
         return {
-            "monthly_sip": monthly_sip,
+            "monthly_sip": str(MONTHLY_SIP),
             "period_years": 5,
-            "invested": invested,
-            "current_value": round(current_value),
-            "xirr": round(xirr, 2),
-            "gain_pct": round((current_value / invested - 1) * 100, 1) if invested > 0 else 0,
+            "invested": str(invested),
+            "current_value": str(current_value),
+            "xirr": str(xirr.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+            "gain_pct": str(gain_pct),
         }

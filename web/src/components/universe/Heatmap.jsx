@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { formatScore } from '../../lib/format';
+import { formatScore, formatCount } from '../../lib/format';
 import { LENS_LABELS } from '../../lib/lens';
 
 const QUINTILES = [
@@ -242,7 +242,7 @@ function HeatmapTooltip({ tooltip, colorLens }) {
         {category}
       </div>
       <div className="text-xs text-slate-500 mt-0.5">
-        {Number(count).toLocaleString('en-IN')} funds scoring {quintile.label} on {LENS_LABELS[colorLens]}
+        {formatCount(count)} funds scoring {quintile.label} on {LENS_LABELS[colorLens]}
       </div>
       {top3.length > 0 && (
         <div className="mt-2 space-y-1">

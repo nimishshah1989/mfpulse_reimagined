@@ -359,12 +359,12 @@ class NLSearchService:
                 "fund_name": r.fund_name,
                 "category_name": r.category_name,
                 "amc_name": r.amc_name,
-                "return_score": float(r.return_score) if r.return_score else None,
-                "risk_score": float(r.risk_score) if r.risk_score else None,
-                "alpha_score": float(r.alpha_score) if r.alpha_score else None,
-                "consistency_score": float(r.consistency_score) if r.consistency_score else None,
-                "efficiency_score": float(r.efficiency_score) if r.efficiency_score else None,
-                "resilience_score": float(r.resilience_score) if r.resilience_score else None,
+                "return_score": str(r.return_score) if r.return_score is not None else None,
+                "risk_score": str(r.risk_score) if r.risk_score is not None else None,
+                "alpha_score": str(r.alpha_score) if r.alpha_score is not None else None,
+                "consistency_score": str(r.consistency_score) if r.consistency_score is not None else None,
+                "efficiency_score": str(r.efficiency_score) if r.efficiency_score is not None else None,
+                "resilience_score": str(r.resilience_score) if r.resilience_score is not None else None,
                 "nav_count": 0,  # Skip expensive NAV count query
             }
             for r in rows

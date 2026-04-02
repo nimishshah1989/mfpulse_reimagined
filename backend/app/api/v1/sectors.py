@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_admin_key
 from app.core.database import get_db
 from app.services.category_alignment import CategoryAlignmentService
 from app.services.sector_rotation import SectorRotationService
@@ -75,7 +76,7 @@ def get_category_alignment(db: Session = Depends(get_db)):
     return {"success": True, "data": data, "meta": {"count": len(data)}, "error": None}
 
 
-@router.post("/compute")
+@router.post("/compute", dependencies=[Depends(require_admin_key)])
 def trigger_sector_computation(db: Session = Depends(get_db)):
     """Manually trigger sector rotation computation from latest holdings data."""
     svc = SectorRotationService(db)
@@ -83,7 +84,7 @@ def trigger_sector_computation(db: Session = Depends(get_db)):
     return {"success": True, "data": data, "meta": {"count": len(data)}, "error": None}
 
 
-@router.post("/backfill")
+@router.post("/backfill", dependencies=[Depends(require_admin_key)])
 def trigger_sector_backfill(
     months: int = Query(default=6, ge=1, le=24),
     db: Session = Depends(get_db),

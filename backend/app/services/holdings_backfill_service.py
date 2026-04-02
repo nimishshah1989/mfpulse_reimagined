@@ -34,7 +34,9 @@ from app.repositories.ingestion_repo import IngestionRepository, UpsertResult
 
 logger = logging.getLogger(__name__)
 
-HOLDINGS_DETAIL_HASH = "fq9mxhk7xeb20f3b"
+
+def _get_holdings_detail_hash() -> str:
+    return get_settings().morningstar_hash_holdings_detail
 
 
 def _parse_holdings_xml(
@@ -121,6 +123,14 @@ class HoldingsBackfillProgress:
         self._running = False
         self._started_at: str | None = None
         self._current_fund: str | None = None
+
+    def try_start(self) -> bool:
+        """Atomically check if already running and mark as starting. Returns False if already running."""
+        with self._lock:
+            if self._running:
+                return False
+            self._running = True
+            return True
 
     def start(self, total: int) -> None:
         with self._lock:
@@ -271,7 +281,7 @@ class HoldingsBackfillService:
             holdings_backfill_progress.set_current(mstar_id)
 
             url = (
-                f"{API_BASE}/{HOLDINGS_DETAIL_HASH}/mstarid/{mstar_id}"
+                f"{API_BASE}/{_get_holdings_detail_hash()}/mstarid/{mstar_id}"
                 f"?accesscode={self._access_code}"
             )
 

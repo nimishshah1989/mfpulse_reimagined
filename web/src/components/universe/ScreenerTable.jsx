@@ -4,7 +4,7 @@
  */
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { formatPct, formatAUM, isOtherCategory } from '../../lib/format';
+import { formatPct, formatAUM, formatCount, isOtherCategory } from '../../lib/format';
 import { scoreColor } from '../../lib/lens';
 
 const PAGE_SIZE = 50;
@@ -309,7 +309,7 @@ export default function ScreenerTable({
         {/* Pagination */}
         <div className="flex justify-between items-center px-4 py-3 border-t border-slate-200">
           <span className="text-xs text-slate-400">
-            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sorted.length)} of {sorted.length.toLocaleString('en-IN')}
+            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sorted.length)} of {formatCount(sorted.length)}
           </span>
           <div className="flex gap-1">
             <button

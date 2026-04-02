@@ -214,9 +214,12 @@ class SimulationService:
                 d = date.fromisoformat(entry.get("date", ""))
                 if start <= d <= end:
                     signal_data[d] = {
-                        "breadth_pct_above_21ema": entry.get("pct_above_21ema", 50),
-                        "breadth_pct_above_50ema": entry.get("pct_above_50ema", 50),
-                        "breadth_pct_above_200ema": entry.get("pct_above_200ema", 50),
+                        # Breadth fields: None if missing (triggers evaluate False)
+                        "breadth_pct_above_21ema": entry.get("pct_above_21ema"),
+                        "breadth_pct_above_50ema": entry.get("pct_above_50ema"),
+                        "breadth_pct_above_200ema": entry.get("pct_above_200ema"),
+                        # Sentiment/nifty come from different MP caches, not breadth.
+                        # Default to neutral so rules that use these still fire.
                         "sentiment_composite": entry.get("sentiment_composite", 50),
                         "nifty_above_200sma": entry.get("nifty_above_200sma", 1),
                     }

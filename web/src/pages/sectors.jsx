@@ -21,6 +21,7 @@ import {
   fetchMarketRegime,
   fetchFunds,
 } from '../lib/api';
+import { formatCount } from '../lib/format';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
 import dynamic from 'next/dynamic';
 
@@ -233,7 +234,7 @@ export default function SectorsPage() {
       {/* Page intro */}
       <div>
         <p className="text-sm text-slate-500">
-          Sector intelligence from 11 Morningstar sectors across {funds.length.toLocaleString('en-IN')}+ funds
+          Sector intelligence from 11 Morningstar sectors across {formatCount(funds.length)}+ funds
         </p>
       </div>
 

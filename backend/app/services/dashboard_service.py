@@ -75,8 +75,8 @@ class DashboardService:
                 "description": "Top returns with controlled volatility",
                 "filter": lambda mid: (
                     score_map.get(mid) and
-                    _safe_float(score_map[mid].risk_score) >= 80 and
-                    _safe_float(score_map[mid].return_score) >= 60
+                    _safe_decimal(score_map[mid].risk_score) >= 80 and
+                    _safe_decimal(score_map[mid].return_score) >= 60
                 ),
                 "sort_key": "return_score",
             },
@@ -85,8 +85,8 @@ class DashboardService:
                 "description": "Best returns per rupee of expense",
                 "filter": lambda mid: (
                     score_map.get(mid) and
-                    _safe_float(score_map[mid].efficiency_score) >= 80 and
-                    _safe_float(score_map[mid].return_score) >= 60
+                    _safe_decimal(score_map[mid].efficiency_score) >= 80 and
+                    _safe_decimal(score_map[mid].return_score) >= 60
                 ),
                 "sort_key": "efficiency_score",
             },
@@ -96,7 +96,7 @@ class DashboardService:
                 "filter": lambda mid: (
                     class_map.get(mid) and score_map.get(mid) and
                     class_map[mid].resilience_class in ("FORTRESS", "STURDY") and
-                    _safe_float(score_map[mid].consistency_score) >= 60
+                    _safe_decimal(score_map[mid].consistency_score) >= 60
                 ),
                 "sort_key": "resilience_score",
             },
@@ -105,9 +105,9 @@ class DashboardService:
                 "description": "Improving momentum after weak period",
                 "filter": lambda mid: (
                     score_map.get(mid) and
-                    _safe_float(score_map[mid].return_score) >= 40 and
-                    _safe_float(score_map[mid].return_score) < 65 and
-                    _safe_float(score_map[mid].alpha_score) >= 50
+                    _safe_decimal(score_map[mid].return_score) >= 40 and
+                    _safe_decimal(score_map[mid].return_score) < 65 and
+                    _safe_decimal(score_map[mid].alpha_score) >= 50
                 ),
                 "sort_key": "alpha_score",
             },
@@ -118,7 +118,7 @@ class DashboardService:
                     score_map.get(mid) and
                     sum(1 for k in ["return_score", "risk_score", "consistency_score",
                                     "alpha_score", "efficiency_score", "resilience_score"]
-                        if _safe_float(getattr(score_map[mid], k, None)) < 30) >= 3
+                        if _safe_decimal(getattr(score_map[mid], k, None)) < 30) >= 3
                 ),
                 "sort_key": "return_score",
             },
@@ -129,7 +129,7 @@ class DashboardService:
             matching = [mid for mid in all_mstar_ids if bucket_def["filter"](mid)]
             # Sort by the designated score
             matching.sort(
-                key=lambda mid: _safe_float(getattr(score_map.get(mid), bucket_def["sort_key"], None)),
+                key=lambda mid: _safe_decimal(getattr(score_map.get(mid), bucket_def["sort_key"], None)),
                 reverse=True,
             )
 
@@ -191,7 +191,7 @@ class DashboardService:
         )
         for r in aum_rows:
             if r.mstar_id in result:
-                result[r.mstar_id]["aum"] = float(r.aum) if r.aum else None
+                result[r.mstar_id]["aum"] = str(r.aum) if r.aum is not None else None
 
         # Returns
         latest_nav_sub = (
@@ -214,7 +214,7 @@ class DashboardService:
         )
         for r in nav_rows:
             if r.mstar_id in result:
-                result[r.mstar_id]["return_1y"] = float(r.return_1y) if r.return_1y else None
+                result[r.mstar_id]["return_1y"] = str(r.return_1y) if r.return_1y is not None else None
 
         return result
 
@@ -357,8 +357,8 @@ def _empty_archetypes() -> list[dict]:
     return [{**d, "count": 0, "percentage": 0.0} for d in ARCHETYPE_DEFS]
 
 
-def _safe_float(val: Optional[Decimal]) -> float:
-    """Safely convert Decimal/None to float for comparison."""
+def _safe_decimal(val: Optional[Decimal]) -> Decimal:
+    """Safely unwrap Decimal/None for comparison. Returns Decimal('0') for None."""
     if val is None:
-        return 0.0
-    return float(val)
+        return Decimal("0")
+    return val

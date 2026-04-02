@@ -12,6 +12,7 @@ import {
 import InfoIcon from '../shared/InfoIcon';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import { resampleTimeline, MODE_LABELS, MODE_COLORS, findBestMode } from '../../lib/simulation';
+import { formatINR } from '../../lib/format';
 
 const MODES_TO_SHOW = ['SIP', 'SIP_SIGNAL', 'LUMPSUM', 'HYBRID'];
 
@@ -26,7 +27,7 @@ function formatTooltipValue(val) {
   if (val == null) return '\u2014';
   if (val >= 10000000) return `\u20B9${(val / 10000000).toFixed(2)}Cr`;
   if (val >= 100000) return `\u20B9${(val / 100000).toFixed(1)}L`;
-  return `\u20B9${val.toLocaleString('en-IN')}`;
+  return formatINR(val, 0);
 }
 
 function CustomTooltip({ active, payload, label }) {

@@ -5,6 +5,7 @@ from datetime import date, datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db, SessionLocal
@@ -24,10 +25,21 @@ def trigger_nav_backfill(
     concurrency: int = Query(default=10, ge=1, le=50),
 ) -> dict:
     """Launch full NAV backfill in a background thread. Returns immediately."""
+    if not backfill_progress.try_start():
+        return JSONResponse(
+            status_code=409,
+            content={
+                "success": False,
+                "data": None,
+                "error": {
+                    "code": "BACKFILL_RUNNING",
+                    "message": "NAV backfill is already running",
+                    "details": backfill_progress.get_status(),
+                },
+            },
+        )
 
     def _run() -> None:
-        # Background thread needs its own session — request session is
-        # tied to the request lifecycle and can't be used across threads.
         bg_db = SessionLocal()
         try:
             service = NAVBackfillService(bg_db)
@@ -123,6 +135,20 @@ def trigger_holdings_backfill(
     via per-fund Morningstar API. ~2-3 hours at 10 concurrency.
     Each fund commits independently — safe to interrupt.
     """
+    if not holdings_backfill_progress.try_start():
+        return JSONResponse(
+            status_code=409,
+            content={
+                "success": False,
+                "data": None,
+                "error": {
+                    "code": "BACKFILL_RUNNING",
+                    "message": "Holdings backfill is already running",
+                    "details": holdings_backfill_progress.get_status(),
+                },
+            },
+        )
+
     def _run() -> None:
         bg_db = SessionLocal()
         try:

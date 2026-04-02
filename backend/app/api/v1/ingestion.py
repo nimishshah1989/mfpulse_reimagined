@@ -39,7 +39,20 @@ def upload_feed(
     feed_dir = Path(settings.feed_csv_dir)
     feed_dir.mkdir(parents=True, exist_ok=True)
 
-    dest = feed_dir / f"{feed_type}_{file.filename}"
+    # Sanitize filename: strip path separators and reject traversal sequences
+    safe_name = Path(file.filename or "upload").name.replace("..", "")
+    if not safe_name or safe_name.startswith("."):
+        raise ValidationError(
+            message="Invalid filename",
+            details={"filename": file.filename},
+        )
+    dest = feed_dir / f"{feed_type}_{safe_name}"
+    # Final guard: resolved path must stay inside feed_dir
+    if not dest.resolve().is_relative_to(feed_dir.resolve()):
+        raise ValidationError(
+            message="Invalid filename",
+            details={"filename": file.filename},
+        )
     with open(dest, "wb") as f:
         shutil.copyfileobj(file.file, f)
 

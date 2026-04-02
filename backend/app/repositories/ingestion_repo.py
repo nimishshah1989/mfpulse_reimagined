@@ -7,7 +7,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -147,20 +147,32 @@ class IngestionRepository:
                             )
 
                     self.db.execute(stmt)
-                    self.db.commit()
+                    self.db.flush()  # flush to DB but don't commit — caller owns the transaction
                     result.inserted += len(batch)
                 except Exception as e:
                     self.db.rollback()
+                    # Rollback undoes ALL prior flushes — reset inserted count
+                    result.inserted = 0
                     result.failed += len(batch)
                     result.errors.append({
                         "batch_start": batch_start,
                         "error": str(e),
                     })
                     logger.warning(
-                        "Batch upsert failed at offset %d: %s",
+                        "Batch upsert failed at offset %d (transaction rolled back): %s",
                         batch_start,
                         str(e),
                     )
+
+        # Commit once at the end — all successful flushes in one transaction
+        if result.inserted > 0:
+            try:
+                self.db.commit()
+            except Exception as e:
+                self.db.rollback()
+                result.failed += result.inserted
+                result.inserted = 0
+                logger.error("Final commit failed for batch upsert: %s", e)
 
         return result
 
@@ -200,11 +212,21 @@ class IngestionRepository:
         )
 
     def upsert_holding_details(self, snapshot_id: uuid.UUID, records: list[dict]) -> UpsertResult:
-        """Insert holding details for a given snapshot. No upsert — replace all."""
+        """Insert holding details for a given snapshot. No upsert — replace all.
+
+        Uses a PostgreSQL advisory lock on the snapshot UUID to prevent
+        concurrent backfill workers from interleaving DELETE/INSERT.
+        """
         result = UpsertResult()
         valid_cols = self._get_column_names(FundHoldingDetail)
 
+        # Advisory lock key: use the first 8 bytes of the UUID as a bigint
+        lock_key = int(snapshot_id.int >> 64) & 0x7FFFFFFFFFFFFFFF
+
         try:
+            # Acquire advisory lock (blocks until available, released at COMMIT/ROLLBACK)
+            self.db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
+
             # Delete existing details for this snapshot
             self.db.query(FundHoldingDetail).filter(
                 FundHoldingDetail.snapshot_id == snapshot_id,

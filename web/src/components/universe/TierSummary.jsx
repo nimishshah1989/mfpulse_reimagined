@@ -146,7 +146,7 @@ export default function TierSummary({
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-slate-600 font-medium">{t.display}</span>
                   <span className="font-bold tabular-nums" style={{ color: t.color }}>
-                    {t.count.toLocaleString('en-IN')}
+                    {formatCount(t.count)}
                   </span>
                 </div>
                 <button

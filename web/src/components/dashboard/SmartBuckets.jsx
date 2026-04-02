@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { cachedFetch } from '../../lib/cache';
 import { fetchUniverseData } from '../../lib/api';
-import { formatPct, formatAUMRaw } from '../../lib/format';
+import { formatPct, formatAUMRaw, formatCount } from '../../lib/format';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import SectionTitle from '../shared/SectionTitle';
 
@@ -136,7 +136,7 @@ function BucketCard({ bucket, count, topFund, onClick, onFundClick }) {
 
       {/* Count */}
       <div className="flex items-baseline gap-1 mb-2">
-        <span className={`text-xl font-extrabold ${bucket.countColor} tabular-nums`}>{Number(count).toLocaleString('en-IN')}</span>
+        <span className={`text-xl font-extrabold ${bucket.countColor} tabular-nums`}>{formatCount(count)}</span>
         <span className="text-[10px] text-slate-400">funds</span>
       </div>
 

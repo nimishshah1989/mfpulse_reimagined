@@ -653,12 +653,12 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
                         style={{ width: `${Math.max(barPct, 4)}%`, backgroundColor: `${colors.circle}cc` }}
                       >
                         {barPct > 20 && (
-                          <span className="text-[10px] font-bold text-white">{Number(count).toLocaleString('en-IN')} funds</span>
+                          <span className="text-[10px] font-bold text-white">{formatCount(count)} funds</span>
                         )}
                       </div>
                     </div>
                     {barPct <= 20 && (
-                      <span className="text-xs font-bold text-slate-600 w-12 flex-shrink-0">{Number(count).toLocaleString('en-IN')} funds</span>
+                      <span className="text-xs font-bold text-slate-600 w-12 flex-shrink-0">{formatCount(count)} funds</span>
                     )}
                     {barPct > 20 && <span className="w-12 flex-shrink-0" />}
                     <span className="text-xs text-slate-400 w-20 text-right flex-shrink-0">
@@ -980,7 +980,7 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
                     onClick={() => router.push(`/universe?category=${encodeURIComponent(name)}`)}
                     className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200 hover:bg-teal-50 hover:border-teal-200 hover:text-teal-700 transition-colors"
                   >
-                    {name} <span className="font-bold text-slate-900">{Number(count).toLocaleString('en-IN')}</span>
+                    {name} <span className="font-bold text-slate-900">{formatCount(count)}</span>
                   </button>
                 ))}
               </div>

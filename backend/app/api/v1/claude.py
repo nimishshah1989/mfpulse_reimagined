@@ -1,9 +1,12 @@
 """Claude AI endpoints — morning briefing, strategy insights, simulation explainer, etc."""
 
+from decimal import Decimal, InvalidOperation
 from typing import Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+
+from app.core.auth import require_admin_key
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -104,7 +107,7 @@ def get_morning_briefing() -> dict:
     }
 
 
-@router.post("/strategy-insights")
+@router.post("/strategy-insights", dependencies=[Depends(require_admin_key)])
 def get_strategy_insights(req: StrategyInsightsRequest) -> dict:
     """AI-generated insights for a strategy portfolio."""
     insights = generate_strategy_insights(req.model_dump())
@@ -116,7 +119,7 @@ def get_strategy_insights(req: StrategyInsightsRequest) -> dict:
     }
 
 
-@router.post("/simulation-explainer")
+@router.post("/simulation-explainer", dependencies=[Depends(require_admin_key)])
 def get_simulation_explainer(req: SimExplainerRequest) -> dict:
     """AI explanation of simulation comparison results."""
     explanation = generate_simulation_explainer(req.model_dump())
@@ -236,7 +239,7 @@ def get_fund_verdict(mstar_id: str, db: Session = Depends(get_db)) -> dict:
     }
 
 
-@router.post("/parse-query")
+@router.post("/parse-query", dependencies=[Depends(require_admin_key)])
 def parse_nl_query(req: NLQueryRequest) -> dict:
     """Parse natural-language fund query into structured filter criteria."""
     criteria = parse_strategy_query(req.query)
@@ -294,8 +297,8 @@ def get_weekly_intelligence(db: Session = Depends(get_db)) -> dict:
         r1y = f.get("return_1y")
         if r1y is not None:
             try:
-                cat_stats[cat]["returns"].append(float(r1y))
-            except (ValueError, TypeError):
+                cat_stats[cat]["returns"].append(Decimal(str(r1y)))
+            except (ValueError, TypeError, InvalidOperation):
                 pass
 
     cat_avgs = []
@@ -342,7 +345,7 @@ def get_weekly_intelligence(db: Session = Depends(get_db)) -> dict:
                     "aum": f.get("aum", 0),
                 })
         # Sort by alpha_score desc, take top 3
-        matching.sort(key=lambda x: float(x.get("alpha_score") or 0), reverse=True)
+        matching.sort(key=lambda x: Decimal(str(x.get("alpha_score") or 0)), reverse=True)
         point["recommended_funds"] = matching[:3]
 
     return {

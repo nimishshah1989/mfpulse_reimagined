@@ -1,10 +1,14 @@
 """Morningstar API Center configuration.
 
-All API hashes, universe codes, and field prefix mappings.
+All API hashes and universe codes are loaded from environment variables
+via pydantic-settings. Field prefix mappings are static.
 Verified against real API responses on 2026-03-27.
 """
 
 from dataclasses import dataclass
+from functools import lru_cache
+
+from app.core.config import get_settings, register_settings_dependent_cache
 
 
 @dataclass(frozen=True)
@@ -15,49 +19,117 @@ class MorningstarAPI:
     field_map_name: str  # Key into field_maps module
 
 
-UNIVERSE_CODE = "hoi7dvf1dvm67w36"
-API_BASE = "https://api.morningstar.com/v2/service/mf"
+@lru_cache
+def _build_apis() -> tuple[list[MorningstarAPI], str, str]:
+    """Build API list from env-sourced settings. Cached after first call."""
+    s = get_settings()
+    apis = [
+        MorningstarAPI("Identifier Data",      s.morningstar_hash_identifier,        "fund_master",         "MASTER_FIELD_MAP"),
+        MorningstarAPI("Additional Data",      s.morningstar_hash_additional,        "fund_master",         "MASTER_FIELD_MAP"),
+        MorningstarAPI("Category Data",        s.morningstar_hash_category,          "fund_master",         "MASTER_FIELD_MAP"),
+        MorningstarAPI("Nav Data",             s.morningstar_hash_nav,               "nav_daily",            "NAV_FIELD_MAP"),
+        MorningstarAPI("Return Data",          s.morningstar_hash_returns,           "nav_daily",            "NAV_FIELD_MAP"),
+        MorningstarAPI("Risk Stats",           s.morningstar_hash_risk,              "risk_stats_monthly",   "RISK_STATS_FIELD_MAP"),
+        MorningstarAPI("Rank Data",            s.morningstar_hash_ranks,             "rank_monthly",         "RANK_FIELD_MAP"),
+        MorningstarAPI("Category Return Data", s.morningstar_hash_catreturns,        "category_returns",     "CATEGORY_RETURNS_FIELD_MAP"),
+        MorningstarAPI("Portfolio Data",       s.morningstar_hash_holdings,          "holdings",              "HOLDINGS_FIELD_MAP"),
+        MorningstarAPI("Portfolio Summary",    s.morningstar_hash_portfolio_summary, "holdings_snapshot",      "HOLDINGS_FIELD_MAP"),
+        MorningstarAPI("Fund Holdings Detail", s.morningstar_hash_holdings_detail,   "holdings_detail",       "HOLDING_DETAIL_FIELD_MAP"),
+        MorningstarAPI("Extended Risk Stats",  s.morningstar_hash_extended_risk,     "risk_stats_monthly",      "RISK_STATS_FIELD_MAP"),
+    ]
+    return apis, s.morningstar_universe_code, s.morningstar_api_base
 
-# Order matters: master data first (FK integrity), then dependent tables
-APIS = [
-    # Master data (3 APIs contribute to fund_master)
-    MorningstarAPI("Identifier Data",      "l308tct18q1h759g", "fund_master",         "MASTER_FIELD_MAP"),
-    MorningstarAPI("Additional Data",      "lhqwwmpfryy07xct", "fund_master",         "MASTER_FIELD_MAP"),
-    MorningstarAPI("Category Data",        "ssjwhtlzv3e4vw1c", "fund_master",         "MASTER_FIELD_MAP"),
-    # NAV + Returns (2 APIs contribute to nav_daily)
-    MorningstarAPI("Nav Data",             "n0fys3tcvprq4375", "nav_daily",            "NAV_FIELD_MAP"),
-    MorningstarAPI("Return Data",          "fhqbikngn12un6yk", "nav_daily",            "NAV_FIELD_MAP"),
-    # Risk stats (also contains some master fields like Managers, InceptionDate)
-    MorningstarAPI("Risk Stats",           "qmaym0ulfsyb83j7", "risk_stats_monthly",   "RISK_STATS_FIELD_MAP"),
-    # Ranks
-    MorningstarAPI("Rank Data",            "c6ey0lob8683mm5d", "rank_monthly",         "RANK_FIELD_MAP"),
-    # Category returns
-    MorningstarAPI("Category Return Data", "msncecvsohvimjkx", "category_returns",     "CATEGORY_RETURNS_FIELD_MAP"),
-    # Portfolio data (holdings, sector exposure, holding details)
-    MorningstarAPI("Portfolio Data",       "s4bqvv72rjpelvwf", "holdings",              "HOLDINGS_FIELD_MAP"),
-    # Portfolio summary (snapshot, sector, asset allocation, credit quality)
-    MorningstarAPI("Portfolio Summary",    "ryt74bh4koatkf2w", "holdings_snapshot",      "HOLDINGS_FIELD_MAP"),
-    # Fund holdings detail (individual stock/bond holdings per fund)
-    MorningstarAPI("Fund Holdings Detail", "fq9mxhk7xeb20f3b", "holdings_detail",       "HOLDING_DETAIL_FIELD_MAP"),
-    # Extended risk stats (MaxDrawdown, Capture, Sortino at 1Y/3Y/5Y/10Y + category comparisons)
-    MorningstarAPI("Extended Risk Stats", "x7jihr9d49jb9f6d", "risk_stats_monthly",      "RISK_STATS_FIELD_MAP"),
-]
 
-# Short name → API object mapping for single-API fetch endpoint
-API_NAME_MAP: dict[str, MorningstarAPI] = {
-    "identifier": APIS[0],
-    "additional": APIS[1],
-    "category": APIS[2],
-    "nav": APIS[3],
-    "returns": APIS[4],
-    "risk": APIS[5],
-    "ranks": APIS[6],
-    "catreturns": APIS[7],
-    "holdings": APIS[8],
-    "portfolio_summary": APIS[9],
-    "holdings_detail": APIS[10],
-    "extended_risk": APIS[11],
-}
+def _get_apis() -> list[MorningstarAPI]:
+    return _build_apis()[0]
+
+
+def _get_universe_code() -> str:
+    return _build_apis()[1]
+
+
+def _get_api_base() -> str:
+    return _build_apis()[2]
+
+
+# Public accessors — lazy-loaded from env vars, cached after first access
+class _LazyAPIS:
+    """List-like proxy that builds APIS from settings on first access."""
+    def __getitem__(self, idx):  # type: ignore[override]
+        return _get_apis()[idx]
+    def __iter__(self):  # type: ignore[override]
+        return iter(_get_apis())
+    def __len__(self):  # type: ignore[override]
+        return len(_get_apis())
+
+
+APIS = _LazyAPIS()  # type: ignore[assignment]
+
+
+class _LazyStr:
+    """String proxy that resolves from settings on first use."""
+    def __init__(self, getter):  # type: ignore[no-untyped-def]
+        self._getter = getter
+    def __str__(self) -> str:
+        return self._getter()
+    def __repr__(self) -> str:
+        return self._getter()
+    def __format__(self, spec: str) -> str:
+        return format(self._getter(), spec)
+    def __eq__(self, other: object) -> bool:
+        return self._getter() == other
+    def __hash__(self) -> int:
+        return hash(self._getter())
+    def __add__(self, other: str) -> str:
+        return self._getter() + other
+    def __radd__(self, other: str) -> str:
+        return other + self._getter()
+
+
+UNIVERSE_CODE = _LazyStr(_get_universe_code)  # type: ignore[assignment]
+API_BASE = _LazyStr(_get_api_base)  # type: ignore[assignment]
+
+
+@lru_cache
+def _build_name_map() -> dict[str, MorningstarAPI]:
+    apis = _get_apis()
+    return {
+        "identifier": apis[0],
+        "additional": apis[1],
+        "category": apis[2],
+        "nav": apis[3],
+        "returns": apis[4],
+        "risk": apis[5],
+        "ranks": apis[6],
+        "catreturns": apis[7],
+        "holdings": apis[8],
+        "portfolio_summary": apis[9],
+        "holdings_detail": apis[10],
+        "extended_risk": apis[11],
+    }
+
+
+class _LazyNameMap:
+    """Dict-like proxy for API_NAME_MAP."""
+    def get(self, key: str, default=None):  # type: ignore[no-untyped-def]
+        return _build_name_map().get(key, default)
+    def __getitem__(self, key: str) -> MorningstarAPI:
+        return _build_name_map()[key]
+    def __contains__(self, key: str) -> bool:
+        return key in _build_name_map()
+    def keys(self):  # type: ignore[no-untyped-def]
+        return _build_name_map().keys()
+    def values(self):  # type: ignore[no-untyped-def]
+        return _build_name_map().values()
+    def items(self):  # type: ignore[no-untyped-def]
+        return _build_name_map().items()
+
+
+API_NAME_MAP = _LazyNameMap()  # type: ignore[assignment]
+
+# Register so clear_all_config_caches() resets these when settings change
+register_settings_dependent_cache(_build_apis.cache_clear)
+register_settings_dependent_cache(_build_name_map.cache_clear)
 
 # Prefixes found in API responses — stripped during parsing
 # This is for documentation; the parser strips everything before the first hyphen
