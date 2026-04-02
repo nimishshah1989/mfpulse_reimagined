@@ -5,8 +5,10 @@ import { zoom, zoomIdentity } from 'd3-zoom';
 import { select } from 'd3-selection';
 import {
   MAX_AUM_DOMAIN, MIN_RADIUS, MAX_RADIUS, AUM_CR_DIVISOR,
-  getRadius, findClosestPoint, drawChart,
+  getRadius, findClosestPoint, drawChart, getBubbleColor,
 } from './chartHelpers';
+import { LENS_LABELS } from '../../lib/lens';
+import ChartNote, { ChartLegend } from '../shared/ChartNote';
 
 export default function BubbleScatter({
   data,
@@ -229,32 +231,63 @@ export default function BubbleScatter({
     [getMouseCoords, xScale, yScale, transform.k, onFundClick, onFundDoubleClick]
   );
 
+  const colorLabel = LENS_LABELS[colorLens] || 'Alpha';
+  const xLabel = LENS_LABELS[xAxis] || xAxis;
+  const yLabel = LENS_LABELS[yAxis] || yAxis;
+
   return (
-    <div ref={containerRef} className="relative w-full h-full">
-      <div className="absolute top-2 right-2 z-10">
-        <button
-          type="button"
-          onClick={() => setTransform(zoomIdentity)}
-          className="px-2.5 py-1 text-[10px] font-medium bg-white border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 shadow-sm"
+    <div ref={containerRef} className="relative w-full">
+      <div className="relative" style={{ width, height }}>
+        <div className="absolute top-2 right-2 z-10">
+          <button
+            type="button"
+            onClick={() => setTransform(zoomIdentity)}
+            className="px-2.5 py-1 text-[10px] font-medium bg-white border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 shadow-sm"
+          >
+            Reset
+          </button>
+        </div>
+
+        <canvas ref={canvasRef} style={{ width, height }} className="rounded-xl" />
+
+        <svg
+          ref={overlayRef}
+          width={width}
+          height={height}
+          className="absolute top-0 left-0"
+          style={{ cursor: 'grab' }}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => onHover?.(null, 0, 0)}
+          onClick={handleClick}
         >
-          Reset
-        </button>
+          <rect width={width} height={height} fill="transparent" />
+        </svg>
       </div>
 
-      <canvas ref={canvasRef} style={{ width, height }} className="rounded-xl" />
+      {/* Visible legend */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 px-1">
+        <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider">Color = {colorLabel} Score:</span>
+        <ChartLegend
+          type="box"
+          items={[
+            { color: getBubbleColor(90), label: '80+ (Top)' },
+            { color: getBubbleColor(70), label: '60-79' },
+            { color: getBubbleColor(50), label: '40-59' },
+            { color: getBubbleColor(30), label: '20-39' },
+            { color: getBubbleColor(10), label: '<20 (Bottom)' },
+          ]}
+        />
+        <span className="text-[9px] text-slate-400 ml-2">Bubble size = AUM</span>
+      </div>
 
-      <svg
-        ref={overlayRef}
-        width={width}
-        height={height}
-        className="absolute top-0 left-0"
-        style={{ cursor: 'grab' }}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => onHover?.(null, 0, 0)}
-        onClick={handleClick}
-      >
-        <rect width={width} height={height} fill="transparent" />
-      </svg>
+      {/* Explanatory note */}
+      <ChartNote>
+        <strong>How to read:</strong> Each bubble is one fund. X-axis = {xLabel}, Y-axis = {yLabel}.
+        Bubble color shows the <em>{colorLabel}</em> lens score (green = high, red = low) &mdash;
+        this is independent of the axes, so a green bubble in the bottom-left means the fund scores well
+        on {colorLabel} but poorly on {xLabel}/{yLabel}. Bubble size reflects AUM (larger = bigger fund).
+        Click a fund to see details. Scroll to zoom, drag to pan.
+      </ChartNote>
     </div>
   );
 }

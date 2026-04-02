@@ -293,13 +293,22 @@ export default function SectorsPage() {
           </div>
 
           {compassWidth > 48 ? (
-            <CompassChart
-              sectors={sectorData}
-              selectedSector={selectedSector}
-              onSectorClick={handleSectorClick}
-              width={compassWidth - 48}
-              height={480}
-            />
+            <>
+              <CompassChart
+                sectors={sectorData}
+                selectedSector={selectedSector}
+                onSectorClick={handleSectorClick}
+                width={compassWidth - 48}
+                height={480}
+              />
+              <p className="text-[10px] text-slate-400 leading-relaxed mt-2 px-1">
+                <strong>How to read:</strong> Each bubble is a Morningstar sector. X-axis = Relative Strength (RS) score (0-100, where 50 = market average).
+                Y-axis = RS Momentum (positive = improving, negative = deteriorating). <strong>Leading</strong> (top-right) = strong and getting stronger.
+                <strong>Improving</strong> (top-left) = weak but recovering. <strong>Weakening</strong> (bottom-right) = strong but fading.
+                <strong>Lagging</strong> (bottom-left) = weak and declining. Bubble size = number of funds in that sector. Dashed trails show 3-month movement history.
+                Click a sector for deep-dive analysis.
+              </p>
+            </>
           ) : (
             <div className="h-[480px] flex items-center justify-center text-sm text-slate-400">
               Measuring layout...

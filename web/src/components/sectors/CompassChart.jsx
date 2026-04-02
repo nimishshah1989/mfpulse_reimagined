@@ -316,6 +316,23 @@ export default function CompassChart({
         }}
       />
 
+      {/* Legend + note below chart */}
+      <div className="absolute bottom-1 left-2 right-2 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+        <span className="text-[8px] font-semibold text-slate-400">QUADRANTS:</span>
+        {[
+          { color: 'rgba(16,185,129,0.7)', label: 'Leading' },
+          { color: 'rgba(56,189,248,0.7)', label: 'Improving' },
+          { color: 'rgba(251,191,36,0.7)', label: 'Weakening' },
+          { color: 'rgba(248,113,113,0.7)', label: 'Lagging' },
+        ].map(({ color, label }) => (
+          <span key={label} className="flex items-center gap-0.5">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+            <span className="text-[8px] text-slate-500">{label}</span>
+          </span>
+        ))}
+        <span className="text-[8px] text-slate-400 ml-1">Bubble size = fund count | Dashed trail = 3M history</span>
+      </div>
+
       {/* Hover tooltip */}
       {hovered && hoveredPos && (
         <div
