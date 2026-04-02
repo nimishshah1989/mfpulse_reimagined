@@ -376,6 +376,26 @@ if _frontend_dir.is_dir():
     app.add_middleware(FrontendMiddleware)
 
 
+# Catch-all for unknown API routes — return proper envelope 404, not bare {"detail":"Not Found"}
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "data": None,
+            "error": {
+                "code": "NOT_FOUND" if exc.status_code == 404 else "HTTP_ERROR",
+                "message": str(exc.detail) if exc.detail else "Not found",
+                "details": {},
+            },
+        },
+    )
+
+
 # Catch-all for unhandled exceptions — return proper JSON, never a bare 500
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:

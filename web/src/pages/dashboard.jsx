@@ -142,8 +142,19 @@ export default function DashboardPage() {
     return applyFilters(matrixData);
   }, [matrixData, applyFilters]);
 
-  // Always compute archetypes from filtered universe — pre-computed counts include all 13K funds
-  const effectiveArchetypes = [];
+  // Compute archetypes from filtered universe when available
+  const effectiveArchetypes = useMemo(() => {
+    if (!archetypes || archetypes.length === 0) return [];
+    if (!filteredUniverse) return archetypes;
+    // Recount archetypes against the filtered set
+    const filteredIds = new Set(filteredUniverse.map((f) => f.mstar_id));
+    return archetypes.map((a) => ({
+      ...a,
+      count: a.mstar_ids
+        ? a.mstar_ids.filter((id) => filteredIds.has(id)).length
+        : a.count || 0,
+    }));
+  }, [archetypes, filteredUniverse]);
 
   useEffect(() => {
     async function loadAll() {
@@ -159,38 +170,48 @@ export default function DashboardPage() {
         fetchFundArchetypes(),                               // 7: archetypes
       ]);
 
-      if (results[0].status === 'fulfilled') {
-        setNifty(results[0].value.data);
-        setAllIndices(results[0].value.data?.all_indices || null);
-      }
-      if (results[1].status === 'fulfilled') setRegime(results[1].value.data);
-      if (results[2].status === 'fulfilled') {
-        const raw = results[2].value.data;
-        setSentimentRaw(raw);
-        const ls = raw?.layer_scores || {};
-        const layers = Object.entries(ls).map(([name, score]) => ({ name, score }));
-        setSentiment({ composite_score: raw?.composite_score, zone: raw?.zone, layers });
-        const metrics = raw?.short_term_trend?.metrics || [];
-        const broad = raw?.broad_trend?.metrics || [];
-        const allMetrics = [...metrics, ...broad];
-        const breadth = {};
-        allMetrics.forEach((m) => { breadth[m.key] = m.pct; });
-        setBreadthData({
-          above_10ema: breadth.above_10ema,
-          above_21ema: breadth.above_21ema,
-          above_50ema: breadth.above_50ema,
-          above_200ema: breadth.above_200ema,
-          highs_52w: breadth.hit_52w_high,
-          lows_52w: breadth.hit_52w_low,
-          macd_bull_pct: breadth.macd_bull_cross,
-          rsi_above_50_pct: breadth.rsi_above_50,
-        });
-      }
-      if (results[3].status === 'fulfilled') setSectors(results[3].value.data || []);
-      if (results[4].status === 'fulfilled') setMatrixData(results[4].value.data || []);
-      if (results[5].status === 'fulfilled') setAlignmentData(results[5].value.data || []);
+      // Safely extract data — guard against missing .data or .value
+      try {
+        if (results[0].status === 'fulfilled' && results[0].value?.data) {
+          setNifty(results[0].value.data);
+          setAllIndices(results[0].value.data?.all_indices || null);
+        }
+      } catch { /* non-fatal */ }
+
+      try {
+        if (results[1].status === 'fulfilled') setRegime(results[1].value?.data || null);
+      } catch { /* non-fatal */ }
+
+      try {
+        if (results[2].status === 'fulfilled' && results[2].value?.data) {
+          const raw = results[2].value.data;
+          setSentimentRaw(raw);
+          const ls = raw?.layer_scores || {};
+          const layers = Object.entries(ls).map(([name, score]) => ({ name, score }));
+          setSentiment({ composite_score: raw?.composite_score, zone: raw?.zone, layers });
+          const metrics = raw?.short_term_trend?.metrics || [];
+          const broad = raw?.broad_trend?.metrics || [];
+          const allMetrics = [...metrics, ...broad];
+          const breadth = {};
+          allMetrics.forEach((m) => { if (m?.key) breadth[m.key] = m.pct; });
+          setBreadthData({
+            above_10ema: breadth.above_10ema ?? null,
+            above_21ema: breadth.above_21ema ?? null,
+            above_50ema: breadth.above_50ema ?? null,
+            above_200ema: breadth.above_200ema ?? null,
+            highs_52w: breadth.hit_52w_high ?? null,
+            lows_52w: breadth.hit_52w_low ?? null,
+            macd_bull_pct: breadth.macd_bull_cross ?? null,
+            rsi_above_50_pct: breadth.rsi_above_50 ?? null,
+          });
+        }
+      } catch { /* non-fatal */ }
+
+      if (results[3].status === 'fulfilled') setSectors(results[3].value?.data || []);
+      if (results[4].status === 'fulfilled') setMatrixData(results[4].value?.data || []);
+      if (results[5].status === 'fulfilled') setAlignmentData(results[5].value?.data || []);
       if (results[6].status === 'fulfilled') setUniverse(results[6].value || []);
-      if (results[7].status === 'fulfilled') setArchetypes(results[7].value.data || []);
+      if (results[7].status === 'fulfilled') setArchetypes(results[7].value?.data || []);
       setLoading(false);
     }
     loadAll();
