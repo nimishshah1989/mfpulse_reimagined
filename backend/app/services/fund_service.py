@@ -5,6 +5,8 @@ from datetime import date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
+from dateutil.relativedelta import relativedelta
+
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, ValidationError
@@ -293,10 +295,9 @@ class FundService:
             and not _SEGREGATED_PATTERN.search(f.fund_name or f.legal_name or "")
         ]
 
-        # Filter by minimum fund age (inception_date) — use proper year arithmetic
+        # Filter by minimum fund age (inception_date) — leap-safe year subtraction
         if min_age_years is not None and min_age_years > 0:
-            today = date.today()
-            cutoff_date = today.replace(year=today.year - min_age_years)
+            cutoff_date = date.today() - relativedelta(years=min_age_years)
             funds = [
                 f for f in funds
                 if getattr(f, "inception_date", None) is not None
