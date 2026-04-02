@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.core.auth import require_admin_key
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -57,12 +58,13 @@ class NLQueryRequest(BaseModel):
 # ── Endpoints ────────────────────────────────────────────────────────────────
 
 @router.get("/briefing")
-def get_morning_briefing() -> dict:
+def get_morning_briefing(db: Session = Depends(get_db)) -> dict:
     """AI-generated morning market briefing using live MarketPulse data."""
     settings = get_settings()
     mp = MarketPulseClient(
         base_url=settings.marketpulse_base_url,
         timeout=10,
+        db=db,
     )
 
     # Gather market data
@@ -94,7 +96,7 @@ def get_morning_briefing() -> dict:
         "sentiment_score": sentiment.get("composite_score", sentiment.get("score", "N/A")),
         "breadth_advance_pct": sentiment.get("breadth_advance_pct", "N/A"),
         "leading_sectors": ", ".join(leading[:3]) or "N/A",
-        "universe_stats": "13,000+ funds tracked",
+        "universe_stats": f"{db.execute(text('SELECT count(*) FROM fund_master WHERE is_eligible = true')).scalar() or 0:,} funds tracked",
     }
 
     briefing = generate_morning_briefing(market_data)
@@ -132,12 +134,13 @@ def get_simulation_explainer(req: SimExplainerRequest) -> dict:
 
 
 @router.get("/sector-playbook")
-def get_sector_playbook() -> dict:
+def get_sector_playbook(db: Session = Depends(get_db)) -> dict:
     """AI-generated sector rotation playbook from live data."""
     settings = get_settings()
     mp = MarketPulseClient(
         base_url=settings.marketpulse_base_url,
         timeout=10,
+        db=db,
     )
 
     picks = mp.get_market_picks() or {}
@@ -168,23 +171,39 @@ def get_sector_playbook() -> dict:
 
 
 @router.get("/regime-actions")
-def get_regime_actions() -> dict:
+def get_regime_actions(db: Session = Depends(get_db)) -> dict:
     """AI-generated regime-specific action recommendations."""
     settings = get_settings()
     mp = MarketPulseClient(
         base_url=settings.marketpulse_base_url,
         timeout=10,
+        db=db,
     )
 
     picks = mp.get_market_picks() or {}
     sentiment = mp.get_sentiment() or {}
 
+    # Compute top category from actual lens data
+    top_cat_row = (
+        db.execute(text(
+            "SELECT fm.category_name, COUNT(*) AS cnt "
+            "FROM fund_lens_scores fls "
+            "JOIN fund_master fm ON fm.mstar_id = fls.mstar_id "
+            "WHERE fls.return_score >= 70 "
+            "GROUP BY fm.category_name ORDER BY cnt DESC LIMIT 1"
+        )).first()
+    )
+    avoid_count = db.execute(text(
+        "SELECT COUNT(*) FROM fund_classification "
+        "WHERE return_class = 'WEAK' AND risk_class = 'HIGH_RISK'"
+    )).scalar() or 0
+
     regime_data = {
         "regime": picks.get("regime") or picks.get("market_regime", "N/A"),
         "sentiment_score": sentiment.get("composite_score", sentiment.get("score", "N/A")),
         "breadth": sentiment.get("breadth_advance_pct", "N/A"),
-        "top_category": "Large Cap",  # Could be computed from universe data
-        "avoid_count": 0,
+        "top_category": top_cat_row[0] if top_cat_row else "Large Cap",
+        "avoid_count": avoid_count,
     }
 
     actions = generate_regime_actions(regime_data)
@@ -261,6 +280,7 @@ def get_weekly_intelligence(db: Session = Depends(get_db)) -> dict:
     mp = MarketPulseClient(
         base_url=settings.marketpulse_base_url,
         timeout=10,
+        db=db,
     )
 
     # Gather market data

@@ -141,11 +141,11 @@ class HoldingsRepository:
             if existing is None:
                 seen[norm] = h
             else:
-                cur_wt = h.weighting_pct or Decimal("0")
-                ex_wt = existing.weighting_pct or Decimal("0")
+                cur_wt = h.weighting_pct if h.weighting_pct is not None else Decimal("0")
+                ex_wt = existing.weighting_pct if existing.weighting_pct is not None else Decimal("0")
                 if cur_wt > ex_wt:
                     seen[norm] = h
-        deduped = sorted(seen.values(), key=lambda x: x.weighting_pct or Decimal("0"), reverse=True)
+        deduped = sorted(seen.values(), key=lambda x: x.weighting_pct if x.weighting_pct is not None else Decimal("0"), reverse=True)
         return [self._holding_to_dict(h) for h in deduped[:limit]]
 
     def get_all_holdings(self, mstar_id: str) -> list[dict]:
@@ -290,7 +290,8 @@ class HoldingsRepository:
             for h in holdings:
                 isin = h.get("isin")
                 if isin:
-                    isin_map[isin][fund_id] = h.get("weighting_pct") or Decimal("0")
+                    wt = h.get("weighting_pct")
+                    isin_map[isin][fund_id] = wt if wt is not None else Decimal("0")
 
         # Pairwise overlap: sum of min weights for shared ISINs
         overlap_matrix: dict[str, dict[str, Decimal]] = {}
@@ -339,7 +340,7 @@ class HoldingsRepository:
         for fund_id in mstar_ids:
             sectors = self._get_sectors_for_fund(fund_id)
             for s in sectors:
-                pct = s.get("net_pct") or Decimal("0")
+                pct = s.get("net_pct") if s.get("net_pct") is not None else Decimal("0")
                 sector_totals[s["sector_name"]] += pct / n_funds
         effective_sectors = [
             {

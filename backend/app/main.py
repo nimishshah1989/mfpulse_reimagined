@@ -31,6 +31,16 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     # Fail fast if production is missing ADMIN_API_KEY
     validate_admin_key_configured()
 
+    # Warn if MarketPulse URL points to self (infinite loop risk)
+    mp_url = settings.marketpulse_base_url.rstrip("/")
+    self_urls = [f"http://localhost:{settings.app_port}", f"http://127.0.0.1:{settings.app_port}"]
+    if mp_url in self_urls:
+        logger.warning(
+            "MARKETPULSE_BASE_URL (%s) points to this app's own port. "
+            "MarketPulse requests will loop back to self. Set it to MarketPulse's actual URL.",
+            mp_url,
+        )
+
     db_ok = check_db_connection()
     logger.info(
         "MF Pulse Engine starting",

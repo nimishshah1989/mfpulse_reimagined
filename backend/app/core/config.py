@@ -42,8 +42,8 @@ class Settings(BaseSettings):
     morningstar_hash_holdings_detail: str = "fq9mxhk7xeb20f3b"
     morningstar_hash_extended_risk: str = "x7jihr9d49jb9f6d"
 
-    # MarketPulse bridge
-    marketpulse_base_url: str = "http://localhost:8000"
+    # MarketPulse bridge (default 8007 = MarketPulse's actual port on EC2)
+    marketpulse_base_url: str = "http://localhost:8007"
     marketpulse_timeout_seconds: int = 30
 
     # Data feeds

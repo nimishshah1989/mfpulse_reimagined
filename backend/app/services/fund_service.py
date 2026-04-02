@@ -293,9 +293,10 @@ class FundService:
             and not _SEGREGATED_PATTERN.search(f.fund_name or f.legal_name or "")
         ]
 
-        # Filter by minimum fund age (inception_date)
+        # Filter by minimum fund age (inception_date) — use proper year arithmetic
         if min_age_years is not None and min_age_years > 0:
-            cutoff_date = date.today() - timedelta(days=min_age_years * 365)
+            today = date.today()
+            cutoff_date = today.replace(year=today.year - min_age_years)
             funds = [
                 f for f in funds
                 if getattr(f, "inception_date", None) is not None
@@ -592,18 +593,18 @@ class FundService:
         """Synthesize NAV from cumulative daily returns when nav is NULL.
 
         Starts at 100 and compounds daily returns chronologically.
-        Rows come in desc order from repo, so reverse for compounding.
+        Input: rows in any order (sorted by nav_date internally).
+        Output: rows in ASC order (oldest first) — matches chart expectations.
         """
-        # Work chronologically (oldest first)
-        chronological = list(reversed(rows))
+        # Sort chronologically (oldest first)
+        chronological = sorted(rows, key=lambda r: r["nav_date"])
         synthetic = Decimal("100")
         for r in chronological:
             ret = r.get("return_1d")
             if ret is not None:
                 synthetic = synthetic * (1 + Decimal(str(ret)) / 100)
             r["nav"] = str(synthetic.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP))
-        # Restore desc order
-        return list(reversed(chronological))
+        return chronological
 
     @staticmethod
     def _to_fund_summary(fund: object, latest_nav: Optional[dict]) -> dict:

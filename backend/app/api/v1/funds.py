@@ -54,7 +54,14 @@ def get_universe_data(
     if broad_category and broad_category.lower() not in VALID_BROAD_CATEGORIES:
         broad_category = None
     if min_aum is not None and min_aum not in VALID_AUM_VALUES:
-        min_aum = None
+        return {
+            "success": False,
+            "data": None,
+            "error": {
+                "code": "INVALID_PARAM",
+                "message": f"min_aum must be one of: {sorted(v for v in VALID_AUM_VALUES if v is not None)}",
+            },
+        }
     if min_age_years is not None and min_age_years not in VALID_AGE_VALUES:
         min_age_years = None
 
@@ -190,7 +197,7 @@ def list_funds(
     return {
         "success": True,
         "data": filtered,
-        "meta": {"timestamp": Meta().timestamp, "count": total},
+        "meta": {"timestamp": Meta().timestamp, "count": len(filtered)},
         "error": None,
     }
 
