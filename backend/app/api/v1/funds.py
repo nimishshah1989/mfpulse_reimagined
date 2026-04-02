@@ -263,10 +263,11 @@ def natural_language_search_ids(
     min_nav_count: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Lightweight NL search — returns only mstar_ids for filtering.
+    """Lightweight NL search — returns mstar_ids plus relaxation hints.
 
     Used by the universe page to get the full matched set without
-    serializing full fund objects.
+    serializing full fund objects. When zero results, includes
+    relaxed search suggestions with alternative IDs.
     """
     from app.services.nl_search_service import NLSearchService
 
@@ -277,9 +278,22 @@ def natural_language_search_ids(
     svc = NLSearchService(db)
     result = svc.search(query_text, limit=limit, min_nav_count=int(effective_min_nav))
     ids = [f["mstar_id"] for f in result.get("funds", [])]
+
+    data: dict = {"ids": ids, "count": len(ids)}
+
+    # Include relaxation hints when primary search found nothing
+    relaxed = result.get("relaxed")
+    if relaxed:
+        relaxed_ids = [f["mstar_id"] for f in relaxed.get("funds", [])]
+        data["relaxed"] = {
+            "ids": relaxed_ids,
+            "count": len(relaxed_ids),
+            "description": relaxed.get("description", ""),
+        }
+
     return {
         "success": True,
-        "data": {"ids": ids, "count": len(ids)},
+        "data": data,
         "meta": {"timestamp": Meta().timestamp},
         "error": None,
     }

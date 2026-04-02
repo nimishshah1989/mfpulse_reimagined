@@ -44,14 +44,14 @@ class NarrativeService:
 
         # Check if API key is available
         settings = get_settings()
-        api_key = settings.anthropic_api_key
-        if not api_key:
-            # Fallback to headline_tag
+        # Need either Groq or Claude key for narrative generation
+        has_llm = bool(settings.groq_api_key or settings.anthropic_api_key)
+        if not has_llm:
             fallback = fund_data.get("headline_tag", "")
             return fallback
 
-        # Generate narrative via Claude API
-        narrative = self._call_claude(api_key, fund_data)
+        # Generate narrative via LLM (Groq primary, Claude fallback)
+        narrative = self._call_claude(settings.anthropic_api_key, fund_data)
         if narrative:
             _NARRATIVE_CACHE[mstar_id] = (narrative, time.monotonic() + _CACHE_TTL_SECONDS)
         return narrative
@@ -117,13 +117,18 @@ class NarrativeService:
 
     @staticmethod
     def _call_claude(api_key: str, fund_data: dict) -> str:
-        """Call Claude Haiku API to generate a narrative brief."""
+        """Generate narrative brief using Groq (free) with Claude fallback."""
+        from app.services.claude_client import _call_claude as llm_call
+
+        system = (
+            "You are MF Pulse's fund intelligence system. Generate a concise "
+            "3-4 sentence brief for an Indian mutual fund. Be specific with "
+            "numbers. Mention strengths, risks, and actionable context. No markdown."
+        )
         prompt = (
-            "Generate a 3-4 sentence intelligence brief for this mutual fund. "
-            "Be specific with numbers. Mention strengths, risks, and actionable context.\n\n"
             f"Fund: {fund_data['fund_name']} ({fund_data['category_name']})\n"
             f"AMC: {fund_data['amc_name']}\n"
-            f"AUM: ₹{fund_data.get('aum', 'N/A')}\n"
+            f"AUM: \u20b9{fund_data.get('aum', 'N/A')}\n"
             f"Lens Scores: Return={fund_data.get('return_score', 'N/A')}/100, "
             f"Risk={fund_data.get('risk_score', 'N/A')}/100, "
             f"Alpha={fund_data.get('alpha_score', 'N/A')}/100, "
@@ -140,34 +145,5 @@ class NarrativeService:
             f"Market Regime: {fund_data.get('market_regime', 'N/A')}\n"
             f"Risk Level: {fund_data.get('indian_risk_level', 'N/A')}"
         )
-
-        try:
-            with httpx.Client(timeout=15.0) as client:
-                response = client.post(
-                    "https://api.anthropic.com/v1/messages",
-                    headers={
-                        "x-api-key": api_key,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json",
-                    },
-                    json={
-                        "model": "claude-haiku-4-5-20251001",
-                        "max_tokens": 300,
-                        "messages": [{"role": "user", "content": prompt}],
-                    },
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    return data["content"][0]["text"]
-                logger.warning(
-                    "Claude API returned %d: %s",
-                    response.status_code,
-                    response.text[:200],
-                )
-                return ""
-        except httpx.TimeoutException:
-            logger.warning("Claude API timeout for narrative generation")
-            return ""
-        except Exception as e:
-            logger.warning("Claude API error: %s", e)
-            return ""
+        result = llm_call(system, prompt, max_tokens=300)
+        return result or ""

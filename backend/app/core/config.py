@@ -49,8 +49,11 @@ class Settings(BaseSettings):
     # Data feeds
     feed_csv_dir: str = "/app/data_feeds"
 
-    # Anthropic (Claude API for narrative generation)
+    # Anthropic (Claude API for narrative generation — legacy, prefer Groq)
     anthropic_api_key: str = ""
+
+    # Groq (free LLM API for narrative generation — primary)
+    groq_api_key: str = ""
 
     # Admin
     admin_api_key: str = ""

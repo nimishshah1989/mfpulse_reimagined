@@ -90,6 +90,7 @@ export default function UniversePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [nlFilters, setNLFilters] = useState(null);
   const [nlMatchedIds, setNLMatchedIds] = useState(null);
+  const [nlRelaxedInfo, setNLRelaxedInfo] = useState(null);
   const nlDebounceRef = useRef(null);
 
   // Compare: selected fund IDs
@@ -143,6 +144,7 @@ export default function UniversePage() {
 
     if (!query || query.trim().length < 2) {
       setNLMatchedIds(null);
+      setNLRelaxedInfo(null);
       return;
     }
 
@@ -153,12 +155,21 @@ export default function UniversePage() {
         const res = await searchFundsNLIds(query.trim());
         if (res?.data?.ids) {
           setNLMatchedIds(new Set(res.data.ids));
+          // If zero primary results but relaxed results available, use those
+          if (res.data.count === 0 && res.data.relaxed) {
+            setNLRelaxedInfo(res.data.relaxed);
+            setNLMatchedIds(new Set(res.data.relaxed.ids));
+          } else {
+            setNLRelaxedInfo(null);
+          }
         } else {
           setNLMatchedIds(null);
+          setNLRelaxedInfo(null);
         }
       } catch {
         // Backend failed — fall back to client-side NL filtering
         setNLMatchedIds(null);
+        setNLRelaxedInfo(null);
       }
     }, 300);
   }, []);
@@ -373,6 +384,7 @@ export default function UniversePage() {
     setSearchQuery('');
     setNLFilters(null);
     setNLMatchedIds(null);
+    setNLRelaxedInfo(null);
   }, []);
 
   // Compare handlers
@@ -498,7 +510,7 @@ export default function UniversePage() {
         }
         onRemovePreset={() => setActivePreset(null)}
         onRemoveTier={() => setSelectedTier(null)}
-        onRemoveSearch={() => { setSearchQuery(''); setNLFilters(null); setNLMatchedIds(null); }}
+        onRemoveSearch={() => { setSearchQuery(''); setNLFilters(null); setNLMatchedIds(null); setNLRelaxedInfo(null); }}
         onClearAll={handleResetFilters}
       />
 
@@ -601,11 +613,29 @@ export default function UniversePage() {
                   minHeight: viewMode === 'heatmap' ? 400 : undefined,
                 }}
               >
-                {taggedFunds.length === 0 ? (
+                {/* Relaxed search banner */}
+                {nlRelaxedInfo && (
+                  <div className="mx-3 mt-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-xs text-amber-700">
+                      <span className="font-medium">No exact matches.</span>{' '}
+                      {nlRelaxedInfo.description} ({nlRelaxedInfo.count} funds)
+                    </p>
+                  </div>
+                )}
+                {taggedFunds.length === 0 && !nlRelaxedInfo ? (
                   <div className="flex items-center justify-center h-full" style={{ minHeight: 300 }}>
                     <EmptyState
                       icon={<svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>}
                       message="No funds match your current filters"
+                      action="Reset Filters"
+                      onAction={handleResetFilters}
+                    />
+                  </div>
+                ) : taggedFunds.length === 0 ? (
+                  <div className="flex items-center justify-center h-full" style={{ minHeight: 300 }}>
+                    <EmptyState
+                      icon={<svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>}
+                      message="Showing relaxed results — see banner above"
                       action="Reset Filters"
                       onAction={handleResetFilters}
                     />

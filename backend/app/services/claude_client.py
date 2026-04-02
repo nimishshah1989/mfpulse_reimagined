@@ -1,8 +1,8 @@
-"""Centralized Claude API client for all AI-powered features.
+"""Centralized LLM client for all AI-powered features.
 
-Uses Haiku 4.5 for cost-efficiency (~$0.25/1M input, $1.25/1M output).
+Primary: Groq free tier (Llama 3.3 70B) — zero cost.
+Fallback: Claude Haiku if Groq unavailable.
 All methods include in-memory caching + fallback templates.
-Estimated cost: ~$1.50/month at moderate usage.
 """
 
 import logging
@@ -21,12 +21,13 @@ _CACHE: dict[str, tuple[str, float]] = {}
 # Track usage for admin dashboard
 _USAGE_LOG: list[dict] = []
 
-MODEL = "claude-haiku-4-5-20251001"
-API_URL = "https://api.anthropic.com/v1/messages"
+# Groq (free tier — primary)
+GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-
-def _get_api_key() -> str:
-    return get_settings().anthropic_api_key
+# Claude (fallback)
+CLAUDE_MODEL = "claude-haiku-4-5-20251001"
+CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
 
 
 def _cache_get(key: str) -> Optional[str]:
@@ -40,28 +41,81 @@ def _cache_set(key: str, value: str, ttl: int) -> None:
     _CACHE[key] = (value, time.monotonic() + ttl)
 
 
-def _call_claude(
+def _call_groq(
     system_prompt: str,
     user_prompt: str,
     max_tokens: int = 400,
     timeout: float = 15.0,
 ) -> Optional[str]:
-    """Call Claude Haiku API. Returns text or None on failure."""
-    api_key = _get_api_key()
+    """Call Groq free API (Llama 3.3 70B). Returns text or None."""
+    api_key = get_settings().groq_api_key
     if not api_key:
         return None
 
     try:
         with httpx.Client(timeout=timeout) as client:
             response = client.post(
-                API_URL,
+                GROQ_API_URL,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": GROQ_MODEL,
+                    "max_tokens": max_tokens,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "temperature": 0.7,
+                },
+            )
+            if response.status_code == 200:
+                data = response.json()
+                text = data["choices"][0]["message"]["content"]
+                usage = data.get("usage", {})
+                _USAGE_LOG.append({
+                    "time": time.time(),
+                    "input_tokens": usage.get("prompt_tokens", 0),
+                    "output_tokens": usage.get("completion_tokens", 0),
+                    "feature": "unknown",
+                    "provider": "groq",
+                })
+                return text
+            logger.warning(
+                "Groq API %d: %s", response.status_code, response.text[:200]
+            )
+            return None
+    except httpx.TimeoutException:
+        logger.warning("Groq API timeout")
+        return None
+    except Exception as e:
+        logger.warning("Groq API error: %s", e)
+        return None
+
+
+def _call_claude_direct(
+    system_prompt: str,
+    user_prompt: str,
+    max_tokens: int = 400,
+    timeout: float = 15.0,
+) -> Optional[str]:
+    """Call Claude Haiku API as fallback. Returns text or None."""
+    api_key = get_settings().anthropic_api_key
+    if not api_key:
+        return None
+
+    try:
+        with httpx.Client(timeout=timeout) as client:
+            response = client.post(
+                CLAUDE_API_URL,
                 headers={
                     "x-api-key": api_key,
                     "anthropic-version": "2023-06-01",
                     "content-type": "application/json",
                 },
                 json={
-                    "model": MODEL,
+                    "model": CLAUDE_MODEL,
                     "max_tokens": max_tokens,
                     "system": system_prompt,
                     "messages": [{"role": "user", "content": user_prompt}],
@@ -70,13 +124,13 @@ def _call_claude(
             if response.status_code == 200:
                 data = response.json()
                 text = data["content"][0]["text"]
-                # Log usage
                 usage = data.get("usage", {})
                 _USAGE_LOG.append({
                     "time": time.time(),
                     "input_tokens": usage.get("input_tokens", 0),
                     "output_tokens": usage.get("output_tokens", 0),
                     "feature": "unknown",
+                    "provider": "claude",
                 })
                 return text
             logger.warning(
@@ -89,6 +143,26 @@ def _call_claude(
     except Exception as e:
         logger.warning("Claude API error: %s", e)
         return None
+
+
+def _call_claude(
+    system_prompt: str,
+    user_prompt: str,
+    max_tokens: int = 400,
+    timeout: float = 15.0,
+) -> Optional[str]:
+    """Primary LLM call: Groq first (free), Claude fallback.
+
+    Maintains the _call_claude function signature for backward compatibility
+    with all existing callers.
+    """
+    # Try Groq first (free)
+    result = _call_groq(system_prompt, user_prompt, max_tokens, timeout)
+    if result:
+        return result
+
+    # Fall back to Claude
+    return _call_claude_direct(system_prompt, user_prompt, max_tokens, timeout)
 
 
 # ── Feature 1: Morning Briefing ──────────────────────────────────────────────
@@ -767,12 +841,27 @@ def get_usage_stats() -> dict:
         feature_counts[feat] = feature_counts.get(feat, 0) + 1
         feature_tokens[feat] = feature_tokens.get(feat, 0) + u.get("input_tokens", 0) + u.get("output_tokens", 0)
 
+    # Provider breakdown
+    groq_calls = sum(1 for u in monthly if u.get("provider") == "groq")
+    claude_calls = sum(1 for u in monthly if u.get("provider") == "claude")
+
+    # Only Claude costs money — Groq is free
+    claude_monthly = [u for u in monthly if u.get("provider") == "claude"]
+    claude_input = sum(u.get("input_tokens", 0) for u in claude_monthly)
+    claude_output = sum(u.get("output_tokens", 0) for u in claude_monthly)
+    cost_input = (claude_input / 1_000_000) * 0.80
+    cost_output = (claude_output / 1_000_000) * 4.00
+    total_cost = cost_input + cost_output
+
     return {
         "total_calls": len(monthly),
+        "groq_calls": groq_calls,
+        "claude_calls": claude_calls,
         "total_input_tokens": total_input,
         "total_output_tokens": total_output,
         "estimated_cost_usd": round(total_cost, 4),
-        "model": MODEL,
+        "primary_model": GROQ_MODEL,
+        "fallback_model": CLAUDE_MODEL,
         "feature_breakdown": [
             {"feature": k, "calls": feature_counts[k], "tokens": feature_tokens.get(k, 0)}
             for k in sorted(feature_counts.keys())
