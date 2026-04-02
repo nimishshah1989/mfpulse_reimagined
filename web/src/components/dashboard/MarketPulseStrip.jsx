@@ -1,4 +1,4 @@
-import { formatINR } from '@/lib/format';
+import { formatINR } from '../../lib/format';
 import SkeletonLoader from '../shared/SkeletonLoader';
 import InfoIcon from '../shared/InfoIcon';
 
