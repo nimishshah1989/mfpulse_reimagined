@@ -203,6 +203,13 @@ export const searchFundsNL = (query, { minNavCount = 0, limit = 50 } = {}) =>
     body: JSON.stringify({ query, min_nav_count: minNavCount }),
   });
 
+/** Lightweight NL search — returns only mstar_ids, no full fund objects. */
+export const searchFundsNLIds = (query, { minNavCount = 0, limit = 10000 } = {}) =>
+  apiFetch(`/api/v1/funds/search/natural/ids?limit=${limit}`, {
+    method: 'POST',
+    body: JSON.stringify({ query, min_nav_count: minNavCount }),
+  });
+
 // Portfolio analytics
 export const fetchPortfolioAnalytics = (portfolioId) =>
   apiFetch(`/api/v1/strategies/portfolios/${portfolioId}/analytics`);

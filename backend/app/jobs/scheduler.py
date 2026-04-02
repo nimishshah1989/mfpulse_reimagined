@@ -197,14 +197,16 @@ class JobScheduler:
         """Manually trigger a job in a background thread.
 
         Returns True on success, False if invalid name, or error string if already running.
+        Atomically reserves the slot before spawning the thread.
         """
         if job_name not in VALID_JOBS:
             return False
 
-        # Pre-check before spawning thread (actual guard is inside _run_with_audit)
+        # Atomic check-and-add — reserve slot before spawning thread
         with self._running_lock:
             if job_name in self._running_jobs:
                 return f"Job '{job_name}' is already running"
+            self._running_jobs.add(job_name)
 
         job_map: dict[str, Callable] = {
             "nav_feeds": self.job_process_nav_feeds,

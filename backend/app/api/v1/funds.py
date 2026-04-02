@@ -224,7 +224,7 @@ def list_amcs(db: Session = Depends(get_db)) -> dict:
 @router.post("/search/natural")
 def natural_language_search(
     body: dict,
-    limit: int = Query(default=50, le=15000),
+    limit: int = Query(default=50, ge=1, le=500),
     min_nav_count: int = Query(default=0, ge=0, description="Min NAV data points (1250=5Y, 750=3Y, 250=1Y)"),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -245,6 +245,35 @@ def natural_language_search(
         "success": True,
         "data": result,
         "meta": {"timestamp": Meta().timestamp, "count": result["count"]},
+        "error": None,
+    }
+
+
+@router.post("/search/natural/ids")
+def natural_language_search_ids(
+    body: dict,
+    limit: int = Query(default=10000, ge=1, le=15000),
+    min_nav_count: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Lightweight NL search — returns only mstar_ids for filtering.
+
+    Used by the universe page to get the full matched set without
+    serializing full fund objects.
+    """
+    from app.services.nl_search_service import NLSearchService
+
+    query_text = body.get("query", "")
+    nav_count_override = body.get("min_nav_count")
+    effective_min_nav = nav_count_override if nav_count_override is not None else min_nav_count
+
+    svc = NLSearchService(db)
+    result = svc.search(query_text, limit=limit, min_nav_count=int(effective_min_nav))
+    ids = [f["mstar_id"] for f in result.get("funds", [])]
+    return {
+        "success": True,
+        "data": {"ids": ids, "count": len(ids)},
+        "meta": {"timestamp": Meta().timestamp},
         "error": None,
     }
 

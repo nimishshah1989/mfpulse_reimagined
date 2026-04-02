@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef, useTransition } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
-import { fetchUniverseData, searchFundsNL } from '../lib/api';
+import { fetchUniverseData, searchFundsNLIds } from '../lib/api';
 import { cachedFetch } from '../lib/cache';
 import { formatPct, formatAUM, formatCount } from '../lib/format';
 import { useFilters } from '../contexts/FilterContext';
@@ -149,11 +149,10 @@ export default function UniversePage() {
     // Debounce 300ms then call backend NL search
     nlDebounceRef.current = setTimeout(async () => {
       try {
-        // Pass limit=10000 — these IDs are only used as a filter set, not displayed
-        const res = await searchFundsNL(query.trim(), { limit: 10000 });
-        if (res?.data?.funds) {
-          // Set with matched IDs (may be empty — that means zero matches)
-          setNLMatchedIds(new Set(res.data.funds.map((f) => f.mstar_id)));
+        // Lightweight endpoint — returns only mstar_ids, not full fund objects
+        const res = await searchFundsNLIds(query.trim());
+        if (res?.data?.ids) {
+          setNLMatchedIds(new Set(res.data.ids));
         } else {
           setNLMatchedIds(null);
         }
