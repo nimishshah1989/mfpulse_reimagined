@@ -193,20 +193,14 @@ class JobScheduler:
             self._scheduler.shutdown(wait=False)
             logger.info("Job scheduler stopped")
 
-    def trigger_job(self, job_name: str) -> bool | str:
+    def trigger_job(self, job_name: str) -> bool:
         """Manually trigger a job in a background thread.
 
-        Returns True on success, False if invalid name, or error string if already running.
-        Atomically reserves the slot before spawning the thread.
+        Returns True on success, False if invalid name.
+        Overlap protection is handled entirely inside _run_with_audit.
         """
         if job_name not in VALID_JOBS:
             return False
-
-        # Atomic check-and-add — reserve slot before spawning thread
-        with self._running_lock:
-            if job_name in self._running_jobs:
-                return f"Job '{job_name}' is already running"
-            self._running_jobs.add(job_name)
 
         job_map: dict[str, Callable] = {
             "nav_feeds": self.job_process_nav_feeds,

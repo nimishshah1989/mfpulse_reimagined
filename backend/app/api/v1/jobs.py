@@ -40,8 +40,8 @@ def trigger_job(job_name: str) -> dict:
             },
         )
 
-    result = sched.trigger_job(job_name)
-    if result is False:
+    success = sched.trigger_job(job_name)
+    if not success:
         return JSONResponse(
             status_code=400,
             content={
@@ -51,19 +51,6 @@ def trigger_job(job_name: str) -> dict:
                     "code": "INVALID_JOB",
                     "message": f"Unknown job: {job_name}",
                     "details": {"valid_jobs": list(sched.get_job_status())},
-                },
-            },
-        )
-    if isinstance(result, str):
-        return JSONResponse(
-            status_code=409,
-            content={
-                "success": False,
-                "data": None,
-                "error": {
-                    "code": "JOB_ALREADY_RUNNING",
-                    "message": result,
-                    "details": {},
                 },
             },
         )
