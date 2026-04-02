@@ -418,9 +418,9 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
             color={mom3m >= 0 ? '#059669' : '#dc2626'}
           />
           <StatCard
-            label="Weighted 1Y Ret"
-            value={formatPct(wRet)}
-            color={wRet >= 0 ? '#059669' : '#dc2626'}
+            label="RS Score"
+            value={sector.rs_score != null ? Number(sector.rs_score).toFixed(0) : '--'}
+            color={Number(sector.rs_score) >= 50 ? '#059669' : '#dc2626'}
           />
           <StatCard label="AUM Deployed" value={formatAUMRaw(aum)} color="#334155" />
           <StatCard label="Fund Count" value={formatCount(sector.fund_count)} color="#334155" />

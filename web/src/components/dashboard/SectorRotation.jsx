@@ -238,7 +238,6 @@ function SectorTable({ sectors, onSectorClick }) {
             <th className="text-right py-1.5 px-1 font-semibold"><span className="flex items-center justify-end gap-0.5">RS <InfoIcon tip="Relative Strength (0-100). Above 50 = sector outperforming. Based on AUM-weighted fund returns." /></span></th>
             <th className="text-right py-1.5 px-1 font-semibold"><span className="flex items-center justify-end gap-0.5">1M <InfoIcon tip="1-month momentum — change in RS score from previous month. Positive = sector gaining strength." /></span></th>
             <th className="text-right py-1.5 px-1 font-semibold">3M</th>
-            <th className="text-right py-1.5 px-1 font-semibold">1Y Ret</th>
             <th className="text-right py-1.5 px-1 font-semibold">#</th>
             <th className="py-1.5 px-1 font-semibold" style={{ minWidth: 80 }}>Weight</th>
           </tr>
@@ -254,9 +253,6 @@ function SectorTable({ sectors, onSectorClick }) {
             const wt = Number(s.avg_weight_pct) || 0;
             const wtBarPct = (wt / maxWt) * 100;
 
-            const wRet = s.weighted_return;
-            const retColor = wRet == null ? 'text-slate-400' : wRet >= 0 ? 'text-emerald-600' : 'text-red-500';
-
             return (
               <tr key={getName(s) || i}
                 className="border-b border-slate-50 hover:bg-teal-50/50 transition-colors cursor-pointer"
@@ -270,9 +266,6 @@ function SectorTable({ sectors, onSectorClick }) {
                 </td>
                 <td className={`py-1.5 px-1 text-right font-mono tabular-nums text-[10px] ${momColor(mom1)}`}>{fmtMom(mom1)}</td>
                 <td className={`py-1.5 px-1 text-right font-mono tabular-nums text-[10px] ${momColor(mom3)}`}>{fmtMom(mom3)}</td>
-                <td className={`py-1.5 px-1 text-right font-mono tabular-nums text-[10px] font-semibold ${retColor}`}>
-                  {wRet != null ? `${Number(wRet) >= 0 ? '+' : ''}${Number(wRet).toFixed(1)}%` : '--'}
-                </td>
                 <td className="py-1.5 px-1 text-right font-mono tabular-nums text-slate-600 text-[10px]">
                   {s.fund_count || '--'}
                 </td>

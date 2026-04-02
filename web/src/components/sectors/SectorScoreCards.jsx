@@ -80,9 +80,9 @@ function SectorCard({ sector, onClick }) {
           </p>
         </div>
         <div>
-          <span className="text-[8px] text-slate-400 uppercase">1Y Return</span>
-          <p className={`text-[11px] font-bold tabular-nums ${wRet >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {formatPct(wRet)}
+          <span className="text-[8px] text-slate-400 uppercase">Funds</span>
+          <p className="text-[11px] font-semibold text-slate-600 tabular-nums">
+            {sector.fund_count || '--'}
           </p>
         </div>
         <div>
