@@ -119,6 +119,8 @@ class IngestionRepository:
         for key_sig, group_rows in groups.items():
             for batch_start in range(0, len(group_rows), BATCH_SIZE):
                 batch = group_rows[batch_start:batch_start + BATCH_SIZE]
+                # Use savepoint so a failing batch only rolls back itself
+                nested = self.db.begin_nested()
                 try:
                     stmt = pg_insert(table).values(batch)
 
@@ -147,24 +149,22 @@ class IngestionRepository:
                             )
 
                     self.db.execute(stmt)
-                    self.db.flush()  # flush to DB but don't commit — caller owns the transaction
+                    nested.commit()
                     result.inserted += len(batch)
                 except Exception as e:
-                    self.db.rollback()
-                    # Rollback undoes ALL prior flushes — reset inserted count
-                    result.inserted = 0
+                    nested.rollback()
                     result.failed += len(batch)
                     result.errors.append({
                         "batch_start": batch_start,
                         "error": str(e),
                     })
                     logger.warning(
-                        "Batch upsert failed at offset %d (transaction rolled back): %s",
+                        "Batch upsert failed at offset %d: %s",
                         batch_start,
                         str(e),
                     )
 
-        # Commit once at the end — all successful flushes in one transaction
+        # Commit all successful savepoints
         if result.inserted > 0:
             try:
                 self.db.commit()

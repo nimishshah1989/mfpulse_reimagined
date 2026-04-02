@@ -201,10 +201,10 @@ class JobScheduler:
         if job_name not in VALID_JOBS:
             return False
 
+        # Pre-check before spawning thread (actual guard is inside _run_with_audit)
         with self._running_lock:
             if job_name in self._running_jobs:
                 return f"Job '{job_name}' is already running"
-            self._running_jobs.add(job_name)
 
         job_map: dict[str, Callable] = {
             "nav_feeds": self.job_process_nav_feeds,
@@ -222,15 +222,11 @@ class JobScheduler:
         }
 
         func = job_map[job_name]
-
-        def _run_and_release() -> None:
-            try:
-                self._run_with_audit(job_name, func)
-            finally:
-                with self._running_lock:
-                    self._running_jobs.discard(job_name)
-
-        thread = threading.Thread(target=_run_and_release, daemon=True)
+        thread = threading.Thread(
+            target=self._run_with_audit,
+            args=(job_name, func),
+            daemon=True,
+        )
         thread.start()
         return True
 
@@ -252,7 +248,17 @@ class JobScheduler:
         return statuses
 
     def _run_with_audit(self, job_name: str, func: Callable) -> None:
-        """Execute a job function with audit trail logging. Never raises."""
+        """Execute a job function with audit trail logging. Never raises.
+
+        Uses _running_jobs guard to prevent both scheduled and manual
+        runs of the same job from overlapping.
+        """
+        with self._running_lock:
+            if job_name in self._running_jobs:
+                logger.warning("Skipping %s — already running", job_name)
+                return
+            self._running_jobs.add(job_name)
+
         db: Session = self._db_session_factory()
         try:
             # Log start
@@ -301,6 +307,8 @@ class JobScheduler:
                 logger.error("Failed to log job failure audit: %s", audit_err)
         finally:
             db.close()
+            with self._running_lock:
+                self._running_jobs.discard(job_name)
 
     def job_process_nav_feeds(self) -> None:
         """Process new NAV CSV feeds."""

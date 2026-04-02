@@ -149,10 +149,11 @@ export default function UniversePage() {
     // Debounce 300ms then call backend NL search
     nlDebounceRef.current = setTimeout(async () => {
       try {
-        const res = await searchFundsNL(query.trim());
+        // Pass limit=10000 — these IDs are only used as a filter set, not displayed
+        const res = await searchFundsNL(query.trim(), { limit: 10000 });
         if (res?.data?.funds) {
-          const ids = new Set(res.data.funds.map((f) => f.mstar_id));
-          setNLMatchedIds(ids);
+          // Set with matched IDs (may be empty — that means zero matches)
+          setNLMatchedIds(new Set(res.data.funds.map((f) => f.mstar_id)));
         } else {
           setNLMatchedIds(null);
         }
@@ -245,9 +246,10 @@ export default function UniversePage() {
     }
 
     // NL search filter — prefer backend matched IDs, fall back to client-side
-    if (nlMatchedIds && nlMatchedIds.size > 0) {
+    if (nlMatchedIds !== null) {
+      // Backend responded — use its ID set (empty set = zero matches)
       result = result.filter((f) => nlMatchedIds.has(f.mstar_id));
-    } else if (nlFilters && !nlMatchedIds) {
+    } else if (nlFilters) {
       result = applyNLFilters(result, nlFilters);
     }
 

@@ -224,7 +224,7 @@ def list_amcs(db: Session = Depends(get_db)) -> dict:
 @router.post("/search/natural")
 def natural_language_search(
     body: dict,
-    limit: int = Query(default=50, le=200),
+    limit: int = Query(default=50, le=15000),
     min_nav_count: int = Query(default=0, ge=0, description="Min NAV data points (1250=5Y, 750=3Y, 250=1Y)"),
     db: Session = Depends(get_db),
 ) -> dict:
