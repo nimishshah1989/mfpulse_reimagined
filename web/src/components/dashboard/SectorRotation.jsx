@@ -105,7 +105,7 @@ function CategoryBubbleChart({ categories, onCategoryClick }) {
         <line x1={pad.left} x2={W - pad.right} y1={H - pad.bottom} y2={H - pad.bottom} stroke="#cbd5e1" strokeWidth="1" />
         <line x1={pad.left} x2={pad.left} y1={pad.top} y2={H - pad.bottom} stroke="#cbd5e1" strokeWidth="1" />
         <text x={W / 2} y={H - 2} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500">{'Risk Score \u2192'}</text>
-        <text x={10} y={H / 2} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500" transform={`rotate(-90, 10, ${H / 2})`}>{'1Y Return % \u2192'}</text>
+        <text x={10} y={H / 2} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500" transform={`rotate(-90, 10, ${H / 2})`}>{'Avg Fund Return % \u2192'}</text>
 
         {[0, 0.5, 1].map((t) => (
           <text key={`xt${t}`} x={pad.left + plotW * t} y={H - pad.bottom + 13} textAnchor="middle" fontSize="9" fill="#94a3b8">
@@ -374,7 +374,7 @@ function CategoryDrillDown({ categoryName, universe, onFundClick, onClose }) {
             <line x1={pad.left} x2={W - pad.right} y1={H - pad.bottom} y2={H - pad.bottom} stroke="#e2e8f0" />
             <line x1={pad.left} x2={pad.left} y1={pad.top} y2={H - pad.bottom} stroke="#e2e8f0" />
             <text x={W / 2} y={H - 4} textAnchor="middle" fontSize="9" fill="#94a3b8">Risk Score</text>
-            <text x={8} y={H / 2} textAnchor="middle" fontSize="9" fill="#94a3b8" transform={`rotate(-90, 8, ${H / 2})`}>1Y Return %</text>
+            <text x={8} y={H / 2} textAnchor="middle" fontSize="9" fill="#94a3b8" transform={`rotate(-90, 8, ${H / 2})`}>Avg Fund Return %</text>
             {allFunds.map(f => {
               const ret = Number(f.return_1y);
               const risk = Number(f.risk_score);
@@ -552,6 +552,14 @@ export default function SectorRotation({ sectors, universe, loading, onFundClick
       </div>
 
       <PlaybookBar sectors={normalized} />
+
+      {/* Explanatory footnote */}
+      <p className="text-[9px] text-slate-400 leading-relaxed mt-3 px-1 border-t border-slate-100 pt-2">
+        <strong>Note:</strong> &ldquo;Avg Fund Return&rdquo; is the AUM-weighted average 1Y return of all mutual funds with exposure to that sector &mdash;
+        it reflects diversified fund performance, not the sector index return. In bearish markets, funds may still show positive returns
+        because their portfolios include holdings across multiple sectors. RS Score and Quadrant assignments use relative ranking
+        (above/below peer average) and are valid regardless of absolute return levels.
+      </p>
     </div>
   );
 }

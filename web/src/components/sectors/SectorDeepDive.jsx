@@ -743,9 +743,9 @@ const SectorDeepDive = forwardRef(function SectorDeepDive({
                       tick={{ fontSize: 11, fill: '#64748b' }}
                       label={{ value: 'Risk Score (Higher = Lower Risk) →', position: 'bottom', style: { fontSize: 11, fontWeight: 600, fill: '#64748b' } }}
                     />
-                    <YAxis type="number" dataKey="y" name="1Y Return"
+                    <YAxis type="number" dataKey="y" name="Fund 1Y Return"
                       tick={{ fontSize: 11, fill: '#64748b' }}
-                      label={{ value: '↑ 1Y Return %', angle: -90, position: 'insideLeft', style: { fontSize: 11, fontWeight: 600, fill: '#64748b' } }}
+                      label={{ value: '\u2191 Fund 1Y Return %', angle: -90, position: 'insideLeft', style: { fontSize: 11, fontWeight: 600, fill: '#64748b' } }}
                     />
                     <ZAxis type="number" dataKey="z" range={[40, 400]} name="AUM" />
                     <Tooltip content={<FundScatterTooltip />} />
