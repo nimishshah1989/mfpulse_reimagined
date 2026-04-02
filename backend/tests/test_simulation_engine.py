@@ -107,9 +107,16 @@ class TestSIPDateGeneration:
         assert dates[0] == date(2024, 1, 5)
 
     def test_sip_day_31_handles_short_months(self, engine: SimulationEngine) -> None:
+        # Use a known leap year (2024) for predictable results
         dates = engine._generate_sip_dates(date(2024, 1, 1), date(2024, 4, 30), 31)
-        # Feb has 29 days in 2024 (leap year)
         assert any(d.month == 2 and d.day == 29 for d in dates)
+
+    def test_sip_day_31_non_leap_year(self, engine: SimulationEngine) -> None:
+        # 2023 is NOT a leap year — Feb should clamp to 28
+        dates = engine._generate_sip_dates(date(2023, 1, 1), date(2023, 4, 30), 31)
+        feb_dates = [d for d in dates if d.month == 2]
+        assert len(feb_dates) > 0
+        assert all(d.day <= 28 for d in feb_dates)
 
 
 # ---------------------------------------------------------------------------
@@ -602,3 +609,127 @@ class TestResultMetadata:
         result = engine.simulate(params, nav, signal_events=[], fund_name="Test", mstar_id="T001")
         assert len(result.daily_timeline) > 0
         assert all(isinstance(s, DailySnapshot) for s in result.daily_timeline)
+
+
+# ---------------------------------------------------------------------------
+# Financial edge cases (Codex adversarial review — Batch 5)
+# ---------------------------------------------------------------------------
+
+class TestNegativeXIRR:
+    """Portfolio that consistently lost money should produce negative XIRR."""
+
+    def test_losing_investment(self, engine: SimulationEngine) -> None:
+        cashflows = [
+            (date(2024, 1, 1), Decimal("-100000")),
+            (date(2025, 1, 1), Decimal("80000")),  # Lost 20%
+        ]
+        xirr = engine._compute_xirr(cashflows)
+        assert xirr is not None
+        assert xirr < Decimal("0"), f"Expected negative XIRR, got {xirr}"
+
+    def test_total_loss(self, engine: SimulationEngine) -> None:
+        cashflows = [
+            (date(2024, 1, 1), Decimal("-100000")),
+            (date(2025, 1, 1), Decimal("1000")),  # 99% loss
+        ]
+        xirr = engine._compute_xirr(cashflows)
+        assert xirr is not None
+        assert xirr < Decimal("-90")
+
+
+class TestZeroNAVProtection:
+    """Division by zero when NAV is 0 should not crash."""
+
+    def test_zero_nav_in_series_skips_to_valid(self, engine: SimulationEngine) -> None:
+        # First valid NAV is 100 — the engine should skip zero and use the next valid day
+        nav = [
+            (date(2024, 1, 1), Decimal("0")),
+            (date(2024, 1, 2), Decimal("100")),
+            (date(2024, 6, 28), Decimal("110")),
+        ]
+        params = SimulationParams(
+            mode="LUMPSUM",
+            lumpsum_amount=Decimal("10000"),
+            start_date=date(2024, 1, 2),  # Start on a day with valid NAV
+            end_date=date(2024, 6, 28),
+        )
+        result = engine.simulate(params, nav, signal_events=[], fund_name="Test", mstar_id="T001")
+        assert result is not None
+        assert result.final_value > Decimal("0")
+
+    def test_cagr_zero_initial(self, engine: SimulationEngine) -> None:
+        assert engine._compute_cagr(Decimal("0"), Decimal("100"), Decimal("2")) is None
+
+    def test_cagr_zero_final(self, engine: SimulationEngine) -> None:
+        result = engine._compute_cagr(Decimal("100"), Decimal("0"), Decimal("2"))
+        assert result is not None
+        assert result < Decimal("0")  # Negative CAGR for total loss
+
+
+class TestExtremeValues:
+    """Very large and very small financial values."""
+
+    def test_very_large_aum_xirr(self, engine: SimulationEngine) -> None:
+        # 10,000 Cr invested
+        cashflows = [
+            (date(2024, 1, 1), Decimal("-99999999999")),
+            (date(2025, 1, 1), Decimal("109999999999")),
+        ]
+        xirr = engine._compute_xirr(cashflows)
+        assert xirr is not None
+        assert abs(xirr - Decimal("10")) < Decimal("2")
+
+    def test_tiny_nav(self, engine: SimulationEngine) -> None:
+        nav = [
+            (date(2024, 1, 1), Decimal("0.0001")),
+            (date(2024, 6, 30), Decimal("0.0002")),
+        ]
+        params = SimulationParams(
+            mode="LUMPSUM",
+            lumpsum_amount=Decimal("10000"),
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 6, 30),
+        )
+        result = engine.simulate(params, nav, signal_events=[], fund_name="Tiny", mstar_id="T002")
+        assert result.final_value > Decimal("0")
+
+
+class TestIdenticalScoresRanking:
+    """When all funds have identical scores, they should all get the same percentile."""
+
+    def test_all_same_returns(self, engine: SimulationEngine) -> None:
+        from app.engines.lens_engine import LensEngine
+        lens = LensEngine()
+        raw = {f"fund_{i}": Decimal("15.5") for i in range(10)}
+        ranked = lens._percentile_rank(raw, higher_is_better=True)
+        # All funds have identical values — all should get same rank
+        values = [v for v in ranked.values() if v is not None]
+        assert len(set(values)) == 1, f"Expected all same rank, got {set(values)}"
+
+
+class TestDecimalZeroNotFalsy:
+    """Regression test: Decimal('0') must not be treated as missing/falsy."""
+
+    def test_decimal_zero_is_valid_return(self) -> None:
+        val = Decimal("0")
+        # The old bug: `val or default` would replace 0 with default
+        result = val if val is not None else Decimal("-1")
+        assert result == Decimal("0"), "Decimal('0') should not be replaced by default"
+
+    def test_decimal_zero_in_percentile_rank(self) -> None:
+        from app.engines.lens_engine import LensEngine
+        lens = LensEngine()
+        raw = {"fund_a": Decimal("0"), "fund_b": Decimal("10"), "fund_c": Decimal("20")}
+        ranked = lens._percentile_rank(raw, higher_is_better=True)
+        # fund_a has 0 but should still be ranked (not treated as missing)
+        assert ranked["fund_a"] is not None, "Decimal('0') must not be excluded from ranking"
+
+    def test_decimal_zero_sharpe(self, engine: SimulationEngine) -> None:
+        # Zero risk-free rate should NOT be overridden to 6%.
+        # Use volatile returns so we don't hit the 99.99 cap.
+        monthly_returns = [Decimal("1"), Decimal("3"), Decimal("0.5"), Decimal("2.5")] * 3
+        sharpe_zero_rf = engine._compute_sharpe(monthly_returns, risk_free_annual=Decimal("0"))
+        sharpe_six_rf = engine._compute_sharpe(monthly_returns, risk_free_annual=Decimal("0.06"))
+        assert sharpe_zero_rf is not None
+        assert sharpe_six_rf is not None
+        assert sharpe_zero_rf > sharpe_six_rf, "Zero risk-free rate should give higher Sharpe"

@@ -389,8 +389,10 @@ class TestOnConflictUpdateOnlyProvidedKeys:
 
 
 class TestBatchUpsertErrorHandling:
-    def test_batch_error_rolls_back(self) -> None:
+    def test_batch_error_rolls_back_savepoint(self) -> None:
         db = MagicMock()
+        nested_mock = MagicMock()
+        db.begin_nested.return_value = nested_mock
         repo = IngestionRepository(db)
         db.execute.side_effect = Exception("DB connection lost")
 
@@ -399,7 +401,8 @@ class TestBatchUpsertErrorHandling:
         result = repo._batch_upsert(NavDaily, records, conflict_cols=["mstar_id", "nav_date"])
         assert result.failed > 0
         assert len(result.errors) > 0
-        db.rollback.assert_called()
+        # Savepoint should be rolled back, not the whole session
+        nested_mock.rollback.assert_called()
 
 
 class TestBatchUpsertDoNothingOnConflict:

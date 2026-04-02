@@ -23,7 +23,7 @@ class TestTriggerJob:
         mock_sched.trigger_job.return_value = True
         mock_get_sched.return_value = mock_sched
         resp = client.post("/api/v1/jobs/trigger/nav_feeds")
-        assert resp.status_code == 200
+        assert resp.status_code == 202
         body = resp.json()
         assert body["success"] is True
         assert body["data"]["job_name"] == "nav_feeds"

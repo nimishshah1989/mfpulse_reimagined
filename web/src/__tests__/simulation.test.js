@@ -22,21 +22,21 @@ describe('computeStartDate', () => {
     const result = new Date(computeStartDate('5Y'));
     const now = new Date();
     const diffYears = (now - result) / (365.25 * 24 * 3600 * 1000);
-    expect(diffYears).toBeCloseTo(5, 0);
+    expect(diffYears).toBeCloseTo(5, 1);
   });
 
   it('10Y is approximately 10 years before today', () => {
     const result = new Date(computeStartDate('10Y'));
     const now = new Date();
     const diffYears = (now - result) / (365.25 * 24 * 3600 * 1000);
-    expect(diffYears).toBeCloseTo(10, 0);
+    expect(diffYears).toBeCloseTo(10, 1);
   });
 
   it('defaults to 5Y for unknown period', () => {
     const result = new Date(computeStartDate('unknown'));
     const now = new Date();
     const diffYears = (now - result) / (365.25 * 24 * 3600 * 1000);
-    expect(diffYears).toBeCloseTo(5, 0);
+    expect(diffYears).toBeCloseTo(5, 1);
   });
 });
 

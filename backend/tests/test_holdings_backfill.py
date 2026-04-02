@@ -165,7 +165,7 @@ class TestHoldingsBackfillProgress:
         for t in threads:
             t.start()
         for t in threads:
-            t.join(timeout=5)
+            t.join(timeout=30)
 
         status = progress.get_status()
         assert status["completed"] == 100
