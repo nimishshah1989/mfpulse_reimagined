@@ -183,21 +183,25 @@ def get_regime_actions(db: Session = Depends(get_db)) -> dict:
     picks = mp.get_market_picks() or {}
     sentiment = mp.get_sentiment() or {}
 
-    # Compute top category from latest lens snapshot only
+    # Compute top category from each fund's latest lens snapshot
     top_cat_row = (
         db.execute(text(
             "SELECT fm.category_name, COUNT(*) AS cnt "
             "FROM fund_lens_scores fls "
+            "JOIN (SELECT mstar_id, MAX(computed_date) AS latest "
+            "      FROM fund_lens_scores GROUP BY mstar_id) lat "
+            "  ON fls.mstar_id = lat.mstar_id AND fls.computed_date = lat.latest "
             "JOIN fund_master fm ON fm.mstar_id = fls.mstar_id "
             "WHERE fls.return_score >= 70 "
-            "  AND fls.computed_date = (SELECT MAX(computed_date) FROM fund_lens_scores) "
             "GROUP BY fm.category_name ORDER BY cnt DESC LIMIT 1"
         )).first()
     )
     avoid_count = db.execute(text(
-        "SELECT COUNT(*) FROM fund_classification "
-        "WHERE return_class = 'WEAK' AND risk_class = 'HIGH_RISK' "
-        "  AND computed_date = (SELECT MAX(computed_date) FROM fund_classification)"
+        "SELECT COUNT(*) FROM fund_classification fc "
+        "JOIN (SELECT mstar_id, MAX(computed_date) AS latest "
+        "      FROM fund_classification GROUP BY mstar_id) lat "
+        "  ON fc.mstar_id = lat.mstar_id AND fc.computed_date = lat.latest "
+        "WHERE fc.return_class = 'WEAK' AND fc.risk_class = 'HIGH_RISK'"
     )).scalar() or 0
 
     regime_data = {
