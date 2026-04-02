@@ -5,6 +5,8 @@ import CollapsibleSection from '../components/methodology/CollapsibleSection';
 import DataMapTable from '../components/methodology/DataMapTable';
 import UpdateTimeline from '../components/methodology/UpdateTimeline';
 import LensScoringTable from '../components/methodology/LensScoringTable';
+import LensFormulaDetails from '../components/methodology/LensFormulaDetails';
+import DerivedMetrics from '../components/methodology/DerivedMetrics';
 import { fetchDataFreshness } from '../lib/api';
 import { cachedFetch } from '../lib/cache';
 
@@ -184,10 +186,37 @@ export default function MethodologyPage() {
         </CollapsibleSection>
 
         <CollapsibleSection
-          title="Lens Scoring (Internal Computation)"
+          title="Lens Scoring Overview"
           subtitle="Six independent lenses -- percentile rank within SEBI category"
         >
           <LensScoringTable />
+        </CollapsibleSection>
+      </div>
+
+      {/* Lens Formula Details */}
+      <div className="space-y-3">
+        <SectionTitle tip="Exact formulas, weights, and tier thresholds for each of the 6 classification lenses">
+          Lens Calculation Details
+        </SectionTitle>
+        <CollapsibleSection
+          title="How Each Lens Score Is Computed"
+          subtitle="Inputs, weights, formulas, and classification logic for all 6 lenses"
+        >
+          <LensFormulaDetails />
+        </CollapsibleSection>
+      </div>
+
+      {/* Derived Metrics */}
+      <div className="space-y-3">
+        <SectionTitle tip="All computed metrics: simulation, sector rotation, signals, archetypes, portfolio analytics">
+          Derived Metrics & Formulas
+        </SectionTitle>
+        <CollapsibleSection
+          title="Simulation Metrics, Sector Rotation, Signals & More"
+          subtitle="Every derived calculation with exact formulas and inputs"
+          defaultOpen
+        >
+          <DerivedMetrics />
         </CollapsibleSection>
       </div>
 
